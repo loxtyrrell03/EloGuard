@@ -82,6 +82,7 @@
 .elo-shield-zen [data-cy="player-rating-score"],
 .elo-shield-zen .rating-score-component,
 .elo-shield-zen .rating-score-rating,
-.elo-shield-zen .rating-score-change {
+.elo-shield-zen .rating-score-change,
+.elo-shield-zen .league-score-change {  /* <--- ADDED HERE */
     display: none !important;
 }

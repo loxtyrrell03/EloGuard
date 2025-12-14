@@ -76,6 +76,7 @@ async function checkForGameOver() {
     // Detect if Game Over Modal or Sidebar buttons are present
     const isGameOver = document.querySelector('[data-cy="game-over-modal-new-game-button"]') 
                     || document.querySelector('[data-cy="sidebar-rematch-button"]')
+                    || document.querySelector('[data-cy="sidebar-game-over-rematch-button"]') 
                     || document.querySelector('.game-over-controls');
 
     if (isGameOver) {
@@ -143,7 +144,8 @@ function freezeControls() {
         '[data-cy="new-game-index-play"]', 
         '[data-cy="game-over-modal-new-game-button"]',
         '[data-cy="sidebar-rematch-button"]',
-        '[data-cy="game-over-modal-rematch-button"]'
+        '[data-cy="game-over-modal-rematch-button"]',
+        '[data-cy="sidebar-game-over-rematch-button"]' 
     ];
     selectors.forEach(sel => {
         const els = document.querySelectorAll(sel);
@@ -151,6 +153,16 @@ function freezeControls() {
             el.style.pointerEvents = "none"; 
             el.style.opacity = "0.8"; 
         });
+    });
+
+    // Freeze Plus Buttons 
+    const plusIcons = document.querySelectorAll('[data-glyph="mark-plus"]');
+    plusIcons.forEach(icon => {
+        const btn = icon.closest('button');
+        if (btn) {
+            btn.style.pointerEvents = "none";
+            btn.style.opacity = "0.8";
+        }
     });
 
     const homeLinks = document.querySelectorAll('.play-quick-links-title');
@@ -295,9 +307,13 @@ function lockHomeScreen(title, sub, bgColor, color) {
 function lockButtonGeneric(title, sub, bgColor) {
     if (!GUARD_ACTIVE) return;
 
+    // 1. Updated Selector List to include Modal Buttons
     const standardSelectors = [
         '[data-cy="new-game-index-play"]', 
-        '[data-cy="sidebar-rematch-button"]' 
+        '[data-cy="sidebar-rematch-button"]',
+        '[data-cy="sidebar-game-over-rematch-button"]',
+        '[data-cy="game-over-modal-new-game-button"]', // Added
+        '[data-cy="game-over-modal-rematch-button"]'   // Added
     ];
 
     standardSelectors.forEach(sel => {
@@ -311,34 +327,26 @@ function lockButtonGeneric(title, sub, bgColor) {
         });
     });
 
-    const modalNewGameBtn = document.querySelector('[data-cy="game-over-modal-new-game-button"]');
-    if (modalNewGameBtn) {
-        const container = modalNewGameBtn.parentElement; 
-        if (container) {
-            if (!container.classList.contains('elo-guard-unified-locked')) {
-                container.classList.add('elo-guard-unified-locked');
-                if (!container.getAttribute('data-original-html')) {
-                    container.setAttribute('data-original-html', container.innerHTML);
-                }
-            }
-
-            container.innerHTML = `
-                <div class="elo-guard-locked elo-guard-unified-btn" style="background-color: ${bgColor}; border-color: ${bgColor}; color: white;">
-                    <div class="elo-shield-content">
-                        <span class="elo-shield-title">${title}</span>
-                        <span class="elo-shield-subtitle">${sub}</span>
-                    </div>
-                </div>
-            `;
+    // 2. Handle Plus Icon Buttons
+    const plusIcons = document.querySelectorAll('[data-glyph="mark-plus"]');
+    plusIcons.forEach(icon => {
+        const btn = icon.closest('button');
+        if (btn) {
+            applyLockStyle(btn, title, sub, bgColor);
         }
-    }
+    });
+
+    // Removed the "3. Handle Unified/Game Over Buttons" block entirely.
+    // By adding the selectors to list #1, they are handled non-destructively.
 }
 
 function applyLockStyle(btn, title, sub, bgColor) {
     if (!btn.classList.contains('elo-guard-locked')) {
         btn.classList.add('elo-guard-locked');
-        if (!btn.getAttribute('data-original-text')) {
-            btn.setAttribute('data-original-text', btn.innerText);
+        
+        // --- CRITICAL FIX: Save the HTML, not just text ---
+        if (!btn.getAttribute('data-original-html')) {
+            btn.setAttribute('data-original-html', btn.innerHTML);
         }
     }
     btn.innerHTML = `
@@ -359,7 +367,8 @@ function unlockButton() {
         '[data-cy="new-game-index-play"]', 
         '[data-cy="game-over-modal-new-game-button"]',
         '[data-cy="sidebar-rematch-button"]',
-        '[data-cy="game-over-modal-rematch-button"]'
+        '[data-cy="game-over-modal-rematch-button"]',
+        '[data-cy="sidebar-game-over-rematch-button"]' 
     ];
     rawSelectors.forEach(sel => {
         const els = document.querySelectorAll(sel);
@@ -369,23 +378,30 @@ function unlockButton() {
         });
     });
 
-    // 2. Unlock Standard Locked Buttons
+    // 2. Unlock Standard Locked Buttons (Includes Plus & Rematch)
     const lockedBtns = document.querySelectorAll('.elo-guard-locked:not(.elo-guard-unified-btn)');
     lockedBtns.forEach(btn => {
-        if(btn.closest('.elo-guard-home-locked')) return; // Handled below
+        if(btn.closest('.elo-guard-home-locked')) return; 
 
         btn.classList.remove('elo-guard-locked');
         btn.style.pointerEvents = "auto";
-        const originalText = btn.getAttribute('data-original-text');
-        if (originalText) btn.innerText = originalText;
-        else btn.innerHTML = "Play";
         
-        btn.style.color = ""; btn.style.borderColor = ""; btn.style.backgroundColor = ""; 
-        const newBtn = btn.cloneNode(true);
-        if(btn.parentNode) btn.parentNode.replaceChild(newBtn, btn);
+        // --- CRITICAL FIX: Restore HTML ---
+        const originalHtml = btn.getAttribute('data-original-html');
+        if (originalHtml) {
+            btn.innerHTML = originalHtml;
+        } else {
+            // Fallback just in case
+            btn.innerHTML = "Play"; 
+        }
+        
+        // Reset styles
+        btn.style.color = ""; 
+        btn.style.borderColor = ""; 
+        btn.style.backgroundColor = ""; 
     });
 
-    // 3. Unlock Unified Container
+    // 3. Unlock Unified Container (Legacy cleanup, keeps safe if old locks exist)
     const unifiedContainers = document.querySelectorAll('.elo-guard-unified-locked');
     unifiedContainers.forEach(container => {
         container.classList.remove('elo-guard-unified-locked');
@@ -406,13 +422,23 @@ function unlockButton() {
         }
     });
     
-    // 5. Raw Reset for Home Screen (just in case they were frozen but not locked)
+    // 5. Raw Reset for Home Screen
     const homeLinks = document.querySelectorAll('.play-quick-links-title');
     homeLinks.forEach(span => {
         const parent = span.closest('a') || span.parentElement;
         if (parent) {
             parent.style.pointerEvents = "auto";
             parent.style.opacity = "";
+        }
+    });
+
+    // 6. Reset Plus Buttons specifically
+    const plusIcons = document.querySelectorAll('[data-glyph="mark-plus"]');
+    plusIcons.forEach(icon => {
+        const btn = icon.closest('button');
+        if (btn) {
+            btn.style.pointerEvents = "auto";
+            btn.style.opacity = "";
         }
     });
 }
