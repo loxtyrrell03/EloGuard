@@ -101,7 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Save Mode immediately
         chrome.storage.sync.set({ gameMode: newMode });
         
-        // Update UI logic (Calculates Smart Bracket if needed)
+        // Update UI logic for the selected mode
         updateModeUI(newMode);
         
         // Refresh connection to get new rating
@@ -118,22 +118,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // 2. Handle Inputs (Smart Bracket vs Saved)
-        const smartRange = parseInt(smartRangeInput.value);
-        
-        if (smartRange && smartRange > 0) {
-            const cachedText = statsRefs[mode].innerText;
-            const cachedRating = parseInt(cachedText);
-
-            if (!isNaN(cachedRating)) {
-                stopLossInput.value = cachedRating - smartRange;
-                targetRatingInput.value = cachedRating + smartRange;
-            } else {
-                loadSavedValuesForMode(mode);
-            }
-        } else {
-            loadSavedValuesForMode(mode);
-        }
+        // 2. Load saved values for the selected mode (no auto smart bracket)
+        loadSavedValuesForMode(mode);
         
         // NEW: Update the display under the rating
         updateMainViewStats();
@@ -251,6 +237,8 @@ document.addEventListener('DOMContentLoaded', () => {
             
             saveBtn.innerText = "✅ Saved!";
             setTimeout(() => saveBtn.innerText = "Save Settings", 1500);
+            settingsView.classList.add('hidden');
+            mainView.classList.remove('hidden');
             checkConnection();
         });
     });
@@ -299,12 +287,7 @@ document.addEventListener('DOMContentLoaded', () => {
             statusText.style.color = "#81b64c";
             
             liveRatingEl.innerText = rating;
-            
-            const smartRange = parseInt(smartRangeInput.value);
-            if (smartRange > 0 && settingsView.classList.contains('hidden') === false) {
-                 updateModeUI(activeMode); 
-            }
-            
+
             connectBtn.innerText = "✅";
             setTimeout(() => connectBtn.innerText = "Connect", 1500);
 

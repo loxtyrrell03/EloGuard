@@ -9,6 +9,9 @@ let COOLDOWN_SECONDS = 0;
 
 let gameOverDetected = false; 
 let isCooldownRunning = false;
+let cooldownTimerId = null;
+let cooldownEndTime = 0;
+const COOLDOWN_STORAGE_KEY = 'eloGuardCooldownEnd';
 
 // 1. Initialize
 function loadSettings() {
@@ -33,8 +36,10 @@ function loadSettings() {
             applyZenMode();
             
             if (GUARD_ACTIVE) {
+                resumeCooldownFromStorage();
                 checkRating(); 
             } else {
+                clearCooldownState();
                 unlockButton();
             }
         }
@@ -188,28 +193,37 @@ function unfreezeControls() {
 // --- COOLDOWN & LOCKS ---
 
 function startCooldown() {
+    startCooldownWithDuration(COOLDOWN_SECONDS);
+}
+
+function startCooldownWithDuration(seconds, existingEndTime) {
     if (isPermanentLockActive()) return;
+    if (isCooldownRunning) return;
+    if (!GUARD_ACTIVE) return;
+    if (!COOLDOWN_ACTIVE || seconds <= 0) return;
+
+    const now = Date.now();
+    cooldownEndTime = existingEndTime || now + seconds * 1000;
+    const initialRemaining = Math.max(0, Math.ceil((cooldownEndTime - now) / 1000));
 
     isCooldownRunning = true;
-    let remaining = COOLDOWN_SECONDS;
+    chrome.storage.local.set({ [COOLDOWN_STORAGE_KEY]: cooldownEndTime });
+    applyCooldownLock(initialRemaining);
 
-    applyCooldownLock(remaining);
+    cooldownTimerId = setInterval(() => {
+        const remainingMs = cooldownEndTime - Date.now();
+        const remainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
 
-    const interval = setInterval(() => {
-        remaining--;
-        
         if (isPermanentLockActive()) {
-            clearInterval(interval);
-            isCooldownRunning = false;
+            clearCooldownState();
             return;
         }
 
-        if (remaining <= 0) {
-            clearInterval(interval);
-            isCooldownRunning = false;
+        if (remainingSeconds <= 0) {
+            clearCooldownState(true);
             unfreezeControls(); 
         } else {
-            applyCooldownLock(remaining);
+            applyCooldownLock(remainingSeconds);
         }
     }, 1000);
 }
@@ -223,6 +237,33 @@ function isPermanentLockActive() {
 
 function applyCooldownLock(seconds) {
     lockButtonGeneric("🧊 COOL DOWN", `Analyze.<br>${seconds}s`, "#2196F3");
+}
+
+function resumeCooldownFromStorage() {
+    if (!COOLDOWN_ACTIVE || !GUARD_ACTIVE) {
+        clearCooldownState();
+        return;
+    }
+
+    chrome.storage.local.get(COOLDOWN_STORAGE_KEY, (result) => {
+        const storedEnd = parseInt(result[COOLDOWN_STORAGE_KEY], 10);
+        if (storedEnd && storedEnd > Date.now()) {
+            const remaining = Math.max(0, Math.ceil((storedEnd - Date.now()) / 1000));
+            startCooldownWithDuration(remaining, storedEnd);
+        } else if (storedEnd) {
+            chrome.storage.local.remove(COOLDOWN_STORAGE_KEY);
+        }
+    });
+}
+
+function clearCooldownState(clearStorage = true) {
+    if (cooldownTimerId) {
+        clearInterval(cooldownTimerId);
+        cooldownTimerId = null;
+    }
+    isCooldownRunning = false;
+    cooldownEndTime = 0;
+    if (clearStorage) chrome.storage.local.remove(COOLDOWN_STORAGE_KEY);
 }
 
 function lockOut(rating, type, fromPoll = false) {
