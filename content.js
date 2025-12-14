@@ -57,14 +57,12 @@ setInterval(() => {
     if (GUARD_ACTIVE && isPermanentLockActive()) {
         const lock = document.querySelector('.elo-guard-locked');
         if (lock) {
-            // Read state from existing lock to keep home screen in sync
             const isWin = lock.innerText.includes("GOAL");
-            // We only need the rating if it's a win, otherwise pass null
             const ratingMatch = lock.innerText.match(/\d{3,4}/);
             const rating = (isWin && ratingMatch) ? ratingMatch[0] : null;
             
             if (isWin) lockOut(rating, "win", true);
-            else lockOut(null, "stop", true); // Pass null rating for stop loss
+            else lockOut(null, "stop", true);
         }
     }
 }, 1000);
@@ -170,34 +168,9 @@ function freezeControls() {
 
 function unfreezeControls() {
     if (isPermanentLockActive()) return;
-
-    const selectors = [
-        '[data-cy="new-game-index-play"]', 
-        '[data-cy="game-over-modal-new-game-button"]',
-        '[data-cy="sidebar-rematch-button"]',
-        '[data-cy="game-over-modal-rematch-button"]'
-    ];
-    selectors.forEach(sel => {
-        const els = document.querySelectorAll(sel);
-        els.forEach(el => {
-            el.style.pointerEvents = "auto";
-            el.style.opacity = "";
-        });
-    });
-
-    const homeLinks = document.querySelectorAll('.play-quick-links-title');
-    homeLinks.forEach(span => {
-        const text = span.innerText.trim();
-        if (text === "New Game" || /^Play \d+ min$/i.test(text)) {
-            const parent = span.closest('a') || span.parentElement;
-            if (parent) {
-                parent.style.pointerEvents = "auto";
-                parent.style.opacity = "";
-            }
-        }
-    });
     
-    unlockButton(); 
+    // We call unlockButton because it now handles the "Raw" style reset too
+    unlockButton();
 }
 
 // --- COOLDOWN & LOCKS ---
@@ -244,8 +217,6 @@ function lockOut(rating, type, fromPoll = false) {
     if (!GUARD_ACTIVE) return; 
 
     const isWin = type === "win";
-    
-    // LOGIC: Show rating ONLY if it's a WIN. If Stop Loss, hide it.
     let titleText, fullTitle, subText;
 
     if (isWin) {
@@ -253,7 +224,6 @@ function lockOut(rating, type, fromPoll = false) {
         fullTitle = `🏆 GOAL HIT (${rating})`;
         subText = `Target Hit`;
     } else {
-        // Stop Loss - No numbers
         titleText = `🛑 STOP`;
         fullTitle = `🛑 STOP`; 
         subText = `Stop Loss Hit`;
@@ -262,13 +232,9 @@ function lockOut(rating, type, fromPoll = false) {
     const color = isWin ? "#4CAF50" : "#ff4d4d"; 
     const bgColor = "#262626";
 
-    // 1. Lock Standard Buttons
     lockButtonGeneric(fullTitle, subText, bgColor); 
-    
-    // 2. Lock Home Screen Buttons
     lockHomeScreen(titleText, subText, bgColor, color);
 
-    // 3. Color Overrides
     const locks = document.querySelectorAll('.elo-guard-locked');
     locks.forEach(btn => {
         btn.style.color = color;
@@ -284,7 +250,6 @@ function lockHomeScreen(title, sub, bgColor, color) {
     const homeLinks = document.querySelectorAll('.play-quick-links-title');
     homeLinks.forEach(span => {
         const text = span.innerText.trim();
-        // Match "New Game" OR "Play X min"
         if (text === "New Game" || /^Play \d+ min$/i.test(text)) {
             const parent = span.closest('a') || span.parentElement;
             
@@ -296,7 +261,6 @@ function lockHomeScreen(title, sub, bgColor, color) {
                     }
                 }
 
-                // Added box-sizing: border-box to ensure the border is INSIDE the width/height
                 parent.innerHTML = `
                     <div class="elo-guard-locked" style="
                         background-color: ${bgColor} !important; 
@@ -331,7 +295,6 @@ function lockHomeScreen(title, sub, bgColor, color) {
 function lockButtonGeneric(title, sub, bgColor) {
     if (!GUARD_ACTIVE) return;
 
-    // 1. Sidebar / Standard Buttons
     const standardSelectors = [
         '[data-cy="new-game-index-play"]', 
         '[data-cy="sidebar-rematch-button"]' 
@@ -348,7 +311,6 @@ function lockButtonGeneric(title, sub, bgColor) {
         });
     });
 
-    // 2. UNIFIED MODAL BUTTON
     const modalNewGameBtn = document.querySelector('[data-cy="game-over-modal-new-game-button"]');
     if (modalNewGameBtn) {
         const container = modalNewGameBtn.parentElement; 
@@ -392,12 +354,25 @@ function applyLockStyle(btn, title, sub, bgColor) {
 }
 
 function unlockButton() {
-    if (isPermanentLockActive()) return;
+    // 1. Force Clear "Frozen" Styles (Raw Selectors)
+    const rawSelectors = [
+        '[data-cy="new-game-index-play"]', 
+        '[data-cy="game-over-modal-new-game-button"]',
+        '[data-cy="sidebar-rematch-button"]',
+        '[data-cy="game-over-modal-rematch-button"]'
+    ];
+    rawSelectors.forEach(sel => {
+        const els = document.querySelectorAll(sel);
+        els.forEach(el => {
+            el.style.pointerEvents = "auto";
+            el.style.opacity = "";
+        });
+    });
 
-    // 1. Unlock Standard Buttons
+    // 2. Unlock Standard Locked Buttons
     const lockedBtns = document.querySelectorAll('.elo-guard-locked:not(.elo-guard-unified-btn)');
     lockedBtns.forEach(btn => {
-        if(btn.closest('.elo-guard-home-locked')) return;
+        if(btn.closest('.elo-guard-home-locked')) return; // Handled below
 
         btn.classList.remove('elo-guard-locked');
         btn.style.pointerEvents = "auto";
@@ -410,7 +385,7 @@ function unlockButton() {
         if(btn.parentNode) btn.parentNode.replaceChild(newBtn, btn);
     });
 
-    // 2. Unlock Unified Container
+    // 3. Unlock Unified Container
     const unifiedContainers = document.querySelectorAll('.elo-guard-unified-locked');
     unifiedContainers.forEach(container => {
         container.classList.remove('elo-guard-unified-locked');
@@ -420,7 +395,7 @@ function unlockButton() {
         }
     });
 
-    // 3. Unlock Home Screen Links
+    // 4. Unlock Home Screen Links
     const homeLocked = document.querySelectorAll('.elo-guard-home-locked');
     homeLocked.forEach(el => {
         el.classList.remove('elo-guard-home-locked');
@@ -428,6 +403,16 @@ function unlockButton() {
         const originalHtml = el.getAttribute('data-original-html');
         if (originalHtml) {
             el.innerHTML = originalHtml;
+        }
+    });
+    
+    // 5. Raw Reset for Home Screen (just in case they were frozen but not locked)
+    const homeLinks = document.querySelectorAll('.play-quick-links-title');
+    homeLinks.forEach(span => {
+        const parent = span.closest('a') || span.parentElement;
+        if (parent) {
+            parent.style.pointerEvents = "auto";
+            parent.style.opacity = "";
         }
     });
 }
@@ -462,7 +447,10 @@ function applyZenMode() {
 chrome.storage.onChanged.addListener((changes) => {
     if (changes.guardActive) {
         GUARD_ACTIVE = changes.guardActive.newValue;
-        if (!GUARD_ACTIVE) unlockButton();
+        if (!GUARD_ACTIVE) {
+             unlockButton(); // This will now fully reset everything
+             gameOverDetected = false;
+        }
         else checkRating();
     }
     loadSettings();
