@@ -1,3 +1,7 @@
+(() => {
+    if (window.__ELOGUARD_CONTENT_LOADED__) return;
+    window.__ELOGUARD_CONTENT_LOADED__ = true;
+
 let STOP_LOSS = 0;
 let TARGET_RATING = 0;
 let USERNAME = "";
@@ -11,7 +15,20 @@ let gameOverDetected = false;
 let isCooldownRunning = false;
 let cooldownTimerId = null;
 let cooldownEndTime = 0;
-const COOLDOWN_STORAGE_KEY = 'eloGuardCooldownEnd';
+const INSTANCE_ID_KEY = 'eloGuardInstanceId';
+let ELOGUARD_INSTANCE_ID = null;
+try {
+    ELOGUARD_INSTANCE_ID = sessionStorage.getItem(INSTANCE_ID_KEY);
+    if (!ELOGUARD_INSTANCE_ID) {
+        ELOGUARD_INSTANCE_ID = (crypto?.randomUUID?.() || `${Date.now()}_${Math.random().toString(16).slice(2)}`);
+        sessionStorage.setItem(INSTANCE_ID_KEY, ELOGUARD_INSTANCE_ID);
+    }
+} catch (e) {
+    ELOGUARD_INSTANCE_ID = `${Date.now()}_${Math.random().toString(16).slice(2)}`;
+}
+
+// Per-tab cooldown key (prevents multiple Chess.com tabs from overwriting each other)
+const COOLDOWN_STORAGE_KEY = `eloGuardCooldownEnd:${ELOGUARD_INSTANCE_ID}`;
 
 // 1. Initialize
 function loadSettings() {
@@ -46,6 +63,36 @@ function loadSettings() {
     });
 }
 loadSettings();
+
+// If the tab was background-throttled, resync the cooldown UI instantly when it becomes visible.
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && GUARD_ACTIVE) {
+        resumeCooldownFromStorage();
+    }
+});
+
+// Chess.com is an SPA; on route changes, resync cooldown so newly-rendered buttons get re-locked immediately.
+(function hookSpaNavigation() {
+    if (window.__ELOGUARD_SPA_HOOKED__) return;
+    window.__ELOGUARD_SPA_HOOKED__ = true;
+
+    const resync = () => {
+        if (GUARD_ACTIVE) resumeCooldownFromStorage();
+    };
+
+    const wrap = (fnName) => {
+        const original = history[fnName];
+        history[fnName] = function (...args) {
+            const ret = original.apply(this, args);
+            setTimeout(resync, 50);
+            return ret;
+        };
+    };
+
+    wrap('pushState');
+    wrap('replaceState');
+    window.addEventListener('popstate', () => setTimeout(resync, 50));
+})();
 
 // --- TIMERS ---
 setInterval(() => {
@@ -249,9 +296,18 @@ function resumeCooldownFromStorage() {
         const storedEnd = parseInt(result[COOLDOWN_STORAGE_KEY], 10);
         if (storedEnd && storedEnd > Date.now()) {
             const remaining = Math.max(0, Math.ceil((storedEnd - Date.now()) / 1000));
-            startCooldownWithDuration(remaining, storedEnd);
+            cooldownEndTime = storedEnd;
+            if (isCooldownRunning) {
+                applyCooldownLock(remaining);
+            } else {
+                startCooldownWithDuration(remaining, storedEnd);
+            }
         } else if (storedEnd) {
             chrome.storage.local.remove(COOLDOWN_STORAGE_KEY);
+            if (!isPermanentLockActive()) {
+                clearCooldownState(false);
+                unfreezeControls();
+            }
         }
     });
 }
@@ -515,6 +571,7 @@ chrome.storage.onChanged.addListener((changes) => {
     if (changes.guardActive) {
         GUARD_ACTIVE = changes.guardActive.newValue;
         if (!GUARD_ACTIVE) {
+             clearCooldownState();
              unlockButton(); // This will now fully reset everything
              gameOverDetected = false;
         }
@@ -522,3 +579,5 @@ chrome.storage.onChanged.addListener((changes) => {
     }
     loadSettings();
 });
+
+})();
