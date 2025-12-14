@@ -18,6 +18,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const liveRatingEl = document.getElementById('liveRating');
     const gameModeSelect = document.getElementById('gameMode'); 
     
+    // NEW: Stats Display Elements
+    const dispStop = document.getElementById('dispStop');
+    const dispTarget = document.getElementById('dispTarget');
+    
     // Inputs
     const usernameInput = document.getElementById('username');
     const stopLossInput = document.getElementById('stopLoss');
@@ -116,6 +120,9 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             loadSavedValuesForMode(mode);
         }
+        
+        // NEW: Update the display under the rating
+        updateMainViewStats();
     }
 
     function loadSavedValuesForMode(mode) {
@@ -123,6 +130,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const savedTarget = currentState[`targetRating_${mode}`] || "";
         stopLossInput.value = savedStop;
         targetRatingInput.value = savedTarget;
+    }
+    
+    // Helper to update the Floor/Ceiling display on main card
+    function updateMainViewStats() {
+        const s = stopLossInput.value;
+        const t = targetRatingInput.value;
+        
+        dispStop.innerText = s ? s : "---";
+        dispTarget.innerText = t ? t : "---";
     }
 
     // 3. MAIN BUTTONS
@@ -145,6 +161,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     function updateRatingVisibility() {
+        // Now toggles the entire container which includes rating AND stats
         if (isRatingHidden) {
             ratingContainer.style.display = 'none';
             ratingVisBtn.innerText = "Show";
@@ -174,6 +191,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         stopLossInput.value = floor;
         targetRatingInput.value = ceiling;
+        
+        // Update display immediately
+        updateMainViewStats();
 
         applySmartBtn.innerText = "✅ Set!";
         setTimeout(() => applySmartBtn.innerText = "Apply", 1500);
@@ -213,6 +233,8 @@ document.addEventListener('DOMContentLoaded', () => {
         currentState = { ...currentState, ...updateData };
 
         chrome.storage.sync.set(updateData, () => {
+            updateMainViewStats(); // Update display on save
+            
             saveBtn.innerText = "✅ Saved!";
             setTimeout(() => saveBtn.innerText = "Save Settings", 1500);
             checkConnection();

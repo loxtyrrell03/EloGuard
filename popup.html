@@ -25,6 +25,16 @@
 
             <div id="ratingContainer" class="rating-container">
                 <div id="liveRating" class="rating-text">---</div>
+                
+                <div class="limit-row">
+                    <span class="limit-item" title="Floor (Stop Loss)">
+                        🛑 <span id="dispStop">---</span>
+                    </span>
+                    <span class="limit-divider">|</span>
+                    <span class="limit-item" title="Ceiling (Target)">
+                        🏆 <span id="dispTarget">---</span>
+                    </span>
+                </div>
             </div>
             
             <button id="toggleRatingVisBtn" class="text-link-btn">Hide</button>
@@ -99,7 +109,7 @@
         </div>
 
         <hr class="divider">
-        
+
         <div class="input-group">
             <label>
                 🧊 Analysis Cool Down

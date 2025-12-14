@@ -55,11 +55,38 @@ h2 { margin: 0; font-size: 18px; color: #81b64c; }
     margin: 15px; border-radius: 8px; border: 1px solid #333;
     transition: height 0.2s; 
 }
+
+/* Updated Rating Container for Column Layout */
 .rating-container {
-    display: flex; align-items: center; justify-content: center;
+    display: flex; 
+    flex-direction: column; /* Changed to column */
+    align-items: center; 
+    justify-content: center;
 }
-.rating-text { font-size: 48px; font-weight: bold; color: #fff; margin: 5px 0; }
+
+.rating-text { font-size: 48px; font-weight: bold; color: #fff; margin: 5px 0 0 0; }
 .status-text { font-size: 13px; margin-bottom: 8px; color: #aaa; }
+
+/* NEW: Stats Row Styling */
+.limit-row {
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
+    gap: 12px;
+    margin-top: 5px;
+    margin-bottom: 5px;
+    font-size: 12px;
+    color: #999;
+}
+.limit-item {
+    display: flex; align-items: center; gap: 4px; cursor: default;
+}
+.limit-item span {
+    font-weight: 600; color: #ccc;
+}
+.limit-divider {
+    color: #444; font-size: 10px;
+}
 
 /* Mode Select */
 .mode-select {
@@ -88,11 +115,11 @@ h2 { margin: 0; font-size: 18px; color: #81b64c; }
 .stat-box strong { display: block; font-size: 14px; color: #fff; margin-top: 2px; }
 
 /* --- ICON COLORS --- */
-#boxRapid .mode-icon { fill: #81b64c; } /* Rapid Green */
-#boxBlitz .mode-icon { fill: #ffce49; } /* Blitz Yellow */
-#boxBullet .mode-icon { fill: #d5a440; } /* Bullet Gold/Orange */
+#boxRapid .mode-icon { fill: #81b64c; } 
+#boxBlitz .mode-icon { fill: #ffce49; } 
+#boxBullet .mode-icon { fill: #d5a440; } 
 
-/* Selected State - Box turns green, Icon & Text turn WHITE */
+/* Selected State */
 .stat-box.selected {
     background-color: #3b6e29; 
     border-color: #4CAF50;
