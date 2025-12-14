@@ -8,6 +8,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const activateBtn = document.getElementById('activateBtn');
     const zenToggle = document.getElementById('hideRatings');
     
+    // Cooldown UI
+    const cooldownToggle = document.getElementById('cooldownActive');
+    const cooldownInput = document.getElementById('cooldownSeconds');
+
     // Visiblity & Mode
     const ratingVisBtn = document.getElementById('toggleRatingVisBtn');
     const ratingContainer = document.getElementById('ratingContainer'); 
@@ -41,8 +45,12 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (data.username) usernameInput.value = data.username;
         if (data.hideRatings) zenToggle.checked = data.hideRatings;
-        if (data.guardActive) setGuardActiveUI(true); // Renamed from shieldActive
+        if (data.guardActive) setGuardActiveUI(true);
         if (data.gameMode) activeMode = data.gameMode;
+        
+        // Cooldown State
+        if (data.cooldownActive) cooldownToggle.checked = data.cooldownActive;
+        if (data.cooldownSeconds) cooldownInput.value = data.cooldownSeconds;
         
         if (data.maskPopupRating) {
             isRatingHidden = true;
@@ -95,24 +103,17 @@ document.addEventListener('DOMContentLoaded', () => {
         // 2. Handle Inputs (Smart Bracket vs Saved)
         const smartRange = parseInt(smartRangeInput.value);
         
-        // **NEW LOGIC**: If Smart Range has a value, auto-calculate for the new mode!
         if (smartRange && smartRange > 0) {
-            // We need the rating for the new mode. 
-            // We try to grab it from the UI cache (statsRefs) or default to 0 if not loaded yet.
             const cachedText = statsRefs[mode].innerText;
             const cachedRating = parseInt(cachedText);
 
             if (!isNaN(cachedRating)) {
-                // Calculate new limits dynamically
                 stopLossInput.value = cachedRating - smartRange;
                 targetRatingInput.value = cachedRating + smartRange;
             } else {
-                // If we don't have the rating loaded yet, just load saved values to be safe
-                // (The user can hit "Apply" later once connection loads)
                 loadSavedValuesForMode(mode);
             }
         } else {
-            // Standard behavior: Load saved settings for this mode
             loadSavedValuesForMode(mode);
         }
     }
@@ -196,8 +197,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const username = usernameInput.value.trim();
         const stopLoss = stopLossInput.value;
         const targetRating = targetRatingInput.value;
+        const cdActive = cooldownToggle.checked;
+        const cdSeconds = cooldownInput.value;
         
-        let updateData = { username, gameMode: activeMode };
+        let updateData = { 
+            username, 
+            gameMode: activeMode,
+            cooldownActive: cdActive,
+            cooldownSeconds: cdSeconds
+        };
         
         updateData[`stopLoss_${activeMode}`] = stopLoss;
         updateData[`targetRating_${activeMode}`] = targetRating;
@@ -253,8 +261,6 @@ document.addEventListener('DOMContentLoaded', () => {
             
             liveRatingEl.innerText = rating;
             
-            // If smart bracket is open and has value, we might want to refresh inputs? 
-            // (Optional, but good for UX if they just switched modes and data loaded late)
             const smartRange = parseInt(smartRangeInput.value);
             if (smartRange > 0 && settingsView.classList.contains('hidden') === false) {
                  updateModeUI(activeMode); 

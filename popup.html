@@ -99,6 +99,22 @@
         </div>
 
         <hr class="divider">
+        
+        <div class="input-group">
+            <label>
+                🧊 Analysis Cool Down
+                <div class="tooltip-container">
+                    <span class="tooltip" data-text="Forces a waiting period after every game to encourage analysis.">?</span>
+                </div>
+            </label>
+            <div class="flex-row">
+                <label class="switch" style="margin: 0;">
+                    <input type="checkbox" id="cooldownActive">
+                    <span class="slider"></span>
+                </label>
+                <input type="number" id="cooldownSeconds" placeholder="Seconds (e.g. 60)" style="flex:1;">
+            </div>
+        </div>
 
         <div class="input-group smart-bracket-group">
             <label>
