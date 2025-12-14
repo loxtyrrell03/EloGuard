@@ -24,6 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Inputs
     const usernameInput = document.getElementById('username');
+    const connectBtn = document.getElementById('connectBtn'); // <--- NEW
     const stopLossInput = document.getElementById('stopLoss');
     const targetRatingInput = document.getElementById('targetRating');
     const applySmartBtn = document.getElementById('applySmartBtn');
@@ -68,7 +69,20 @@ document.addEventListener('DOMContentLoaded', () => {
         if (data.username) checkConnection();
     });
 
-    // 2. MODE SWITCHING
+    // 2. USERNAME INPUT LOGIC (NEW)
+    // Trigger on "Enter" key
+    usernameInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            checkConnection();
+        }
+    });
+
+    // Trigger on "Connect" button click
+    connectBtn.addEventListener('click', () => {
+        checkConnection();
+    });
+
+    // 3. MODE SWITCHING
     gameModeSelect.addEventListener('change', () => {
         changeMode(gameModeSelect.value);
     });
@@ -141,7 +155,7 @@ document.addEventListener('DOMContentLoaded', () => {
         dispTarget.innerText = t ? t : "---";
     }
 
-    // 3. MAIN BUTTONS
+    // 4. MAIN BUTTONS
     activateBtn.addEventListener('click', () => {
         const isCurrentlyActive = activateBtn.classList.contains('active-green');
         const newState = !isCurrentlyActive;
@@ -153,7 +167,7 @@ document.addEventListener('DOMContentLoaded', () => {
         chrome.storage.sync.set({ hideRatings: zenToggle.checked });
     });
 
-    // 4. VISIBILITY
+    // 5. VISIBILITY
     ratingVisBtn.addEventListener('click', () => {
         isRatingHidden = !isRatingHidden;
         updateRatingVisibility();
@@ -172,7 +186,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // 5. SMART BRACKET APPLY BTN
+    // 6. SMART BRACKET APPLY BTN
     applySmartBtn.addEventListener('click', () => {
         const range = parseInt(smartRangeInput.value);
         if (!currentFetchedRating || isNaN(currentFetchedRating)) {
@@ -199,7 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => applySmartBtn.innerText = "Apply", 1500);
     });
 
-    // 6. NAVIGATION
+    // 7. NAVIGATION
     settingsBtn.addEventListener('click', () => {
         mainView.classList.add('hidden');
         settingsView.classList.remove('hidden');
@@ -212,7 +226,7 @@ document.addEventListener('DOMContentLoaded', () => {
         checkConnection(); 
     });
 
-    // 7. SAVE
+    // 8. SAVE
     saveBtn.addEventListener('click', () => {
         const username = usernameInput.value.trim();
         const stopLoss = stopLossInput.value;
@@ -255,10 +269,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function checkConnection() {
-        const username = usernameInput.value;
+        const username = usernameInput.value.trim();
         const statusText = document.getElementById('connectionStatus');
 
         if (!username) return;
+        
+        // Visual feedback on the Connect button (optional, but nice)
+        connectBtn.innerText = "⌛";
         statusText.innerText = "Connecting...";
 
         try {
@@ -287,12 +304,18 @@ document.addEventListener('DOMContentLoaded', () => {
             if (smartRange > 0 && settingsView.classList.contains('hidden') === false) {
                  updateModeUI(activeMode); 
             }
+            
+            connectBtn.innerText = "✅";
+            setTimeout(() => connectBtn.innerText = "Connect", 1500);
 
         } catch (e) {
             statusText.innerText = "❌ User/Mode not found";
             statusText.style.color = "#ff4d4d";
             liveRatingEl.innerText = "---";
             currentFetchedRating = null;
+            
+            connectBtn.innerText = "❌";
+            setTimeout(() => connectBtn.innerText = "Connect", 1500);
         }
     }
 
