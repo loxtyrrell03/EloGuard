@@ -1,0 +1,274 @@
+document.addEventListener('DOMContentLoaded', () => {
+    // UI Elements
+    const mainView = document.getElementById('mainView');
+    const settingsView = document.getElementById('settingsView');
+    const settingsBtn = document.getElementById('settingsBtn');
+    const backBtn = document.getElementById('backBtn');
+    const saveBtn = document.getElementById('saveSettingsBtn');
+    const activateBtn = document.getElementById('activateBtn');
+    const zenToggle = document.getElementById('hideRatings');
+    
+    // Visiblity & Mode
+    const ratingVisBtn = document.getElementById('toggleRatingVisBtn');
+    const ratingContainer = document.getElementById('ratingContainer'); 
+    const liveRatingEl = document.getElementById('liveRating');
+    const gameModeSelect = document.getElementById('gameMode'); 
+    
+    // Inputs
+    const usernameInput = document.getElementById('username');
+    const stopLossInput = document.getElementById('stopLoss');
+    const targetRatingInput = document.getElementById('targetRating');
+    const applySmartBtn = document.getElementById('applySmartBtn');
+    const smartRangeInput = document.getElementById('smartRange');
+
+    // Stat Boxes
+    const statBoxes = document.querySelectorAll('.stat-box');
+    const statsRefs = {
+        rapid: document.getElementById('statRapid'),
+        blitz: document.getElementById('statBlitz'),
+        bullet: document.getElementById('statBullet')
+    };
+    
+    // State
+    let currentState = {};
+    let currentFetchedRating = null; 
+    let isRatingHidden = false;
+    let activeMode = "blitz"; // Default
+
+    // 1. LOAD SAVED STATE
+    chrome.storage.sync.get(null, (data) => {
+        currentState = data;
+        
+        if (data.username) usernameInput.value = data.username;
+        if (data.hideRatings) zenToggle.checked = data.hideRatings;
+        if (data.guardActive) setGuardActiveUI(true); // Renamed from shieldActive
+        if (data.gameMode) activeMode = data.gameMode;
+        
+        if (data.maskPopupRating) {
+            isRatingHidden = true;
+            updateRatingVisibility();
+        }
+
+        // Set Initial Mode UI
+        gameModeSelect.value = activeMode;
+        updateModeUI(activeMode);
+        
+        if (data.username) checkConnection();
+    });
+
+    // 2. MODE SWITCHING
+    gameModeSelect.addEventListener('change', () => {
+        changeMode(gameModeSelect.value);
+    });
+
+    statBoxes.forEach(box => {
+        box.addEventListener('click', () => {
+            const mode = box.getAttribute('data-mode');
+            changeMode(mode);
+        });
+    });
+
+    function changeMode(newMode) {
+        activeMode = newMode;
+        gameModeSelect.value = newMode;
+        
+        // Save Mode immediately
+        chrome.storage.sync.set({ gameMode: newMode });
+        
+        // Update UI logic (Calculates Smart Bracket if needed)
+        updateModeUI(newMode);
+        
+        // Refresh connection to get new rating
+        checkConnection();
+    }
+
+    function updateModeUI(mode) {
+        // 1. Highlight Box
+        statBoxes.forEach(box => {
+            if (box.getAttribute('data-mode') === mode) {
+                box.classList.add('selected');
+            } else {
+                box.classList.remove('selected');
+            }
+        });
+
+        // 2. Handle Inputs (Smart Bracket vs Saved)
+        const smartRange = parseInt(smartRangeInput.value);
+        
+        // **NEW LOGIC**: If Smart Range has a value, auto-calculate for the new mode!
+        if (smartRange && smartRange > 0) {
+            // We need the rating for the new mode. 
+            // We try to grab it from the UI cache (statsRefs) or default to 0 if not loaded yet.
+            const cachedText = statsRefs[mode].innerText;
+            const cachedRating = parseInt(cachedText);
+
+            if (!isNaN(cachedRating)) {
+                // Calculate new limits dynamically
+                stopLossInput.value = cachedRating - smartRange;
+                targetRatingInput.value = cachedRating + smartRange;
+            } else {
+                // If we don't have the rating loaded yet, just load saved values to be safe
+                // (The user can hit "Apply" later once connection loads)
+                loadSavedValuesForMode(mode);
+            }
+        } else {
+            // Standard behavior: Load saved settings for this mode
+            loadSavedValuesForMode(mode);
+        }
+    }
+
+    function loadSavedValuesForMode(mode) {
+        const savedStop = currentState[`stopLoss_${mode}`] || "";
+        const savedTarget = currentState[`targetRating_${mode}`] || "";
+        stopLossInput.value = savedStop;
+        targetRatingInput.value = savedTarget;
+    }
+
+    // 3. MAIN BUTTONS
+    activateBtn.addEventListener('click', () => {
+        const isCurrentlyActive = activateBtn.classList.contains('active-green');
+        const newState = !isCurrentlyActive;
+        setGuardActiveUI(newState);
+        chrome.storage.sync.set({ guardActive: newState });
+    });
+
+    zenToggle.addEventListener('change', () => {
+        chrome.storage.sync.set({ hideRatings: zenToggle.checked });
+    });
+
+    // 4. VISIBILITY
+    ratingVisBtn.addEventListener('click', () => {
+        isRatingHidden = !isRatingHidden;
+        updateRatingVisibility();
+        chrome.storage.sync.set({ maskPopupRating: isRatingHidden });
+    });
+
+    function updateRatingVisibility() {
+        if (isRatingHidden) {
+            ratingContainer.style.display = 'none';
+            ratingVisBtn.innerText = "Show";
+        } else {
+            ratingContainer.style.display = 'flex'; 
+            ratingVisBtn.innerText = "Hide";
+            if (currentFetchedRating) liveRatingEl.innerText = currentFetchedRating;
+        }
+    }
+
+    // 5. SMART BRACKET APPLY BTN
+    applySmartBtn.addEventListener('click', () => {
+        const range = parseInt(smartRangeInput.value);
+        if (!currentFetchedRating || isNaN(currentFetchedRating)) {
+            applySmartBtn.innerText = "❌ No Rating";
+            setTimeout(() => applySmartBtn.innerText = "Apply", 1500);
+            return;
+        }
+        if (!range || range <= 0) {
+            applySmartBtn.innerText = "❌ Invalid";
+            setTimeout(() => applySmartBtn.innerText = "Apply", 1500);
+            return;
+        }
+
+        const floor = currentFetchedRating - range;
+        const ceiling = currentFetchedRating + range;
+
+        stopLossInput.value = floor;
+        targetRatingInput.value = ceiling;
+
+        applySmartBtn.innerText = "✅ Set!";
+        setTimeout(() => applySmartBtn.innerText = "Apply", 1500);
+    });
+
+    // 6. NAVIGATION
+    settingsBtn.addEventListener('click', () => {
+        mainView.classList.add('hidden');
+        settingsView.classList.remove('hidden');
+        fetchAllStats(); 
+    });
+
+    backBtn.addEventListener('click', () => {
+        settingsView.classList.add('hidden');
+        mainView.classList.remove('hidden');
+        checkConnection(); 
+    });
+
+    // 7. SAVE
+    saveBtn.addEventListener('click', () => {
+        const username = usernameInput.value.trim();
+        const stopLoss = stopLossInput.value;
+        const targetRating = targetRatingInput.value;
+        
+        let updateData = { username, gameMode: activeMode };
+        
+        updateData[`stopLoss_${activeMode}`] = stopLoss;
+        updateData[`targetRating_${activeMode}`] = targetRating;
+
+        currentState = { ...currentState, ...updateData };
+
+        chrome.storage.sync.set(updateData, () => {
+            saveBtn.innerText = "✅ Saved!";
+            setTimeout(() => saveBtn.innerText = "Save Settings", 1500);
+            checkConnection();
+        });
+    });
+
+    // --- HELPERS ---
+    
+    function setGuardActiveUI(isActive) {
+        if (isActive) {
+            activateBtn.innerText = "🛡️ GUARD ACTIVE";
+            activateBtn.classList.add('active-green');
+            checkConnection();
+        } else {
+            activateBtn.innerText = "ACTIVATE GUARD";
+            activateBtn.classList.remove('active-green');
+        }
+    }
+
+    async function checkConnection() {
+        const username = usernameInput.value;
+        const statusText = document.getElementById('connectionStatus');
+
+        if (!username) return;
+        statusText.innerText = "Connecting...";
+
+        try {
+            const response = await fetch(`https://api.chess.com/pub/player/${username}/stats`);
+            if (!response.ok) throw new Error();
+            const data = await response.json();
+            
+            const statsObj = data[`chess_${activeMode}`];
+            const rating = statsObj?.last?.rating;
+
+            // Update Panel Refs
+            if(data.chess_rapid) statsRefs.rapid.innerText = data.chess_rapid.last?.rating || "-";
+            if(data.chess_blitz) statsRefs.blitz.innerText = data.chess_blitz.last?.rating || "-";
+            if(data.chess_bullet) statsRefs.bullet.innerText = data.chess_bullet.last?.rating || "-";
+
+            if (!rating) throw new Error("No rating found");
+
+            currentFetchedRating = rating;
+
+            statusText.innerHTML = `✅ Connected: <b>${username}</b>`;
+            statusText.style.color = "#81b64c";
+            
+            liveRatingEl.innerText = rating;
+            
+            // If smart bracket is open and has value, we might want to refresh inputs? 
+            // (Optional, but good for UX if they just switched modes and data loaded late)
+            const smartRange = parseInt(smartRangeInput.value);
+            if (smartRange > 0 && settingsView.classList.contains('hidden') === false) {
+                 updateModeUI(activeMode); 
+            }
+
+        } catch (e) {
+            statusText.innerText = "❌ User/Mode not found";
+            statusText.style.color = "#ff4d4d";
+            liveRatingEl.innerText = "---";
+            currentFetchedRating = null;
+        }
+    }
+
+    async function fetchAllStats() {
+        checkConnection();
+    }
+});

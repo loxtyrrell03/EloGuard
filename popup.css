@@ -1,0 +1,160 @@
+body {
+    width: 320px;
+    height: 440px; 
+    background-color: #262522;
+    color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden; 
+}
+
+/* Header */
+.header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 15px; 
+    background: #21201d; border-bottom: 1px solid #333;
+}
+h2 { margin: 0; font-size: 18px; color: #81b64c; }
+
+/* Buttons */
+.icon-btn { background: none; border: none; color: #aaa; cursor: pointer; font-size: 16px; padding: 5px; }
+.icon-btn:hover { color: #fff; }
+
+.big-btn {
+    width: 85%; margin: 20px auto; display: block; padding: 14px;
+    background: #81b64c; border: none; border-radius: 6px;
+    color: white; font-weight: 800; font-size: 15px; cursor: pointer;
+    transition: transform 0.1s;
+}
+.big-btn:active { transform: scale(0.98); }
+.active-green { background-color: #4CAF50 !important; box-shadow: 0 0 10px rgba(76, 175, 80, 0.5); }
+
+.action-btn {
+    width: 90%; margin: 20px auto; display: block; padding: 12px;
+    background: #444; border: none; border-radius: 6px; color: white; cursor: pointer;
+}
+.action-btn:hover { background: #555; }
+
+.secondary-btn {
+    padding: 10px 15px; background: #333; border: 1px solid #555; color: #ddd;
+    border-radius: 4px; cursor: pointer; font-size: 12px;
+}
+.secondary-btn:hover { background: #444; color: #fff; }
+
+.text-link-btn {
+    background: none; border: none; color: #777; 
+    font-size: 11px; text-decoration: underline; cursor: pointer;
+    margin-top: 5px; display: block; width: 100%;
+}
+.text-link-btn:hover { color: #aaa; }
+
+/* Status Card */
+.status-card {
+    text-align: center; padding: 15px; background: #2a2926;
+    margin: 15px; border-radius: 8px; border: 1px solid #333;
+    transition: height 0.2s; 
+}
+.rating-container {
+    display: flex; align-items: center; justify-content: center;
+}
+.rating-text { font-size: 48px; font-weight: bold; color: #fff; margin: 5px 0; }
+.status-text { font-size: 13px; margin-bottom: 8px; color: #aaa; }
+
+/* Mode Select */
+.mode-select {
+    width: auto !important; margin: 0 auto 5px auto; display: block;
+    background: #21201d !important; color: #81b64c !important;
+    border: 1px solid #444 !important; font-weight: bold;
+    text-align: center; padding: 4px 8px !important; font-size: 12px;
+}
+
+/* Stats Panel & Icons */
+.stats-panel { margin-bottom: 15px; background: #2a2926; padding: 10px; border-radius: 6px; }
+.stats-grid { display: flex; justify-content: space-between; margin-top: 5px; gap: 8px; }
+
+.stat-box { 
+    text-align: center; flex: 1; 
+    background: #21201d; padding: 8px 5px; border-radius: 4px; border: 1px solid #333;
+    cursor: pointer; transition: all 0.2s;
+    display: flex; flex-direction: column; align-items: center;
+}
+.stat-box:hover { border-color: #555; }
+
+/* Icon Styling */
+.stat-header { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+.mode-icon { display: block; fill: #aaa; } 
+.stat-box span { font-size: 10px; color: #aaa; text-transform: uppercase; font-weight: 600; }
+.stat-box strong { display: block; font-size: 14px; color: #fff; margin-top: 2px; }
+
+/* --- ICON COLORS --- */
+#boxRapid .mode-icon { fill: #81b64c; } /* Rapid Green */
+#boxBlitz .mode-icon { fill: #ffce49; } /* Blitz Yellow */
+#boxBullet .mode-icon { fill: #d5a440; } /* Bullet Gold/Orange */
+
+/* Selected State - Box turns green, Icon & Text turn WHITE */
+.stat-box.selected {
+    background-color: #3b6e29; 
+    border-color: #4CAF50;
+}
+.stat-box.selected span { color: #cfebc5; }
+.stat-box.selected strong { color: #fff; }
+.stat-box.selected .mode-icon { fill: #fff !important; }
+
+/* Inputs */
+.hidden { display: none; }
+#settingsView { padding: 15px 20px; height: 100%; box-sizing: border-box; overflow-y: auto; }
+.input-group { margin-bottom: 12px; position: relative; }
+.flex-row { display: flex; gap: 10px; align-items: center; }
+.flex-row.gap { gap: 15px; }
+.half { width: 50%; }
+
+label { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #aaa; margin-bottom: 4px; }
+input[type="text"], input[type="number"], select {
+    width: 100%; padding: 8px; background: #3d3b36; border: 1px solid #4a4843;
+    color: white; border-radius: 4px; box-sizing: border-box; font-size: 13px;
+}
+.divider { border: 0; border-top: 1px solid #333; margin: 12px 0; }
+
+/* Tooltips */
+.tooltip-container { position: relative; display: inline-block; }
+.tooltip {
+    display: inline-block; width: 14px; height: 14px;
+    background: #555; color: white; border-radius: 50%;
+    text-align: center; line-height: 14px; font-size: 10px;
+    cursor: help; 
+}
+.tooltip:hover::after {
+    content: attr(data-text); 
+    position: fixed; 
+    left: 20px; right: 20px; margin-top: 20px; 
+    background: #111; color: #ddd; 
+    padding: 10px; border-radius: 6px;
+    font-size: 11px; z-index: 10000;
+    border: 1px solid #444; line-height: 1.4;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.9);
+    white-space: normal; text-align: center;
+    pointer-events: none;
+}
+
+/* Zen Toggle */
+.zen-wrapper {
+    display: flex; justify-content: center; align-items: center; gap: 8px;
+    margin-top: 10px; 
+    padding-top: 10px; 
+    padding-bottom: 0; 
+    border-top: 1px solid #333;
+}
+.switch { position: relative; display: inline-block; width: 32px; height: 16px; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider {
+    position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #444; transition: .4s; border-radius: 20px;
+}
+.slider:before {
+    position: absolute; content: ""; height: 12px; width: 12px; left: 2px; bottom: 2px;
+    background-color: white; transition: .4s; border-radius: 50%;
+}
+input:checked + .slider { background-color: #81b64c; }
+input:checked + .slider:before { transform: translateX(16px); }
+.zen-label { font-size: 12px; color: #ccc; }
