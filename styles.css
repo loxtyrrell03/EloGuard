@@ -19,6 +19,15 @@
     
     z-index: 9999 !important;
     box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    border-radius: 4px; /* Matches Chess.com radius */
+}
+
+/* UNIFIED BUTTON SPECIFIC */
+.elo-guard-unified-btn {
+    width: 100% !important;
+    flex: 1 1 100% !important;
+    margin: 0 !important;
+    min-height: 90px !important;
 }
 
 /* Inner Container */
@@ -50,7 +59,6 @@
 }
 
 /* --- 2. ZEN MODE (The Hider) --- */
-/* Standard Rating Elements - Hidden via CSS */
 .elo-shield-zen [data-cy="user-tagline-rating"], 
 .elo-shield-zen .rating-score,
 .elo-shield-zen .user-tagline-rating,
@@ -61,7 +69,6 @@
 .elo-shield-zen [data-cy="player-rating"],
 .elo-shield-zen .stats-rating,
 .elo-shield-zen .profile-card-rating,
-/* GAME OVER & POST GAME SPECIFIC SELECTORS */
 .elo-shield-zen .game-over-player-component-rating,
 .elo-shield-zen .post-game-modal-header-rating,
 .elo-shield-zen .game-over-rating-component,
@@ -70,10 +77,8 @@
 .elo-shield-zen .game-over-modal-content .user-tagline-rating,
 .elo-shield-zen .game-over-player-rating,
 .elo-shield-zen .vs-rating,
-/* Hides the (+8) or (-9) text specifically if it's separate */
 .elo-shield-zen .rating-change,
 .elo-shield-zen .game-over-rating-change,
-/* Specific Player Game Over Component from User Snippet */
 .elo-shield-zen [data-cy="player-rating-score"],
 .elo-shield-zen .rating-score-component,
 .elo-shield-zen .rating-score-rating,

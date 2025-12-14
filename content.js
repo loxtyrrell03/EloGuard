@@ -3,8 +3,12 @@ let TARGET_RATING = 0;
 let USERNAME = "";
 let ZEN_MODE = false;
 let GAME_MODE = "blitz"; 
-let GUARD_ACTIVE = false; // Renamed
-let hasSpoken = false;
+let GUARD_ACTIVE = false; 
+let COOLDOWN_ACTIVE = false;
+let COOLDOWN_SECONDS = 0;
+
+let gameOverDetected = false; 
+let isCooldownRunning = false;
 
 // 1. Initialize
 function loadSettings() {
@@ -13,7 +17,10 @@ function loadSettings() {
             USERNAME = data.username;
             ZEN_MODE = data.hideRatings || false;
             GAME_MODE = data.gameMode || "blitz";
-            GUARD_ACTIVE = data.guardActive || false; 
+            GUARD_ACTIVE = data.guardActive || false;
+            
+            COOLDOWN_ACTIVE = data.cooldownActive || false;
+            COOLDOWN_SECONDS = parseInt(data.cooldownSeconds) || 0;
 
             const stopKey = `stopLoss_${GAME_MODE}`;
             const targetKey = `targetRating_${GAME_MODE}`;
@@ -21,131 +28,421 @@ function loadSettings() {
             STOP_LOSS = parseInt(data[stopKey]) || 0;
             TARGET_RATING = parseInt(data[targetKey]) || 0;
 
-            console.log(`🛡️ EloGuard: ${USERNAME} | Mode: ${GAME_MODE} | Active: ${GUARD_ACTIVE}`);
+            console.log(`🛡️ EloGuard: ${USERNAME} | Mode: ${GAME_MODE}`);
             
             applyZenMode();
             
-            if (!GUARD_ACTIVE) {
-                unlockButton();
+            if (GUARD_ACTIVE) {
+                checkRating(); 
             } else {
-                checkRating();
+                unlockButton();
             }
         }
     });
 }
 loadSettings();
 
-// Polling
+// --- TIMERS ---
 setInterval(() => {
     if (GUARD_ACTIVE) checkRating();
-}, 2000); 
+}, 30000); // 30s Slow Poll
+
 setInterval(scrubChat, 500);
 
-// 2. Check Rating
-async function checkRating() {
-    if (!USERNAME || !GUARD_ACTIVE) return; 
+// Ultra-Fast Poll for Game Over (100ms)
+setInterval(checkForGameOver, 100);
+
+// Poll for Home Screen Buttons to Lock/Replace if needed
+setInterval(() => {
+    if (GUARD_ACTIVE && isPermanentLockActive()) {
+        const lock = document.querySelector('.elo-guard-locked');
+        if (lock) {
+            // Read state from existing lock to keep home screen in sync
+            const isWin = lock.innerText.includes("GOAL");
+            // We only need the rating if it's a win, otherwise pass null
+            const ratingMatch = lock.innerText.match(/\d{3,4}/);
+            const rating = (isWin && ratingMatch) ? ratingMatch[0] : null;
+            
+            if (isWin) lockOut(rating, "win", true);
+            else lockOut(null, "stop", true); // Pass null rating for stop loss
+        }
+    }
+}, 1000);
+
+
+// --- LOGIC ---
+
+async function checkForGameOver() {
+    if (!GUARD_ACTIVE) return;
+
+    // Detect if Game Over Modal or Sidebar buttons are present
+    const isGameOver = document.querySelector('[data-cy="game-over-modal-new-game-button"]') 
+                    || document.querySelector('[data-cy="sidebar-rematch-button"]')
+                    || document.querySelector('.game-over-controls');
+
+    if (isGameOver) {
+        if (!gameOverDetected) {
+            console.log("🛡️ EloGuard: Game Over Detected.");
+            gameOverDetected = true; 
+
+            if (isPermanentLockActive()) return;
+
+            freezeControls();
+
+            const status = await checkRating(true); 
+
+            if (status === 'safe') {
+                if (COOLDOWN_ACTIVE && COOLDOWN_SECONDS > 0) {
+                    startCooldown();
+                } else {
+                    unfreezeControls(); 
+                }
+            } else if (status === 'error') {
+                console.log("🛡️ EloGuard: Fetch failed, unfreezing.");
+                unfreezeControls();
+            }
+        }
+    } else {
+        gameOverDetected = false;
+    }
+}
+
+async function checkRating(preventUnlock = false) {
+    if (!USERNAME || !GUARD_ACTIVE) return 'error'; 
 
     try {
         const response = await fetch(`https://api.chess.com/pub/player/${USERNAME}/stats`);
+        if (!response.ok) throw new Error('Network err');
         const data = await response.json();
         
         const modeData = data[`chess_${GAME_MODE}`];
         const currentRating = modeData?.last?.rating;
 
-        if (!currentRating) return;
+        if (!currentRating) return 'error';
 
         if (STOP_LOSS > 0 && currentRating <= STOP_LOSS) {
             lockOut(currentRating, "stop");
+            return 'locked';
         } 
         else if (TARGET_RATING > 0 && currentRating >= TARGET_RATING) {
             lockOut(currentRating, "win");
+            return 'locked';
         }
         else {
-            hasSpoken = false;
-            unlockButton(); 
+            if (!preventUnlock && !isCooldownRunning) {
+                unlockButton(); 
+            }
+            return 'safe';
         }
     } catch (e) {
-        // Silent fail
+        return 'error';
     }
 }
 
-// 3. The Lockout
-function lockOut(rating, type) {
-    if (!GUARD_ACTIVE) return; 
+// --- FREEZE UTILS ---
+function freezeControls() {
+    const selectors = [
+        '[data-cy="new-game-index-play"]', 
+        '[data-cy="game-over-modal-new-game-button"]',
+        '[data-cy="sidebar-rematch-button"]',
+        '[data-cy="game-over-modal-rematch-button"]'
+    ];
+    selectors.forEach(sel => {
+        const els = document.querySelectorAll(sel);
+        els.forEach(el => {
+            el.style.pointerEvents = "none"; 
+            el.style.opacity = "0.8"; 
+        });
+    });
+
+    const homeLinks = document.querySelectorAll('.play-quick-links-title');
+    homeLinks.forEach(span => {
+        const text = span.innerText.trim();
+        if (text === "New Game" || /^Play \d+ min$/i.test(text)) {
+            const parent = span.closest('a') || span.parentElement;
+            if (parent) {
+                parent.style.pointerEvents = "none";
+                parent.style.opacity = "0.5";
+            }
+        }
+    });
+}
+
+function unfreezeControls() {
+    if (isPermanentLockActive()) return;
 
     const selectors = [
         '[data-cy="new-game-index-play"]', 
         '[data-cy="game-over-modal-new-game-button"]',
-        '[data-cy="game-over-modal-rematch-button"]',
+        '[data-cy="sidebar-rematch-button"]',
+        '[data-cy="game-over-modal-rematch-button"]'
+    ];
+    selectors.forEach(sel => {
+        const els = document.querySelectorAll(sel);
+        els.forEach(el => {
+            el.style.pointerEvents = "auto";
+            el.style.opacity = "";
+        });
+    });
+
+    const homeLinks = document.querySelectorAll('.play-quick-links-title');
+    homeLinks.forEach(span => {
+        const text = span.innerText.trim();
+        if (text === "New Game" || /^Play \d+ min$/i.test(text)) {
+            const parent = span.closest('a') || span.parentElement;
+            if (parent) {
+                parent.style.pointerEvents = "auto";
+                parent.style.opacity = "";
+            }
+        }
+    });
+    
+    unlockButton(); 
+}
+
+// --- COOLDOWN & LOCKS ---
+
+function startCooldown() {
+    if (isPermanentLockActive()) return;
+
+    isCooldownRunning = true;
+    let remaining = COOLDOWN_SECONDS;
+
+    applyCooldownLock(remaining);
+
+    const interval = setInterval(() => {
+        remaining--;
+        
+        if (isPermanentLockActive()) {
+            clearInterval(interval);
+            isCooldownRunning = false;
+            return;
+        }
+
+        if (remaining <= 0) {
+            clearInterval(interval);
+            isCooldownRunning = false;
+            unfreezeControls(); 
+        } else {
+            applyCooldownLock(remaining);
+        }
+    }, 1000);
+}
+
+function isPermanentLockActive() {
+    const btn = document.querySelector('.elo-guard-locked');
+    if (!btn) return false;
+    const text = btn.innerText || "";
+    return text.includes("STOP") || text.includes("GOAL");
+}
+
+function applyCooldownLock(seconds) {
+    lockButtonGeneric("🧊 COOL DOWN", `Analyze.<br>${seconds}s`, "#2196F3");
+}
+
+function lockOut(rating, type, fromPoll = false) {
+    if (!GUARD_ACTIVE) return; 
+
+    const isWin = type === "win";
+    
+    // LOGIC: Show rating ONLY if it's a WIN. If Stop Loss, hide it.
+    let titleText, fullTitle, subText;
+
+    if (isWin) {
+        titleText = `🏆 GOAL`;
+        fullTitle = `🏆 GOAL HIT (${rating})`;
+        subText = `Target Hit`;
+    } else {
+        // Stop Loss - No numbers
+        titleText = `🛑 STOP`;
+        fullTitle = `🛑 STOP`; 
+        subText = `Stop Loss Hit`;
+    }
+    
+    const color = isWin ? "#4CAF50" : "#ff4d4d"; 
+    const bgColor = "#262626";
+
+    // 1. Lock Standard Buttons
+    lockButtonGeneric(fullTitle, subText, bgColor); 
+    
+    // 2. Lock Home Screen Buttons
+    lockHomeScreen(titleText, subText, bgColor, color);
+
+    // 3. Color Overrides
+    const locks = document.querySelectorAll('.elo-guard-locked');
+    locks.forEach(btn => {
+        btn.style.color = color;
+        btn.style.borderColor = color;
+        btn.style.backgroundColor = bgColor;
+        
+        const titleEl = btn.querySelector('.elo-shield-title');
+        if (titleEl) titleEl.style.color = color;
+    });
+}
+
+function lockHomeScreen(title, sub, bgColor, color) {
+    const homeLinks = document.querySelectorAll('.play-quick-links-title');
+    homeLinks.forEach(span => {
+        const text = span.innerText.trim();
+        // Match "New Game" OR "Play X min"
+        if (text === "New Game" || /^Play \d+ min$/i.test(text)) {
+            const parent = span.closest('a') || span.parentElement;
+            
+            if (parent) {
+                if (!parent.classList.contains('elo-guard-home-locked')) {
+                    parent.classList.add('elo-guard-home-locked');
+                    if (!parent.getAttribute('data-original-html')) {
+                        parent.setAttribute('data-original-html', parent.innerHTML);
+                    }
+                }
+
+                // Added box-sizing: border-box to ensure the border is INSIDE the width/height
+                parent.innerHTML = `
+                    <div class="elo-guard-locked" style="
+                        background-color: ${bgColor} !important; 
+                        border: 3px solid ${color} !important;
+                        box-sizing: border-box !important;
+                        color: ${color} !important;
+                        width: 100% !important; 
+                        height: 100% !important;
+                        min-height: 0 !important;
+                        padding: 0 !important;
+                        display: flex !important;
+                        flex-direction: column !important;
+                        align-items: center !important;
+                        justify-content: center !important;
+                        border-radius: 4px !important;
+                    ">
+                        <div style="text-align:center; line-height: 1.1;">
+                            <span style="font-size: 16px; font-weight: 900; display:block; margin-bottom: 2px;">${title}</span>
+                            <span style="font-size: 10px; color: #ccc; display:block;">${sub}</span>
+                        </div>
+                    </div>
+                `;
+                
+                parent.style.pointerEvents = "none";
+                parent.style.textDecoration = "none";
+            }
+        }
+    });
+}
+
+// --- CORE LOCKING LOGIC ---
+function lockButtonGeneric(title, sub, bgColor) {
+    if (!GUARD_ACTIVE) return;
+
+    // 1. Sidebar / Standard Buttons
+    const standardSelectors = [
+        '[data-cy="new-game-index-play"]', 
         '[data-cy="sidebar-rematch-button"]' 
     ];
 
-    const isWin = type === "win";
-    const titleText = isWin ? `🏆 GOAL HIT (${rating})` : `🛑 STOP (${rating})`;
-    const subText = isWin 
-        ? `Target of ${TARGET_RATING} reached! (${GAME_MODE})`
-        : `Stop Loss Hit. Walk away. (${GAME_MODE})`;
-    const color = isWin ? "#4CAF50" : "#ff4d4d"; 
-
-    let foundBtn = false;
-
-    selectors.forEach(sel => {
+    standardSelectors.forEach(sel => {
         const els = document.querySelectorAll(sel);
         els.forEach(btn => {
             if (btn.tagName !== "BUTTON") {
                 const innerBtn = btn.querySelector('button');
-                if (innerBtn) btn = innerBtn;
-                else return;
+                if (innerBtn) btn = innerBtn; else return;
             }
-
-            // Updated class name to elo-guard-locked
-            if (!btn.classList.contains('elo-guard-locked')) {
-                foundBtn = true;
-                btn.classList.add('elo-guard-locked');
-                
-                if (!btn.getAttribute('data-original-text')) {
-                    btn.setAttribute('data-original-text', btn.innerText);
-                }
-
-                btn.innerHTML = `
-                    <div class="elo-shield-content">
-                        <span class="elo-shield-title">${titleText}</span>
-                        <span class="elo-shield-subtitle">${subText}</span>
-                    </div>
-                `;
-
-                btn.style.backgroundColor = "#262626"; 
-                btn.style.color = color;
-                btn.style.borderColor = color;
-                btn.style.pointerEvents = "none"; 
-                
-                const newBtn = btn.cloneNode(true);
-                if (btn.parentNode) btn.parentNode.replaceChild(newBtn, btn);
-            }
+            applyLockStyle(btn, title, sub, bgColor);
         });
     });
 
-    if (foundBtn && !hasSpoken) {
-        speak(isWin ? "Target hit. Well done." : "Stop loss hit. Walk away.");
-        hasSpoken = true;
+    // 2. UNIFIED MODAL BUTTON
+    const modalNewGameBtn = document.querySelector('[data-cy="game-over-modal-new-game-button"]');
+    if (modalNewGameBtn) {
+        const container = modalNewGameBtn.parentElement; 
+        if (container) {
+            if (!container.classList.contains('elo-guard-unified-locked')) {
+                container.classList.add('elo-guard-unified-locked');
+                if (!container.getAttribute('data-original-html')) {
+                    container.setAttribute('data-original-html', container.innerHTML);
+                }
+            }
+
+            container.innerHTML = `
+                <div class="elo-guard-locked elo-guard-unified-btn" style="background-color: ${bgColor}; border-color: ${bgColor}; color: white;">
+                    <div class="elo-shield-content">
+                        <span class="elo-shield-title">${title}</span>
+                        <span class="elo-shield-subtitle">${sub}</span>
+                    </div>
+                </div>
+            `;
+        }
     }
 }
 
-// 4. Chat Scrubber
+function applyLockStyle(btn, title, sub, bgColor) {
+    if (!btn.classList.contains('elo-guard-locked')) {
+        btn.classList.add('elo-guard-locked');
+        if (!btn.getAttribute('data-original-text')) {
+            btn.setAttribute('data-original-text', btn.innerText);
+        }
+    }
+    btn.innerHTML = `
+        <div class="elo-shield-content">
+            <span class="elo-shield-title">${title}</span>
+            <span class="elo-shield-subtitle">${sub}</span>
+        </div>
+    `;
+    btn.style.backgroundColor = bgColor;
+    btn.style.color = "white";
+    btn.style.borderColor = bgColor;
+    btn.style.pointerEvents = "none";
+}
+
+function unlockButton() {
+    if (isPermanentLockActive()) return;
+
+    // 1. Unlock Standard Buttons
+    const lockedBtns = document.querySelectorAll('.elo-guard-locked:not(.elo-guard-unified-btn)');
+    lockedBtns.forEach(btn => {
+        if(btn.closest('.elo-guard-home-locked')) return;
+
+        btn.classList.remove('elo-guard-locked');
+        btn.style.pointerEvents = "auto";
+        const originalText = btn.getAttribute('data-original-text');
+        if (originalText) btn.innerText = originalText;
+        else btn.innerHTML = "Play";
+        
+        btn.style.color = ""; btn.style.borderColor = ""; btn.style.backgroundColor = ""; 
+        const newBtn = btn.cloneNode(true);
+        if(btn.parentNode) btn.parentNode.replaceChild(newBtn, btn);
+    });
+
+    // 2. Unlock Unified Container
+    const unifiedContainers = document.querySelectorAll('.elo-guard-unified-locked');
+    unifiedContainers.forEach(container => {
+        container.classList.remove('elo-guard-unified-locked');
+        const originalHtml = container.getAttribute('data-original-html');
+        if (originalHtml) {
+            container.innerHTML = originalHtml;
+        }
+    });
+
+    // 3. Unlock Home Screen Links
+    const homeLocked = document.querySelectorAll('.elo-guard-home-locked');
+    homeLocked.forEach(el => {
+        el.classList.remove('elo-guard-home-locked');
+        el.style.pointerEvents = "auto";
+        const originalHtml = el.getAttribute('data-original-html');
+        if (originalHtml) {
+            el.innerHTML = originalHtml;
+        }
+    });
+}
+
 function scrubChat() {
     if (!ZEN_MODE) return;
     const chatMsgs = document.querySelectorAll('.game-start-message-component, .game-over-message-component');
-    
     chatMsgs.forEach(msg => {
         msg.childNodes.forEach(node => {
             if (node.nodeType === 3) { 
                 let text = node.nodeValue;
                 const projectionRegex = /win\s*[+-]\d+\s*\/\s*draw\s*[+-]\d+\s*\/\s*lose\s*[+-]\d+/i;
                 if (projectionRegex.test(text)) text = text.replace(projectionRegex, '');
-                
                 const ratingChangeRegex = /\(\s*[+-]?\d+\s*\)/g;
                 if (ratingChangeRegex.test(text)) text = text.replace(ratingChangeRegex, '');
-
                 node.nodeValue = text;
             }
             if (node.nodeType === 1 && node.tagName === "STRONG") {
@@ -156,45 +453,12 @@ function scrubChat() {
     });
 }
 
-// 5. Unlocker
-function unlockButton() {
-    const lockedBtns = document.querySelectorAll('.elo-guard-locked');
-    if (lockedBtns.length > 0) {
-        lockedBtns.forEach(btn => {
-            btn.classList.remove('elo-guard-locked');
-            btn.style.pointerEvents = "auto";
-            
-            const originalText = btn.getAttribute('data-original-text');
-            if (originalText) {
-                btn.innerText = originalText;
-            } else {
-                btn.innerHTML = "Play"; 
-            }
-            
-            btn.style.color = ""; 
-            btn.style.borderColor = "";
-            btn.style.backgroundColor = ""; 
-            
-            const newBtn = btn.cloneNode(true);
-            if (btn.parentNode) btn.parentNode.replaceChild(newBtn, btn);
-        });
-    }
-}
-
-// 6. Utilities
 function applyZenMode() {
     if (ZEN_MODE) document.body.classList.add('elo-shield-zen');
     else document.body.classList.remove('elo-shield-zen');
     if (ZEN_MODE) scrubChat();
 }
 
-function speak(text) {
-    if (!window.speechSynthesis) return;
-    const msg = new SpeechSynthesisUtterance(text);
-    window.speechSynthesis.speak(msg);
-}
-
-// 7. Watch for Changes
 chrome.storage.onChanged.addListener((changes) => {
     if (changes.guardActive) {
         GUARD_ACTIVE = changes.guardActive.newValue;
