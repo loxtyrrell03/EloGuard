@@ -16,6 +16,7 @@ let isCooldownRunning = false;
 let cooldownTimerId = null;
 let cooldownEndTime = 0;
 const INSTANCE_ID_KEY = 'eloGuardInstanceId';
+const SESSION_COOLDOWN_END_KEY = 'eloGuardCooldownEndTime';
 let ELOGUARD_INSTANCE_ID = null;
 try {
     ELOGUARD_INSTANCE_ID = sessionStorage.getItem(INSTANCE_ID_KEY);
@@ -29,6 +30,22 @@ try {
 
 // Per-tab cooldown key (prevents multiple Chess.com tabs from overwriting each other)
 const COOLDOWN_STORAGE_KEY = `eloGuardCooldownEnd:${ELOGUARD_INSTANCE_ID}`;
+
+function getSessionCooldownEndTime() {
+    try {
+        const v = parseInt(sessionStorage.getItem(SESSION_COOLDOWN_END_KEY), 10);
+        return Number.isFinite(v) ? v : 0;
+    } catch (e) {
+        return 0;
+    }
+}
+
+function setSessionCooldownEndTime(endTime) {
+    try {
+        if (endTime) sessionStorage.setItem(SESSION_COOLDOWN_END_KEY, String(endTime));
+        else sessionStorage.removeItem(SESSION_COOLDOWN_END_KEY);
+    } catch (e) {}
+}
 
 // 1. Initialize
 function loadSettings() {
@@ -250,11 +267,20 @@ function startCooldownWithDuration(seconds, existingEndTime) {
     if (!COOLDOWN_ACTIVE || seconds <= 0) return;
 
     const now = Date.now();
-    cooldownEndTime = existingEndTime || now + seconds * 1000;
+
+    // If we already have an active cooldown end time (e.g., page reload), reuse it.
+    const sessionEnd = getSessionCooldownEndTime();
+    const effectiveEndTime = existingEndTime || cooldownEndTime || sessionEnd;
+    if (effectiveEndTime && effectiveEndTime > now) {
+        cooldownEndTime = effectiveEndTime;
+    } else {
+        cooldownEndTime = now + seconds * 1000;
+    }
     const initialRemaining = Math.max(0, Math.ceil((cooldownEndTime - now) / 1000));
 
     isCooldownRunning = true;
     chrome.storage.local.set({ [COOLDOWN_STORAGE_KEY]: cooldownEndTime });
+    setSessionCooldownEndTime(cooldownEndTime);
     applyCooldownLock(initialRemaining);
 
     cooldownTimerId = setInterval(() => {
@@ -283,7 +309,14 @@ function isPermanentLockActive() {
 }
 
 function applyCooldownLock(seconds) {
-    lockButtonGeneric("🧊 COOL DOWN", `Analyze.<br>${seconds}s`, "#2196F3");
+    lockButtonGeneric("🧊 COOL DOWN", `Analyze.<br>${seconds}s`, "#2196F3", "cooldown");
+
+    // Ensure any already-locked cooldown buttons keep updating even if their original selectors disappear
+    // (e.g., plus-icon buttons after innerHTML replacement).
+    const existingCooldownBtns = document.querySelectorAll('[data-elo-guard-lock="cooldown"]');
+    existingCooldownBtns.forEach((btn) => {
+        applyLockStyle(btn, "🧊 COOL DOWN", `Analyze.<br>${seconds}s`, "#2196F3", "cooldown");
+    });
 }
 
 function resumeCooldownFromStorage() {
@@ -292,11 +325,24 @@ function resumeCooldownFromStorage() {
         return;
     }
 
+    // Prefer synchronous sessionStorage on SPA navigation/reload.
+    const sessionEnd = getSessionCooldownEndTime();
+    if (sessionEnd && sessionEnd > Date.now()) {
+        const remaining = Math.max(0, Math.ceil((sessionEnd - Date.now()) / 1000));
+        cooldownEndTime = sessionEnd;
+        if (isCooldownRunning) applyCooldownLock(remaining);
+        else startCooldownWithDuration(remaining, sessionEnd);
+        return;
+    } else if (sessionEnd && sessionEnd <= Date.now()) {
+        setSessionCooldownEndTime(0);
+    }
+
     chrome.storage.local.get(COOLDOWN_STORAGE_KEY, (result) => {
         const storedEnd = parseInt(result[COOLDOWN_STORAGE_KEY], 10);
         if (storedEnd && storedEnd > Date.now()) {
             const remaining = Math.max(0, Math.ceil((storedEnd - Date.now()) / 1000));
             cooldownEndTime = storedEnd;
+            setSessionCooldownEndTime(storedEnd);
             if (isCooldownRunning) {
                 applyCooldownLock(remaining);
             } else {
@@ -319,6 +365,7 @@ function clearCooldownState(clearStorage = true) {
     }
     isCooldownRunning = false;
     cooldownEndTime = 0;
+    setSessionCooldownEndTime(0);
     if (clearStorage) chrome.storage.local.remove(COOLDOWN_STORAGE_KEY);
 }
 
@@ -341,7 +388,7 @@ function lockOut(rating, type, fromPoll = false) {
     const color = isWin ? "#4CAF50" : "#ff4d4d"; 
     const bgColor = "#262626";
 
-    lockButtonGeneric(fullTitle, subText, bgColor); 
+    lockButtonGeneric(fullTitle, subText, bgColor, type); 
     lockHomeScreen(titleText, subText, bgColor, color);
 
     const locks = document.querySelectorAll('.elo-guard-locked');
@@ -401,7 +448,7 @@ function lockHomeScreen(title, sub, bgColor, color) {
 }
 
 // --- CORE LOCKING LOGIC ---
-function lockButtonGeneric(title, sub, bgColor) {
+function lockButtonGeneric(title, sub, bgColor, lockType = "generic") {
     if (!GUARD_ACTIVE) return;
 
     // 1. Updated Selector List to include Modal Buttons
@@ -420,7 +467,7 @@ function lockButtonGeneric(title, sub, bgColor) {
                 const innerBtn = btn.querySelector('button');
                 if (innerBtn) btn = innerBtn; else return;
             }
-            applyLockStyle(btn, title, sub, bgColor);
+            applyLockStyle(btn, title, sub, bgColor, lockType);
         });
     });
 
@@ -429,7 +476,7 @@ function lockButtonGeneric(title, sub, bgColor) {
     plusIcons.forEach(icon => {
         const btn = icon.closest('button');
         if (btn) {
-            applyLockStyle(btn, title, sub, bgColor);
+            applyLockStyle(btn, title, sub, bgColor, lockType);
         }
     });
 
@@ -437,7 +484,8 @@ function lockButtonGeneric(title, sub, bgColor) {
     // By adding the selectors to list #1, they are handled non-destructively.
 }
 
-function applyLockStyle(btn, title, sub, bgColor) {
+function applyLockStyle(btn, title, sub, bgColor, lockType = "generic") {
+    if (!btn || btn.tagName !== "BUTTON") return;
     if (!btn.classList.contains('elo-guard-locked')) {
         btn.classList.add('elo-guard-locked');
         
@@ -446,6 +494,9 @@ function applyLockStyle(btn, title, sub, bgColor) {
             btn.setAttribute('data-original-html', btn.innerHTML);
         }
     }
+    btn.setAttribute('data-elo-guard-lock', lockType);
+    if (lockType === "cooldown") btn.classList.add('elo-guard-cooldown');
+    else btn.classList.remove('elo-guard-cooldown');
     btn.innerHTML = `
         <div class="elo-shield-content">
             <span class="elo-shield-title">${title}</span>
@@ -481,6 +532,8 @@ function unlockButton() {
         if(btn.closest('.elo-guard-home-locked')) return; 
 
         btn.classList.remove('elo-guard-locked');
+        btn.classList.remove('elo-guard-cooldown');
+        btn.removeAttribute('data-elo-guard-lock');
         btn.style.pointerEvents = "auto";
         
         // --- CRITICAL FIX: Restore HTML ---
