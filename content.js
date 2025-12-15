@@ -35,6 +35,14 @@
 
     const COOLDOWN_STORAGE_KEY = `eloGuardCooldownEnd:${ELOGUARD_INSTANCE_ID}`;
 
+    // --- INJECT DYNAMIC CSS ---
+    // This allows us to toggle visibility instantly without deleting text
+    const style = document.createElement('style');
+    style.innerHTML = `
+        .elo-shield-zen .elo-guard-zen-hidden { display: none !important; }
+    `;
+    document.head.appendChild(style);
+
     function loadSettings() {
         chrome.storage.sync.get(null, (data) => {
             if (data.username) {
@@ -67,7 +75,7 @@
     loadSettings();
 
     // --- TIMERS ---
-    setInterval(() => { if (GUARD_ACTIVE) checkRating(); }, 30000); // Slow Poll
+    setInterval(() => { if (GUARD_ACTIVE) checkRating(); }, 30000); 
 
     // Fast Poll to enforce locks
     setInterval(() => {
@@ -77,7 +85,10 @@
     }, 200);
 
     setInterval(checkForGameOver, 100);
-    setInterval(scrubChat, 500);
+    
+    // Process chat constantly so we wrap text even if Zen Mode is off initially.
+    // This ensures that if you turn Zen Mode ON later, the text is already wrapped and ready to hide.
+    setInterval(processChatForZen, 500);
 
     // --- LOGIC ---
 
@@ -192,7 +203,6 @@
         selectors.forEach(sel => {
             const els = document.querySelectorAll(sel);
             els.forEach(btn => {
-                // Exclusion Logic
                 const text = (btn.innerText || "").toLowerCase();
                 const href = (btn.getAttribute('href') || "").toLowerCase();
                 
@@ -210,7 +220,6 @@
                      if (innerBtn) btn = innerBtn;
                 }
                 
-                // FIX: Allow update if it's cooldown (so the timer counts down)
                 if (btn.getAttribute('data-elo-guard-lock') !== lockType || lockType === "cooldown") {
                     applyLockStyle(btn, title, sub, bgColor, lockType);
                 }
@@ -342,8 +351,6 @@
 
     function applyCooldownLock(seconds) {
         lockButtonGeneric("🧊 COOL DOWN", `Analyze.<br>${seconds}s`, "#2196F3", "cooldown");
-        
-        // Ensure we force-update any existing locked buttons so the timer ticks visually
         const existing = document.querySelectorAll('[data-elo-guard-lock="cooldown"]');
         existing.forEach(btn => {
             applyLockStyle(btn, "🧊 COOL DOWN", `Analyze.<br>${seconds}s`, "#2196F3", "cooldown");
@@ -398,19 +405,70 @@
         });
     }
 
-    // --- ZEN & HELPERS ---
-    function scrubChat() {
-        if (!ZEN_MODE) return;
+    // --- ZEN & HELPERS (NEW "WRAP & HIDE" STRATEGY) ---
+    
+    function processChatForZen() {
+        // We do NOT check for ZEN_MODE here. 
+        // We ALWAYS wrap the patterns. The CSS (.elo-shield-zen) decides if they are visible or not.
+        
         const chatMsgs = document.querySelectorAll('.game-start-message-component, .game-over-message-component');
+        
         chatMsgs.forEach(msg => {
-            if(msg.innerText.includes('(')) msg.innerHTML = msg.innerHTML.replace(/\(\s*[+-]?\d+\s*\)/g, '');
+            // Optimization: Don't process the same block twice if we've already scrubbed it completely
+            // But patterns appear dynamically, so we mostly rely on replacement non-matching.
+            if (msg.dataset.eloProcessed === "true") return;
+
+            let html = msg.innerHTML;
+            let changed = false;
+
+            // 1. Wrap ( +12 )
+            // Regex matches: ( +12 ) but ignores if it's already inside our hidden span
+            const ratingChangeRegex = /(\(\s*[+-]?\d+\s*\))/g;
+            if (html.match(ratingChangeRegex)) {
+                // Verify it's not already wrapped
+                if (!html.includes('elo-guard-zen-hidden')) {
+                     html = html.replace(ratingChangeRegex, '<span class="elo-guard-zen-hidden">$1</span>');
+                     changed = true;
+                }
+            }
+
+            // 2. Wrap "win +10 / draw +0 / lose -10"
+            const projectionRegex = /(win\s*[+-]?\d+\s*\/\s*draw\s*[+-]?\d+\s*\/\s*lose\s*[+-]?\d+)/gi;
+            if (html.match(projectionRegex)) {
+                 if (!html.includes('elo-guard-zen-hidden') || !html.match(new RegExp(`<span[^>]*>${projectionRegex.source}`))) {
+                    html = html.replace(projectionRegex, '<span class="elo-guard-zen-hidden">$1</span>');
+                    changed = true;
+                }
+            }
+
+            // 3. Wrap "Your new Blitz rating is 1829."
+            // Matches: "Your new [Word] rating is [<strong>Number</strong>] ."
+            const newRatingRegex = /(Your new \w+ rating is\s*<strong[^>]*>.*?<\/strong>\s*\.?)/gi;
+            if (html.match(newRatingRegex)) {
+                 // Check if already wrapped to avoid infinite loops
+                 // (Simple check: if the specific phrase is found OUTSIDE of a span class='elo-guard')
+                 // Easier: just do the replace, if it works, great.
+                 // We use a temporary placeholder check to ensure we don't double wrap.
+                 if (!html.includes('<span class="elo-guard-zen-hidden">Your new')) {
+                    html = html.replace(newRatingRegex, '<span class="elo-guard-zen-hidden">$1</span>');
+                    changed = true;
+                 }
+            }
+
+            if (changed) {
+                msg.innerHTML = html;
+                msg.dataset.eloProcessed = "true";
+            }
         });
     }
 
     function applyZenMode() {
+        // Just toggles the global class. The CSS rules do the rest.
         if (ZEN_MODE) document.body.classList.add('elo-shield-zen');
         else document.body.classList.remove('elo-shield-zen');
-        if (ZEN_MODE) scrubChat();
+        
+        // Trigger a process pass immediately to catch anything currently on screen
+        processChatForZen(); 
     }
 
     chrome.storage.onChanged.addListener((changes) => {
