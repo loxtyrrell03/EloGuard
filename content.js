@@ -186,23 +186,19 @@
             '[data-cy="sidebar-game-over-rematch-button"]',
             '[data-cy="game-over-modal-rematch-button"]',
             '.cc-button-primary.cc-button-x-large',
-            'a.play-quick-links-link' // The Catch-All
+            'a.play-quick-links-link' 
         ];
 
         selectors.forEach(sel => {
             const els = document.querySelectorAll(sel);
             els.forEach(btn => {
-                // --- EXCLUSION LOGIC START ---
-                // We check the text and href to see if this is a "Bot" or "Friend" button
+                // Exclusion Logic
                 const text = (btn.innerText || "").toLowerCase();
                 const href = (btn.getAttribute('href') || "").toLowerCase();
                 
-                // If it mentions Computer, Bot, or Friend, skip it entirely.
                 if (text.includes("computer") || text.includes("bot") || text.includes("friend")) return;
                 if (href.includes("/play/computer") || href.includes("/play/friend")) return;
-                // --- EXCLUSION LOGIC END ---
 
-                // If it's a home screen tile that is already handled by lockHomeScreen, skip generic lock
                 if (btn.classList.contains('play-quick-links-link')) {
                     if (btn.classList.contains('elo-guard-home-locked')) return;
                 }
@@ -214,7 +210,8 @@
                      if (innerBtn) btn = innerBtn;
                 }
                 
-                if (btn.getAttribute('data-elo-guard-lock') !== lockType) {
+                // FIX: Allow update if it's cooldown (so the timer counts down)
+                if (btn.getAttribute('data-elo-guard-lock') !== lockType || lockType === "cooldown") {
                     applyLockStyle(btn, title, sub, bgColor, lockType);
                 }
             });
@@ -223,7 +220,7 @@
         const plusIcons = document.querySelectorAll('[data-glyph="mark-plus"]');
         plusIcons.forEach(icon => {
             const btn = icon.closest('button');
-            if (btn && btn.getAttribute('data-elo-guard-lock') !== lockType) {
+            if (btn && (btn.getAttribute('data-elo-guard-lock') !== lockType || lockType === "cooldown")) {
                 applyLockStyle(btn, title, sub, bgColor, lockType);
             }
         });
@@ -345,6 +342,12 @@
 
     function applyCooldownLock(seconds) {
         lockButtonGeneric("🧊 COOL DOWN", `Analyze.<br>${seconds}s`, "#2196F3", "cooldown");
+        
+        // Ensure we force-update any existing locked buttons so the timer ticks visually
+        const existing = document.querySelectorAll('[data-elo-guard-lock="cooldown"]');
+        existing.forEach(btn => {
+            applyLockStyle(btn, "🧊 COOL DOWN", `Analyze.<br>${seconds}s`, "#2196F3", "cooldown");
+        });
     }
 
     function resumeCooldownFromStorage() {
