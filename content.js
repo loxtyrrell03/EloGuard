@@ -5,6 +5,7 @@
     // --- CONFIG & STATE ---
     let STOP_LOSS = 0;
     let TARGET_RATING = 0;
+    let STOP_LOSS_STREAK = 0;
     let USERNAME = "";
     let ZEN_MODE = false;
     let GAME_MODE = "blitz";
@@ -12,6 +13,8 @@
     let COOLDOWN_ACTIVE = false;
     let COOLDOWN_SECONDS = 0;
 
+    let consecutiveLosses = 0;
+    let lastKnownRating = null;
     let activeLockState = null; 
 
     let gameOverDetected = false;
@@ -21,6 +24,8 @@
     const INSTANCE_ID_KEY = 'eloGuardInstanceId';
     const SESSION_COOLDOWN_END_KEY = 'eloGuardCooldownEndTime';
     let ELOGUARD_INSTANCE_ID = null;
+    const LOSS_STREAK_KEY_PREFIX = 'eloGuardLossStreak';
+    const LAST_RATING_KEY_PREFIX = 'eloGuardLastRating';
 
     // --- INITIALIZATION ---
     try {
@@ -55,20 +60,25 @@
 
                 const stopKey = `stopLoss_${GAME_MODE}`;
                 const targetKey = `targetRating_${GAME_MODE}`;
+                const streakKey = `lossStreak_${GAME_MODE}`;
                 STOP_LOSS = parseInt(data[stopKey]) || 0;
                 TARGET_RATING = parseInt(data[targetKey]) || 0;
+                STOP_LOSS_STREAK = parseInt(data[streakKey]) || 0;
 
-                console.log(`🛡️ EloGuard Loaded: ${USERNAME} | Mode: ${GAME_MODE}`);
-                applyZenMode();
+                loadLossTrackingFromStorage(() => {
 
-                if (GUARD_ACTIVE) {
-                    resumeCooldownFromStorage();
-                    checkRating(); 
-                } else {
-                    activeLockState = null;
-                    clearCooldownState();
-                    unlockButton();
-                }
+                    console.log(`🛡️ EloGuard Loaded: ${USERNAME} | Mode: ${GAME_MODE}`);
+                    applyZenMode();
+
+                    if (GUARD_ACTIVE) {
+                        resumeCooldownFromStorage();
+                        checkRating(); 
+                    } else {
+                        activeLockState = null;
+                        clearCooldownState();
+                        unlockButton();
+                    }
+                });
             }
         });
     }
@@ -137,6 +147,14 @@
             const currentRating = modeData?.last?.rating;
 
             if (!currentRating) return 'error';
+
+            updateLossTracking(currentRating);
+
+            if (STOP_LOSS_STREAK > 0 && consecutiveLosses >= STOP_LOSS_STREAK) {
+                activeLockState = { type: "stop", rating: currentRating };
+                lockOut(currentRating, "stop");
+                return 'locked';
+            }
 
             if (STOP_LOSS > 0 && currentRating <= STOP_LOSS) {
                 activeLockState = { type: "stop", rating: currentRating };
@@ -383,6 +401,77 @@
         try { sessionStorage.setItem(SESSION_COOLDOWN_END_KEY, String(t)); } catch(e){}
     }
 
+    function getLossStreakKey() {
+        if (!USERNAME) return null;
+        return `${LOSS_STREAK_KEY_PREFIX}:${USERNAME}:${GAME_MODE}`;
+    }
+
+    function getLastRatingKey() {
+        if (!USERNAME) return null;
+        return `${LAST_RATING_KEY_PREFIX}:${USERNAME}:${GAME_MODE}`;
+    }
+
+    function loadLossTrackingFromStorage(onLoaded) {
+        const streakKey = getLossStreakKey();
+        const ratingKey = getLastRatingKey();
+        if (!streakKey || !ratingKey) {
+            consecutiveLosses = 0;
+            lastKnownRating = null;
+            if (typeof onLoaded === 'function') onLoaded();
+            return;
+        }
+
+        chrome.storage.local.get([streakKey, ratingKey], (res) => {
+            const storedStreak = parseInt(res[streakKey], 10);
+            const storedRating = parseInt(res[ratingKey], 10);
+
+            consecutiveLosses = Number.isFinite(storedStreak) ? storedStreak : 0;
+            lastKnownRating = Number.isFinite(storedRating) ? storedRating : null;
+            if (typeof onLoaded === 'function') onLoaded();
+        });
+    }
+
+    function persistLossTracking() {
+        const streakKey = getLossStreakKey();
+        const ratingKey = getLastRatingKey();
+        if (!streakKey || !ratingKey) return;
+
+        const payload = {};
+        payload[streakKey] = consecutiveLosses;
+        payload[ratingKey] = lastKnownRating;
+        chrome.storage.local.set(payload);
+    }
+
+    function resetLossTracking() {
+        const streakKey = getLossStreakKey();
+        const ratingKey = getLastRatingKey();
+
+        consecutiveLosses = 0;
+        lastKnownRating = null;
+
+        if (!streakKey || !ratingKey) return;
+        chrome.storage.local.remove([streakKey, ratingKey]);
+    }
+
+    function updateLossTracking(currentRating) {
+        if (currentRating === undefined || currentRating === null) return 0;
+
+        let diff = 0;
+        if (lastKnownRating !== null && lastKnownRating !== undefined) {
+            diff = currentRating - lastKnownRating;
+
+            if (diff < 0) {
+                consecutiveLosses += 1;
+            } else if (diff > 0) {
+                consecutiveLosses = 0;
+            }
+        }
+
+        lastKnownRating = currentRating;
+        persistLossTracking();
+        return diff;
+    }
+
     function lockHomeScreen(title, sub, bgColor, color) {
         const homeLinks = document.querySelectorAll('.play-quick-links-title');
         homeLinks.forEach(span => {
@@ -477,6 +566,7 @@
             if (!GUARD_ACTIVE) {
                 activeLockState = null;
                 clearCooldownState();
+                resetLossTracking();
                 unlockButton();
             } else {
                 checkRating();

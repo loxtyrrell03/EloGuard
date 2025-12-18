@@ -27,6 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const connectBtn = document.getElementById('connectBtn'); // <--- NEW
     const stopLossInput = document.getElementById('stopLoss');
     const targetRatingInput = document.getElementById('targetRating');
+    const lossStreakInput = document.getElementById('lossStreakLimit');
     const applySmartBtn = document.getElementById('applySmartBtn');
     const smartRangeInput = document.getElementById('smartRange');
 
@@ -128,8 +129,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function loadSavedValuesForMode(mode) {
         const savedStop = currentState[`stopLoss_${mode}`] || "";
         const savedTarget = currentState[`targetRating_${mode}`] || "";
+        const savedLossStreak = currentState[`lossStreak_${mode}`] || "";
         stopLossInput.value = savedStop;
         targetRatingInput.value = savedTarget;
+        lossStreakInput.value = savedLossStreak;
     }
     
     // Helper to update the Floor/Ceiling display on main card
@@ -217,6 +220,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const username = usernameInput.value.trim();
         const stopLoss = stopLossInput.value;
         const targetRating = targetRatingInput.value;
+        const lossStreakLimit = lossStreakInput.value;
         const cdActive = cooldownToggle.checked;
         const cdSeconds = cooldownInput.value;
         
@@ -229,6 +233,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         updateData[`stopLoss_${activeMode}`] = stopLoss;
         updateData[`targetRating_${activeMode}`] = targetRating;
+        updateData[`lossStreak_${activeMode}`] = lossStreakLimit;
 
         currentState = { ...currentState, ...updateData };
 
