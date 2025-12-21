@@ -12,6 +12,8 @@
     let GUARD_ACTIVE = false;
     let COOLDOWN_ACTIVE = false;
     let COOLDOWN_SECONDS = 0;
+    let RANDOM_STRING_UNLOCK = false;
+    let RANDOM_STRING_LENGTH = 10;
 
     let consecutiveLosses = 0;
     let lastKnownRating = null;
@@ -57,6 +59,8 @@
                 GUARD_ACTIVE = data.guardActive || false;
                 COOLDOWN_ACTIVE = data.cooldownActive || false;
                 COOLDOWN_SECONDS = parseInt(data.cooldownSeconds) || 0;
+                RANDOM_STRING_UNLOCK = data.randomStringUnlock || false;
+                RANDOM_STRING_LENGTH = parseInt(data.randomStringLength) || 10;
 
                 const stopKey = `stopLoss_${GAME_MODE}`;
                 const targetKey = `targetRating_${GAME_MODE}`;
@@ -101,6 +105,164 @@
     setInterval(processChatForZen, 500);
 
     // --- LOGIC ---
+
+    function generateRandomString(length) {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?';
+        let result = '';
+        const array = new Uint32Array(length);
+        crypto.getRandomValues(array);
+        for (let i = 0; i < length; i++) {
+            result += chars[array[i] % chars.length];
+        }
+        return result;
+    }
+
+    function createUnlockModal(onUnlock) {
+        const existingModal = document.getElementById('elo-guard-unlock-modal');
+        if (existingModal) existingModal.remove();
+
+        const randomString = generateRandomString(RANDOM_STRING_LENGTH);
+
+        const modal = document.createElement('div');
+        modal.id = 'elo-guard-unlock-modal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 999999;
+            font-family: Arial, sans-serif;
+        `;
+
+        const content = document.createElement('div');
+        content.style.cssText = `
+            background: #2c2c2c;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+        `;
+
+        const title = document.createElement('h2');
+        title.innerText = '🔐 Unlock Required';
+        title.style.cssText = 'color: #fff; margin: 0 0 10px 0; font-size: 24px;';
+
+        const instruction = document.createElement('p');
+        instruction.innerText = 'Type the following string exactly to unlock:';
+        instruction.style.cssText = 'color: #ccc; margin: 10px 0; font-size: 14px;';
+
+        const stringDisplay = document.createElement('div');
+        stringDisplay.innerText = randomString;
+        stringDisplay.style.cssText = `
+            background: #1a1a1a;
+            color: #4CAF50;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 18px;
+            font-weight: bold;
+            margin: 15px 0;
+            letter-spacing: 2px;
+            user-select: all;
+            word-break: break-all;
+        `;
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.placeholder = 'Type the string here...';
+        input.style.cssText = `
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #555;
+            border-radius: 8px;
+            background: #1a1a1a;
+            color: #fff;
+            font-size: 16px;
+            font-family: 'Courier New', monospace;
+            box-sizing: border-box;
+            margin: 10px 0;
+        `;
+
+        const unlockBtn = document.createElement('button');
+        unlockBtn.innerText = 'Unlock';
+        unlockBtn.disabled = true;
+        unlockBtn.style.cssText = `
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            background: #555;
+            color: #999;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: not-allowed;
+            margin-top: 10px;
+            transition: all 0.3s ease;
+        `;
+
+        const matchIndicator = document.createElement('div');
+        matchIndicator.style.cssText = `
+            margin-top: 10px;
+            font-size: 14px;
+            height: 20px;
+        `;
+
+        input.addEventListener('input', () => {
+            const matches = input.value === randomString;
+
+            if (matches) {
+                unlockBtn.disabled = false;
+                unlockBtn.style.background = '#4CAF50';
+                unlockBtn.style.color = '#fff';
+                unlockBtn.style.cursor = 'pointer';
+                matchIndicator.innerText = '✅ Match!';
+                matchIndicator.style.color = '#4CAF50';
+                input.style.borderColor = '#4CAF50';
+            } else {
+                unlockBtn.disabled = true;
+                unlockBtn.style.background = '#555';
+                unlockBtn.style.color = '#999';
+                unlockBtn.style.cursor = 'not-allowed';
+                matchIndicator.innerText = input.value ? '❌ No match' : '';
+                matchIndicator.style.color = '#ff4d4d';
+                input.style.borderColor = input.value ? '#ff4d4d' : '#555';
+            }
+        });
+
+        unlockBtn.addEventListener('click', () => {
+            if (input.value === randomString) {
+                modal.remove();
+                if (onUnlock) onUnlock();
+            }
+        });
+
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && input.value === randomString) {
+                modal.remove();
+                if (onUnlock) onUnlock();
+            }
+        });
+
+        content.appendChild(title);
+        content.appendChild(instruction);
+        content.appendChild(stringDisplay);
+        content.appendChild(input);
+        content.appendChild(matchIndicator);
+        content.appendChild(unlockBtn);
+        modal.appendChild(content);
+        document.body.appendChild(modal);
+
+        setTimeout(() => input.focus(), 100);
+
+        return modal;
+    }
 
     async function checkForGameOver() {
         if (!GUARD_ACTIVE) return;
@@ -260,7 +422,7 @@
         }
         btn.classList.add('elo-guard-locked');
         btn.setAttribute('data-elo-guard-lock', lockType);
-        
+
         if (lockType === "cooldown") btn.classList.add('elo-guard-cooldown');
         else btn.classList.remove('elo-guard-cooldown');
 
@@ -270,11 +432,31 @@
                 <span class="elo-shield-subtitle">${sub}</span>
             </div>
         `;
-        
+
         btn.style.backgroundColor = bgColor;
         btn.style.borderColor = bgColor;
         btn.style.color = "white";
-        btn.style.pointerEvents = "none";
+
+        if (RANDOM_STRING_UNLOCK && lockType !== "cooldown") {
+            btn.style.pointerEvents = "auto";
+            btn.style.cursor = "pointer";
+
+            const clickHandler = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                createUnlockModal(() => {
+                    activeLockState = null;
+                    clearCooldownState();
+                    unlockButton();
+                });
+            };
+
+            btn.removeEventListener('click', btn.__eloGuardClickHandler);
+            btn.__eloGuardClickHandler = clickHandler;
+            btn.addEventListener('click', clickHandler);
+        } else {
+            btn.style.pointerEvents = "none";
+        }
     }
 
     function freezeControls() {
@@ -488,7 +670,27 @@
                                 <span style="font-size: 10px; color: #ccc;">${sub}</span>
                             </div>
                         </div>`;
-                    parent.style.pointerEvents = "none";
+
+                    if (RANDOM_STRING_UNLOCK) {
+                        parent.style.pointerEvents = "auto";
+                        parent.style.cursor = "pointer";
+
+                        const clickHandler = (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            createUnlockModal(() => {
+                                activeLockState = null;
+                                clearCooldownState();
+                                unlockButton();
+                            });
+                        };
+
+                        parent.removeEventListener('click', parent.__eloGuardClickHandler);
+                        parent.__eloGuardClickHandler = clickHandler;
+                        parent.addEventListener('click', clickHandler);
+                    } else {
+                        parent.style.pointerEvents = "none";
+                    }
                 }
             }
         });

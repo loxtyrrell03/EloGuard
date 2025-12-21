@@ -12,6 +12,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const cooldownToggle = document.getElementById('cooldownActive');
     const cooldownInput = document.getElementById('cooldownSeconds');
 
+    // Random String Unlock UI
+    const randomStringToggle = document.getElementById('randomStringUnlock');
+    const randomStringLengthInput = document.getElementById('randomStringLength');
+
+    // Unlock UI Elements
+    const unlockUI = document.getElementById('unlockUI');
+    const unlockStringDisplay = document.getElementById('unlockStringDisplay');
+    const unlockInput = document.getElementById('unlockInput');
+    const unlockEnterBtn = document.getElementById('unlockEnterBtn');
+    const unlockError = document.getElementById('unlockError');
+
+    let currentUnlockString = '';
+    let randomStringUnlockEnabled = false;
+    let randomStringLength = 10;
+
     // Visiblity & Mode
     const ratingVisBtn = document.getElementById('toggleRatingVisBtn');
     const ratingContainer = document.getElementById('ratingContainer'); 
@@ -57,6 +72,16 @@ document.addEventListener('DOMContentLoaded', () => {
         // Cooldown State
         if (data.cooldownActive) cooldownToggle.checked = data.cooldownActive;
         if (data.cooldownSeconds) cooldownInput.value = data.cooldownSeconds;
+
+        // Random String Unlock State
+        if (data.randomStringUnlock) {
+            randomStringToggle.checked = data.randomStringUnlock;
+            randomStringUnlockEnabled = data.randomStringUnlock;
+        }
+        if (data.randomStringLength) {
+            randomStringLengthInput.value = data.randomStringLength;
+            randomStringLength = parseInt(data.randomStringLength) || 10;
+        }
         
         if (data.maskPopupRating) {
             isRatingHidden = true;
@@ -147,10 +172,74 @@ document.addEventListener('DOMContentLoaded', () => {
     // 4. MAIN BUTTONS
     activateBtn.addEventListener('click', () => {
         const isCurrentlyActive = activateBtn.classList.contains('active-green');
-        const newState = !isCurrentlyActive;
-        setGuardActiveUI(newState);
-        chrome.storage.sync.set({ guardActive: newState });
+
+        if (isCurrentlyActive && randomStringUnlockEnabled) {
+            // Show unlock UI when trying to deactivate with random string enabled
+            showUnlockUI();
+        } else {
+            // Toggle normally
+            const newState = !isCurrentlyActive;
+            setGuardActiveUI(newState);
+            chrome.storage.sync.set({ guardActive: newState });
+        }
     });
+
+    // Unlock Enter Button Click
+    unlockEnterBtn.addEventListener('click', () => {
+        attemptUnlock();
+    });
+
+    // Unlock Input Enter Key
+    unlockInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            attemptUnlock();
+        }
+    });
+
+    function generateRandomString(length) {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?';
+        let result = '';
+        const array = new Uint32Array(length);
+        crypto.getRandomValues(array);
+        for (let i = 0; i < length; i++) {
+            result += chars[array[i] % chars.length];
+        }
+        return result;
+    }
+
+    function showUnlockUI() {
+        currentUnlockString = generateRandomString(randomStringLength);
+        unlockStringDisplay.innerText = currentUnlockString;
+        unlockInput.value = '';
+        unlockError.classList.add('hidden');
+        unlockUI.classList.remove('hidden');
+        activateBtn.style.display = 'none';
+        setTimeout(() => unlockInput.focus(), 100);
+    }
+
+    function hideUnlockUI() {
+        unlockUI.classList.add('hidden');
+        activateBtn.style.display = 'block';
+        unlockInput.value = '';
+        unlockError.classList.add('hidden');
+        currentUnlockString = '';
+    }
+
+    function attemptUnlock() {
+        if (unlockInput.value === currentUnlockString) {
+            // Success - deactivate guard
+            hideUnlockUI();
+            setGuardActiveUI(false);
+            chrome.storage.sync.set({ guardActive: false });
+        } else {
+            // Failed - shake and show error
+            unlockError.classList.remove('hidden');
+            unlockInput.classList.add('shake');
+            setTimeout(() => {
+                unlockInput.classList.remove('shake');
+            }, 500);
+        }
+    }
 
     zenToggle.addEventListener('change', () => {
         chrome.storage.sync.set({ hideRatings: zenToggle.checked });
@@ -223,14 +312,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const lossStreakLimit = lossStreakInput.value;
         const cdActive = cooldownToggle.checked;
         const cdSeconds = cooldownInput.value;
-        
-        let updateData = { 
-            username, 
+        const rsUnlock = randomStringToggle.checked;
+        const rsLength = randomStringLengthInput.value;
+
+        let updateData = {
+            username,
             gameMode: activeMode,
             cooldownActive: cdActive,
-            cooldownSeconds: cdSeconds
+            cooldownSeconds: cdSeconds,
+            randomStringUnlock: rsUnlock,
+            randomStringLength: rsLength
         };
-        
+
         updateData[`stopLoss_${activeMode}`] = stopLoss;
         updateData[`targetRating_${activeMode}`] = targetRating;
         updateData[`lossStreak_${activeMode}`] = lossStreakLimit;
@@ -239,7 +332,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         chrome.storage.sync.set(updateData, () => {
             updateMainViewStats(); // Update display on save
-            
+
+            // Update local state for random string unlock
+            randomStringUnlockEnabled = rsUnlock;
+            randomStringLength = parseInt(rsLength) || 10;
+
             saveBtn.innerText = "✅ Saved!";
             setTimeout(() => saveBtn.innerText = "Save Settings", 1500);
             settingsView.classList.add('hidden');

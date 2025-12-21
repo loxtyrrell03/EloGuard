@@ -40,7 +40,17 @@
             <button id="toggleRatingVisBtn" class="text-link-btn">Hide</button>
         </div>
 
-        <button id="activateBtn" class="big-btn">ACTIVATE GUARD</button>
+        <div id="activateBtnContainer" style="width: 85%; margin: 20px auto;">
+            <button id="activateBtn" class="big-btn">ACTIVATE GUARD</button>
+            <div id="unlockUI" class="unlock-ui hidden">
+                <div class="unlock-string-display" id="unlockStringDisplay"></div>
+                <div class="unlock-input-row">
+                    <input type="text" id="unlockInput" class="unlock-input" placeholder="Type the string here...">
+                    <button id="unlockEnterBtn" class="unlock-enter-btn">Enter</button>
+                </div>
+                <div id="unlockError" class="unlock-error hidden">❌ Key doesn't match</div>
+            </div>
+        </div>
 
         <div class="zen-wrapper">
             <label class="switch">
@@ -125,6 +135,22 @@
                     <span class="slider"></span>
                 </label>
                 <input type="number" id="cooldownSeconds" placeholder="Seconds (e.g. 60)" style="flex:1;">
+            </div>
+        </div>
+
+        <div class="input-group">
+            <label>
+                🔐 Random String Unlock
+                <div class="tooltip-container">
+                    <span class="tooltip" data-text="Require typing a random string to unlock. Makes it harder to bypass the lock impulsively.">?</span>
+                </div>
+            </label>
+            <div class="flex-row">
+                <label class="switch" style="margin: 0;">
+                    <input type="checkbox" id="randomStringUnlock">
+                    <span class="slider"></span>
+                </label>
+                <input type="number" id="randomStringLength" placeholder="Length (e.g. 10, 20, 50)" style="flex:1;" min="5" max="100" value="10">
             </div>
         </div>
 
