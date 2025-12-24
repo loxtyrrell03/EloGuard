@@ -279,6 +279,14 @@
 
                 if (activeLockState) return;
 
+                // Check if game was aborted BEFORE freezing controls
+                const isAborted = document.querySelector('.header-title-component')?.innerText?.includes('Game Aborted');
+
+                if (isAborted) {
+                    console.log("🛡️ EloGuard: Game Aborted - skipping cooldown.");
+                    return;
+                }
+
                 freezeControls();
                 const status = await checkRating(true);
 
