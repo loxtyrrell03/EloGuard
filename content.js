@@ -14,8 +14,11 @@
     let COOLDOWN_SECONDS = 0;
     let RANDOM_STRING_UNLOCK = false;
     let RANDOM_STRING_LENGTH = 10;
+    let LOCKOUT_DURATION = 0;
 
     let consecutiveLosses = 0;
+    let lockoutTimerId = null;
+    let lockoutEndTime = 0;
     let lastKnownRating = null;
     let activeLockState = null; 
 
@@ -28,6 +31,7 @@
     let ELOGUARD_INSTANCE_ID = null;
     const LOSS_STREAK_KEY_PREFIX = 'eloGuardLossStreak';
     const LAST_RATING_KEY_PREFIX = 'eloGuardLastRating';
+    const LOCKOUT_END_KEY = 'eloGuardLockoutEndTime';
 
     // --- INITIALIZATION ---
     try {
@@ -61,6 +65,7 @@
                 COOLDOWN_SECONDS = parseInt(data.cooldownSeconds) || 0;
                 RANDOM_STRING_UNLOCK = data.randomStringUnlock || false;
                 RANDOM_STRING_LENGTH = parseInt(data.randomStringLength) || 10;
+                LOCKOUT_DURATION = parseInt(data.lockoutDuration) || 0;
 
                 const stopKey = `stopLoss_${GAME_MODE}`;
                 const targetKey = `targetRating_${GAME_MODE}`;
@@ -76,7 +81,8 @@
 
                     if (GUARD_ACTIVE) {
                         resumeCooldownFromStorage();
-                        checkRating(); 
+                        resumeLockoutFromStorage();
+                        checkRating();
                     } else {
                         activeLockState = null;
                         clearCooldownState();
@@ -357,7 +363,22 @@
         const isStreak = type === "streak";
         const titleText = isWin ? "🏆 GOAL" : "🛑 STOP";
         const fullTitle = isWin ? `🏆 GOAL HIT (${rating})` : `🛑 STOP`;
-        const subText = isWin ? "Target Hit" : (isStreak ? `${consecutiveLosses} losses in a row, take a break` : "Stop Loss Hit");
+
+        // Build subtext with optional timer
+        let subText;
+        if (isWin) {
+            subText = "Target Hit";
+        } else if (isStreak) {
+            subText = `${consecutiveLosses} losses in a row, take a break`;
+        } else {
+            subText = "Stop Loss Hit";
+        }
+
+        // Start lockout timer for stop/streak types
+        if (!isWin && LOCKOUT_DURATION > 0) {
+            startLockoutTimer();
+        }
+
         const color = isWin ? "#4CAF50" : "#ff4d4d";
         const bgColor = "#262626";
 
@@ -446,26 +467,7 @@
         btn.style.borderColor = bgColor;
         btn.style.color = "white";
 
-        if (RANDOM_STRING_UNLOCK && lockType !== "cooldown") {
-            btn.style.pointerEvents = "auto";
-            btn.style.cursor = "pointer";
-
-            const clickHandler = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                createUnlockModal(() => {
-                    activeLockState = null;
-                    clearCooldownState();
-                    unlockButton();
-                });
-            };
-
-            btn.removeEventListener('click', btn.__eloGuardClickHandler);
-            btn.__eloGuardClickHandler = clickHandler;
-            btn.addEventListener('click', clickHandler);
-        } else {
-            btn.style.pointerEvents = "none";
-        }
+        btn.style.pointerEvents = "none";
     }
 
     function freezeControls() {
@@ -592,6 +594,108 @@
         try { sessionStorage.setItem(SESSION_COOLDOWN_END_KEY, String(t)); } catch(e){}
     }
 
+    // --- LOCKOUT DURATION TIMER ---
+    function formatTimeRemaining(ms) {
+        const totalSeconds = Math.ceil(ms / 1000);
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+
+        if (hours > 0) {
+            return `${hours}h ${minutes}m ${seconds}s`;
+        } else if (minutes > 0) {
+            return `${minutes}m ${seconds}s`;
+        } else {
+            return `${seconds}s`;
+        }
+    }
+
+    function formatUnlockTime(timestamp) {
+        const date = new Date(timestamp);
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function updateLockoutDisplay() {
+        if (!lockoutEndTime || !activeLockState) return;
+
+        const remaining = lockoutEndTime - Date.now();
+        if (remaining <= 0) return;
+
+        const isStreak = activeLockState.type === "streak";
+        const baseText = isStreak
+            ? `${consecutiveLosses} losses in a row, take a break`
+            : "Stop Loss Hit";
+        const countdownText = `${baseText}<br>${formatTimeRemaining(remaining)} · unlocks ${formatUnlockTime(lockoutEndTime)}`;
+
+        // Update all locked buttons
+        document.querySelectorAll('.elo-guard-locked .elo-shield-subtitle').forEach(el => {
+            el.innerHTML = countdownText;
+        });
+        document.querySelectorAll('.elo-guard-home-locked .elo-home-sub').forEach(el => {
+            el.innerHTML = countdownText;
+        });
+    }
+
+    function startLockoutTimer() {
+        if (LOCKOUT_DURATION <= 0) return;
+        if (lockoutTimerId) return;
+
+        const now = Date.now();
+        if (!lockoutEndTime || lockoutEndTime <= now) {
+            lockoutEndTime = now + LOCKOUT_DURATION * 60 * 1000;
+        }
+
+        chrome.storage.local.set({ [LOCKOUT_END_KEY]: lockoutEndTime });
+
+        // Update display immediately
+        updateLockoutDisplay();
+
+        lockoutTimerId = setInterval(() => {
+            const remaining = lockoutEndTime - Date.now();
+            if (remaining <= 0) {
+                clearLockoutTimer();
+                activeLockState = null;
+                resetLossStreak();
+                unlockButton();
+            } else {
+                updateLockoutDisplay();
+            }
+        }, 1000);
+    }
+
+    function resumeLockoutFromStorage() {
+        chrome.storage.local.get(LOCKOUT_END_KEY, (result) => {
+            const storedEnd = parseInt(result[LOCKOUT_END_KEY], 10);
+            if (!storedEnd) return;
+
+            const now = Date.now();
+            if (storedEnd > now) {
+                // Lockout still active, resume timer
+                lockoutEndTime = storedEnd;
+                startLockoutTimer();
+            } else {
+                // Lockout expired while Chrome was closed - unlock
+                clearLockoutTimer();
+                activeLockState = null;
+                resetLossStreak();
+                unlockButton();
+            }
+        });
+    }
+
+    function pauseLockoutTimer() {
+        if (lockoutTimerId) clearInterval(lockoutTimerId);
+        lockoutTimerId = null;
+        // Keep lockoutEndTime and storage intact so it can resume
+    }
+
+    function clearLockoutTimer() {
+        if (lockoutTimerId) clearInterval(lockoutTimerId);
+        lockoutTimerId = null;
+        lockoutEndTime = 0;
+        chrome.storage.local.remove(LOCKOUT_END_KEY);
+    }
+
     function getLossStreakKey() {
         if (!USERNAME) return null;
         return `${LOSS_STREAK_KEY_PREFIX}:${USERNAME}:${GAME_MODE}`;
@@ -676,30 +780,11 @@
                         <div class="elo-guard-locked" style="background-color: ${bgColor} !important; border: 3px solid ${color} !important; width: 100%; height: 100%;">
                              <div style="text-align:center;">
                                 <span style="font-size: 16px; font-weight: 900; display:block; color:${color};">${title}</span>
-                                <span style="font-size: 10px; color: #ccc;">${sub}</span>
+                                <span class="elo-home-sub" style="font-size: 10px; color: #ccc;">${sub}</span>
                             </div>
                         </div>`;
 
-                    if (RANDOM_STRING_UNLOCK) {
-                        parent.style.pointerEvents = "auto";
-                        parent.style.cursor = "pointer";
-
-                        const clickHandler = (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            createUnlockModal(() => {
-                                activeLockState = null;
-                                clearCooldownState();
-                                unlockButton();
-                            });
-                        };
-
-                        parent.removeEventListener('click', parent.__eloGuardClickHandler);
-                        parent.__eloGuardClickHandler = clickHandler;
-                        parent.addEventListener('click', clickHandler);
-                    } else {
-                        parent.style.pointerEvents = "none";
-                    }
+                    parent.style.pointerEvents = "none";
                 }
             }
         });
@@ -777,9 +862,10 @@
             if (!GUARD_ACTIVE) {
                 activeLockState = null;
                 clearCooldownState();
-                resetLossTracking();
+                pauseLockoutTimer();
                 unlockButton();
             } else {
+                resumeLockoutFromStorage();
                 checkRating();
             }
         }

@@ -43,6 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const stopLossInput = document.getElementById('stopLoss');
     const targetRatingInput = document.getElementById('targetRating');
     const lossStreakInput = document.getElementById('lossStreakLimit');
+    const lockoutDurationInput = document.getElementById('lockoutDuration');
     const applySmartBtn = document.getElementById('applySmartBtn');
     const smartRangeInput = document.getElementById('smartRange');
 
@@ -82,6 +83,9 @@ document.addEventListener('DOMContentLoaded', () => {
             randomStringLengthInput.value = data.randomStringLength;
             randomStringLength = parseInt(data.randomStringLength) || 10;
         }
+
+        // Lockout Duration
+        if (data.lockoutDuration) lockoutDurationInput.value = data.lockoutDuration;
         
         if (data.maskPopupRating) {
             isRatingHidden = true;
@@ -314,6 +318,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const cdSeconds = cooldownInput.value;
         const rsUnlock = randomStringToggle.checked;
         const rsLength = randomStringLengthInput.value;
+        const lockoutDuration = lockoutDurationInput.value;
 
         let updateData = {
             username,
@@ -321,7 +326,8 @@ document.addEventListener('DOMContentLoaded', () => {
             cooldownActive: cdActive,
             cooldownSeconds: cdSeconds,
             randomStringUnlock: rsUnlock,
-            randomStringLength: rsLength
+            randomStringLength: rsLength,
+            lockoutDuration: lockoutDuration
         };
 
         updateData[`stopLoss_${activeMode}`] = stopLoss;
