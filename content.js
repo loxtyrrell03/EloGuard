@@ -321,8 +321,8 @@
             updateLossTracking(currentRating);
 
             if (STOP_LOSS_STREAK > 0 && consecutiveLosses >= STOP_LOSS_STREAK) {
-                activeLockState = { type: "stop", rating: currentRating };
-                lockOut(currentRating, "stop");
+                activeLockState = { type: "streak", rating: currentRating };
+                lockOut(currentRating, "streak");
                 return 'locked';
             }
 
@@ -354,9 +354,10 @@
         if (!GUARD_ACTIVE) return;
 
         const isWin = type === "win";
+        const isStreak = type === "streak";
         const titleText = isWin ? "🏆 GOAL" : "🛑 STOP";
         const fullTitle = isWin ? `🏆 GOAL HIT (${rating})` : `🛑 STOP`;
-        const subText = isWin ? "Target Hit" : "Stop Loss Hit";
+        const subText = isWin ? "Target Hit" : (isStreak ? `${consecutiveLosses} losses in a row, take a break` : "Stop Loss Hit");
         const color = isWin ? "#4CAF50" : "#ff4d4d";
         const bgColor = "#262626";
 
