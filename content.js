@@ -1,5 +1,5 @@
 (() => {
-    const CONTENT_VERSION = '1.6.5-enhanced-focus-stable-clocks';
+    const CONTENT_VERSION = '1.6.19-hot-form-recommendation-cap';
     if (window.__ELOGUARD_CONTENT_VERSION__ === CONTENT_VERSION) {
         window.dispatchEvent(new CustomEvent('eloGuard:reloadSettings'));
         return;
@@ -35,9 +35,29 @@
     const ENHANCED_FOCUS_TOP_SLOT_CLASS = 'elo-guard-enhanced-focus-top-slot';
     const ENHANCED_FOCUS_BOARD_SLOT_CLASS = 'elo-guard-enhanced-focus-board-slot';
     const ENHANCED_FOCUS_BOTTOM_SLOT_CLASS = 'elo-guard-enhanced-focus-bottom-slot';
+    const ENHANCED_FOCUS_MATERIAL_SLOT_CLASS = 'elo-guard-enhanced-focus-material-slot';
+    const ENHANCED_FOCUS_TOP_MATERIAL_SLOT_CLASS = 'elo-guard-enhanced-focus-material-top-slot';
+    const ENHANCED_FOCUS_BOTTOM_MATERIAL_SLOT_CLASS = 'elo-guard-enhanced-focus-material-bottom-slot';
+    const ENHANCED_FOCUS_MATERIAL_CLASS = 'elo-guard-enhanced-focus-material';
+    const ENHANCED_FOCUS_CLOCK_MIRROR_CLASS = 'elo-guard-focus-clock-mirror';
+    const ENHANCED_FOCUS_NATIVE_CLOCK_CLASS = 'elo-guard-enhanced-focus-native-clock';
+    const ENHANCED_FOCUS_TIMEBOX_CLASS = 'elo-guard-focus-timebox';
+    const ENHANCED_FOCUS_TIMEBOX_ICON_CLASS = 'elo-guard-focus-timebox-icon';
+    const ENHANCED_FOCUS_TIMEBOX_TEXT_CLASS = 'elo-guard-focus-timebox-text';
     const ENHANCED_FOCUS_TOGGLE_ID = 'elo-guard-enhanced-focus-toggle';
+    const ENHANCED_FOCUS_FLIP_BUTTON_ID = 'elo-guard-enhanced-focus-flip';
+    const ENHANCED_FOCUS_VISUAL_FLIPPED_CLASS = 'elo-guard-enhanced-focus-visual-flipped';
     const ENHANCED_FOCUS_ORIGINAL_PLACEMENTS = new WeakMap();
     let ENHANCED_FOCUS_MOVED_ELEMENTS = [];
+    let ENHANCED_FOCUS_VISUAL_FLIPPED = false;
+    let ENHANCED_FOCUS_OBSERVER = null;
+    const ENHANCED_FOCUS_CLOCK_STATE = {
+        topText: '',
+        bottomText: '',
+        activePosition: '',
+        boardSignature: '',
+        lastBoardFlipAt: 0
+    };
 
     let consecutiveLosses = 0;
     let lockoutTimerId = null;
@@ -54,7 +74,24 @@
     let ELOGUARD_INSTANCE_ID = null;
     const LOSS_STREAK_KEY_PREFIX = 'eloGuardLossStreak';
     const LAST_RATING_KEY_PREFIX = 'eloGuardLastRating';
+    const MATCHUP_FEEDBACK_KEY_PREFIX = 'eloGuardMatchupFeedback';
+    const MATCHUP_FEEDBACK_MAX_ENTRIES = 250;
+    const MATCHUP_FEEDBACK_RECENT_GAME_WINDOW_SECONDS = 45 * 60;
     const LOCKOUT_END_KEY = 'eloGuardLockoutEndTime';
+    const LEGITIMACY_BADGE_ID = 'elo-guard-legitimacy-badge';
+    const LEGITIMACY_CACHE_TTL_MS = 30 * 60 * 1000;
+    const LEGITIMACY_FETCH_TIMEOUT_MS = 12000;
+    const LEGITIMACY_MAX_ARCHIVES = 3;
+    const LEGITIMACY_MAX_RECENT_GAMES = 60;
+    const LEGITIMACY_PERFORMANCE_WINDOW_DAYS = 30;
+    const LEGITIMACY_HOT_ACCURACY_WINDOW_HOURS = 24;
+    const MATCHUP_ACTIVITY_WINDOW_DAYS = 7;
+    const MATCHUP_FORM_WINDOW_DAYS = 3;
+    const LEGITIMACY_CACHE = new Map();
+    let LEGITIMACY_LAST_USERNAME = "";
+    let LEGITIMACY_PENDING_USERNAME = "";
+    let LEGITIMACY_REQUEST_ID = 0;
+    let LEGITIMACY_LAST_RESULT = null;
 
     // --- INITIALIZATION ---
     try {
@@ -127,8 +164,8 @@
         }
         body.elo-guard-enhanced-focus {
             --elo-guard-clock-column-width: 190px;
-            --elo-guard-board-size: min(calc(100vw - var(--elo-guard-clock-column-width) - var(--elo-guard-clock-column-width) - 64px), calc(100vh - 32px));
-            background: #262522 !important;
+            --elo-guard-board-size: min(calc(100vw - var(--elo-guard-clock-column-width) - var(--elo-guard-clock-column-width) - 64px), calc(100vh - 112px));
+            background: #302E2B !important;
             overflow: hidden !important;
         }
         #elo-guard-enhanced-focus-toggle {
@@ -164,6 +201,39 @@
         body.elo-guard-enhanced-focus #elo-guard-enhanced-focus-toggle::before {
             background: #81b64c !important;
         }
+        body.elo-guard-enhanced-focus #elo-guard-enhanced-focus-flip {
+            position: fixed !important;
+            left: calc((100vw + var(--elo-guard-board-size)) / 2 + 12px) !important;
+            top: calc((100vh - var(--elo-guard-board-size)) / 2) !important;
+            right: auto !important;
+            z-index: 2147483647 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            min-width: 58px !important;
+            min-height: 34px !important;
+            padding: 0 12px !important;
+            border: 1px solid rgba(255, 255, 255, 0.18) !important;
+            border-radius: 999px !important;
+            background: rgba(38, 37, 34, 0.92) !important;
+            color: #f5f5f5 !important;
+            font: 700 13px/1 Arial, sans-serif !important;
+            letter-spacing: 0 !important;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28) !important;
+            cursor: pointer !important;
+            pointer-events: auto !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            user-select: none !important;
+        }
+        #elo-guard-enhanced-focus-flip[hidden] {
+            display: none !important;
+        }
+        #elo-guard-enhanced-focus-toggle:focus-visible,
+        #elo-guard-enhanced-focus-flip:focus-visible {
+            outline: 2px solid #81b64c !important;
+            outline-offset: 2px !important;
+        }
         body.elo-guard-enhanced-focus header,
         body.elo-guard-enhanced-focus .site-header,
         body.elo-guard-enhanced-focus .navigation-component,
@@ -195,8 +265,6 @@
         body.elo-guard-enhanced-focus [class*="-ad"],
         body.elo-guard-enhanced-focus [id*="ad-"],
         body.elo-guard-enhanced-focus [id*="-ad"],
-        body.elo-guard-enhanced-focus wc-captured-pieces,
-        body.elo-guard-enhanced-focus [class*="captured-pieces"],
         body.elo-guard-enhanced-focus [class*="coordinate"] {
             display: none !important;
         }
@@ -218,14 +286,14 @@
             justify-items: center !important;
             gap: 8px !important;
             z-index: 2147483000 !important;
-            background: #262522 !important;
+            background: #302E2B !important;
         }
         body.elo-guard-enhanced-focus #board-layout-player-top,
         body.elo-guard-enhanced-focus .board-layout-player-top,
         body.elo-guard-enhanced-focus #board-layout-player-bottom,
         body.elo-guard-enhanced-focus .board-layout-player-bottom {
-            width: var(--elo-guard-board-size) !important;
-            max-width: calc(100vw - 48px) !important;
+            width: var(--elo-guard-clock-column-width) !important;
+            max-width: var(--elo-guard-clock-column-width) !important;
             min-height: 32px !important;
             height: auto !important;
             margin: 0 !important;
@@ -235,10 +303,15 @@
             transform: none !important;
             display: flex !important;
             align-items: center !important;
-            justify-content: flex-end !important;
+            justify-content: center !important;
             visibility: visible !important;
             opacity: 1 !important;
-            z-index: 2147483100 !important;
+            z-index: 2147483602 !important;
+            background: transparent !important;
+            border: 0 !important;
+            box-shadow: none !important;
+            overflow: visible !important;
+            pointer-events: none !important;
         }
         body.elo-guard-enhanced-focus #board-layout-player-top,
         body.elo-guard-enhanced-focus .board-layout-player-top {
@@ -279,13 +352,53 @@
             padding: 0 !important;
             overflow: hidden !important;
         }
+        body.elo-guard-enhanced-focus #board-layout-player-top .player-avatar,
+        body.elo-guard-enhanced-focus .board-layout-player-top .player-avatar,
+        body.elo-guard-enhanced-focus #board-layout-player-top .player-avatar-component,
+        body.elo-guard-enhanced-focus .board-layout-player-top .player-avatar-component,
+        body.elo-guard-enhanced-focus #board-layout-player-top .cc-avatar-component,
+        body.elo-guard-enhanced-focus .board-layout-player-top .cc-avatar-component,
+        body.elo-guard-enhanced-focus #board-layout-player-top .cc-avatar-img,
+        body.elo-guard-enhanced-focus .board-layout-player-top .cc-avatar-img,
+        body.elo-guard-enhanced-focus #board-layout-player-top [data-cy*="avatar"],
+        body.elo-guard-enhanced-focus .board-layout-player-top [data-cy*="avatar"],
+        body.elo-guard-enhanced-focus #board-layout-player-top [class*="avatar"],
+        body.elo-guard-enhanced-focus .board-layout-player-top [class*="avatar"],
+        body.elo-guard-enhanced-focus #board-layout-player-top img,
+        body.elo-guard-enhanced-focus .board-layout-player-top img,
+        body.elo-guard-enhanced-focus #board-layout-player-bottom .player-avatar,
+        body.elo-guard-enhanced-focus .board-layout-player-bottom .player-avatar,
+        body.elo-guard-enhanced-focus #board-layout-player-bottom .player-avatar-component,
+        body.elo-guard-enhanced-focus .board-layout-player-bottom .player-avatar-component,
+        body.elo-guard-enhanced-focus #board-layout-player-bottom .cc-avatar-component,
+        body.elo-guard-enhanced-focus .board-layout-player-bottom .cc-avatar-component,
+        body.elo-guard-enhanced-focus #board-layout-player-bottom .cc-avatar-img,
+        body.elo-guard-enhanced-focus .board-layout-player-bottom .cc-avatar-img,
+        body.elo-guard-enhanced-focus #board-layout-player-bottom [data-cy*="avatar"],
+        body.elo-guard-enhanced-focus .board-layout-player-bottom [data-cy*="avatar"],
+        body.elo-guard-enhanced-focus #board-layout-player-bottom [class*="avatar"],
+        body.elo-guard-enhanced-focus .board-layout-player-bottom [class*="avatar"],
+        body.elo-guard-enhanced-focus #board-layout-player-top [class*="profile"],
+        body.elo-guard-enhanced-focus .board-layout-player-top [class*="profile"],
+        body.elo-guard-enhanced-focus #board-layout-player-top [class*="user-image"],
+        body.elo-guard-enhanced-focus .board-layout-player-top [class*="user-image"],
+        body.elo-guard-enhanced-focus #board-layout-player-bottom [class*="profile"],
+        body.elo-guard-enhanced-focus .board-layout-player-bottom [class*="profile"],
+        body.elo-guard-enhanced-focus #board-layout-player-bottom [class*="user-image"],
+        body.elo-guard-enhanced-focus .board-layout-player-bottom [class*="user-image"],
+        body.elo-guard-enhanced-focus #board-layout-player-bottom img,
+        body.elo-guard-enhanced-focus .board-layout-player-bottom img {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+        }
         body.elo-guard-enhanced-focus .clock-component,
-        body.elo-guard-enhanced-focus [class*="clock"],
+        body.elo-guard-enhanced-focus [class*="clock-component"],
         body.elo-guard-enhanced-focus [data-cy*="clock"] {
-            display: flex !important;
-            visibility: visible !important;
-            opacity: 1 !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
             z-index: 2147483200 !important;
+            pointer-events: none !important;
         }
         body.elo-guard-enhanced-focus #board-layout-chessboard,
         body.elo-guard-enhanced-focus .board-layout-chessboard,
@@ -304,22 +417,9 @@
         }
         body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-clock-top,
         body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-clock-bottom {
-            position: fixed !important;
-            left: max(16px, calc((100vw - var(--elo-guard-board-size)) / 2 - var(--elo-guard-clock-column-width) - 12px)) !important;
-            right: auto !important;
-            width: var(--elo-guard-clock-column-width) !important;
-            min-width: 144px !important;
-            min-height: 52px !important;
-            box-sizing: border-box !important;
-            align-items: center !important;
-            justify-content: center !important;
-            transform: none !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-            display: flex !important;
-            outline: 2px solid rgba(255, 255, 255, 0.42) !important;
-            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.72), 0 10px 24px rgba(0, 0, 0, 0.42) !important;
-            z-index: 2147483602 !important;
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
         }
         body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-clock-top {
             top: calc((100vh - var(--elo-guard-board-size)) / 2) !important;
@@ -332,18 +432,24 @@
         body.elo-guard-enhanced-focus #board-layout-player-top,
         body.elo-guard-enhanced-focus .board-layout-player-top {
             position: fixed !important;
-            left: calc((100vw - var(--elo-guard-board-size)) / 2) !important;
-            top: max(16px, calc((100vh - var(--elo-guard-board-size)) / 2 - 48px)) !important;
+            left: calc((100vw - var(--elo-guard-board-size)) / 2 - var(--elo-guard-clock-column-width) - 12px) !important;
+            top: calc((100vh - var(--elo-guard-board-size)) / 2) !important;
+            width: var(--elo-guard-clock-column-width) !important;
             bottom: auto !important;
             transform: none !important;
         }
         body.elo-guard-enhanced-focus #board-layout-player-bottom,
         body.elo-guard-enhanced-focus .board-layout-player-bottom {
             position: fixed !important;
-            left: calc((100vw - var(--elo-guard-board-size)) / 2) !important;
+            left: calc((100vw - var(--elo-guard-board-size)) / 2 - var(--elo-guard-clock-column-width) - 12px) !important;
+            width: var(--elo-guard-clock-column-width) !important;
             top: auto !important;
-            bottom: max(16px, calc((100vh - var(--elo-guard-board-size)) / 2 - 48px)) !important;
+            bottom: calc((100vh - var(--elo-guard-board-size)) / 2) !important;
             transform: none !important;
+            border: 0 !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            overflow: visible !important;
         }
         body.elo-guard-enhanced-focus.elo-guard-enhanced-focus-ready > *:not(#elo-guard-enhanced-focus-stage):not(script):not(style):not(link) {
             visibility: hidden !important;
@@ -364,27 +470,190 @@
             align-items: center !important;
             column-gap: 12px !important;
             row-gap: 0 !important;
-            background: #262522 !important;
+            background: #302E2B !important;
             visibility: visible !important;
             pointer-events: none !important;
         }
         body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-top-slot,
         body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-bottom-slot {
-            grid-column: 1 !important;
-            grid-row: 1 !important;
+            position: fixed !important;
+            left: calc((100vw - var(--elo-guard-board-size)) / 2 - var(--elo-guard-clock-column-width) - 12px) !important;
             width: var(--elo-guard-clock-column-width) !important;
-            min-height: 48px !important;
-            display: none !important;
+            min-width: var(--elo-guard-clock-column-width) !important;
+            max-width: var(--elo-guard-clock-column-width) !important;
+            height: 56px !important;
+            min-height: 56px !important;
+            max-height: 56px !important;
+            display: flex !important;
             align-items: center !important;
-            justify-content: flex-end !important;
+            justify-content: center !important;
             visibility: visible !important;
+            opacity: 1 !important;
             pointer-events: none !important;
+            z-index: 2147483603 !important;
         }
         body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-top-slot {
-            align-self: start !important;
+            top: calc((100vh - var(--elo-guard-board-size)) / 2) !important;
+            bottom: auto !important;
         }
         body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-bottom-slot {
-            align-self: end !important;
+            top: auto !important;
+            bottom: calc((100vh - var(--elo-guard-board-size)) / 2) !important;
+        }
+        body.elo-guard-enhanced-focus .elo-guard-focus-timebox {
+            width: var(--elo-guard-clock-column-width) !important;
+            min-width: var(--elo-guard-clock-column-width) !important;
+            max-width: var(--elo-guard-clock-column-width) !important;
+            height: 56px !important;
+            min-height: 56px !important;
+            max-height: 56px !important;
+            box-sizing: border-box !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            gap: 12px !important;
+            padding: 0 16px !important;
+            border: 2px solid rgba(255, 255, 255, 0.64) !important;
+            border-radius: 6px !important;
+            background: #262522 !important;
+            color: #f7f7f7 !important;
+            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.88), 0 8px 18px rgba(0, 0, 0, 0.34) !important;
+            font-family: Arial, sans-serif !important;
+            font-size: 30px !important;
+            font-weight: 700 !important;
+            line-height: 1 !important;
+            letter-spacing: 0 !important;
+            font-variant-numeric: tabular-nums !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            pointer-events: none !important;
+            overflow: hidden !important;
+            transition: none !important;
+            animation: none !important;
+        }
+        body.elo-guard-enhanced-focus .elo-guard-focus-timebox[data-active="true"] {
+            background: #f7f7f7 !important;
+            color: #262522 !important;
+            border-color: #ffffff !important;
+            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.88), 0 8px 18px rgba(0, 0, 0, 0.36) !important;
+        }
+        body.elo-guard-enhanced-focus .elo-guard-focus-timebox-icon {
+            position: relative !important;
+            flex: 0 0 22px !important;
+            width: 22px !important;
+            height: 22px !important;
+            box-sizing: border-box !important;
+            border: 3px solid currentColor !important;
+            border-radius: 999px !important;
+            opacity: 0.96 !important;
+        }
+        body.elo-guard-enhanced-focus .elo-guard-focus-timebox-icon::before {
+            content: "" !important;
+            position: absolute !important;
+            left: 8px !important;
+            top: 4px !important;
+            width: 3px !important;
+            height: 8px !important;
+            background: currentColor !important;
+            border-radius: 999px !important;
+        }
+        body.elo-guard-enhanced-focus .elo-guard-focus-timebox-icon::after {
+            content: "" !important;
+            position: absolute !important;
+            left: 9px !important;
+            top: 9px !important;
+            width: 7px !important;
+            height: 3px !important;
+            background: currentColor !important;
+            border-radius: 999px !important;
+        }
+        body.elo-guard-enhanced-focus .elo-guard-focus-timebox-text {
+            display: block !important;
+            flex: 1 1 auto !important;
+            min-width: 0 !important;
+            text-align: right !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: clip !important;
+        }
+        body.elo-guard-enhanced-focus .elo-guard-focus-clock-mirror {
+            width: var(--elo-guard-clock-column-width) !important;
+            min-width: var(--elo-guard-clock-column-width) !important;
+            max-width: var(--elo-guard-clock-column-width) !important;
+            height: 56px !important;
+            min-height: 56px !important;
+            max-height: 56px !important;
+            box-sizing: border-box !important;
+            display: flex !important;
+            align-items: stretch !important;
+            justify-content: stretch !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            overflow: hidden !important;
+            pointer-events: none !important;
+        }
+        body.elo-guard-enhanced-focus .elo-guard-focus-clock-mirror > * {
+            position: relative !important;
+            inset: auto !important;
+            transform: none !important;
+            display: flex !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            width: 100% !important;
+            min-width: 100% !important;
+            max-width: 100% !important;
+            height: 56px !important;
+            min-height: 56px !important;
+            max-height: 56px !important;
+            margin: 0 !important;
+            box-sizing: border-box !important;
+        }
+        body.elo-guard-enhanced-focus #elo-guard-enhanced-focus-stage .elo-guard-focus-clock-mirror .clock-component,
+        body.elo-guard-enhanced-focus #elo-guard-enhanced-focus-stage .elo-guard-focus-clock-mirror [class*="clock-component"],
+        body.elo-guard-enhanced-focus #elo-guard-enhanced-focus-stage .elo-guard-focus-clock-mirror [data-cy*="clock"] {
+            visibility: visible !important;
+            opacity: 1 !important;
+            pointer-events: none !important;
+        }
+        body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-material-slot {
+            position: fixed !important;
+            left: 50% !important;
+            width: var(--elo-guard-board-size) !important;
+            min-height: 22px !important;
+            transform: translateX(-50%) !important;
+            display: flex !important;
+            align-items: flex-start !important;
+            justify-content: flex-start !important;
+            gap: 0 !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            pointer-events: none !important;
+            z-index: 2147483602 !important;
+        }
+        body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-material-slot[hidden] {
+            display: none !important;
+        }
+        body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-material-top-slot {
+            top: calc((100vh - var(--elo-guard-board-size)) / 2 - 30px) !important;
+        }
+        body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-material-bottom-slot {
+            top: calc((100vh + var(--elo-guard-board-size)) / 2 + 8px) !important;
+        }
+        body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-material {
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: flex-start !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            width: auto !important;
+            min-width: 0 !important;
+            max-width: none !important;
+            height: 22px !important;
+            min-height: 22px !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: visible !important;
+            letter-spacing: 0 !important;
         }
         body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-board-slot {
             grid-column: 1 !important;
@@ -412,28 +681,13 @@
             display: block !important;
             visibility: visible !important;
         }
-        body.elo-guard-enhanced-focus #elo-guard-enhanced-focus-stage .elo-guard-enhanced-focus-clock-top,
-        body.elo-guard-enhanced-focus #elo-guard-enhanced-focus-stage .elo-guard-enhanced-focus-clock-bottom {
-            position: relative !important;
-            inset: auto !important;
-            left: auto !important;
-            top: auto !important;
-            right: auto !important;
-            bottom: auto !important;
-            transform: none !important;
-            display: flex !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-            margin: 0 !important;
-            min-width: 144px !important;
-            min-height: 52px !important;
-            padding: 0 14px !important;
-            align-items: center !important;
-            justify-content: center !important;
-            border: 2px solid rgba(255, 255, 255, 0.42) !important;
-            border-radius: 6px !important;
-            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.72), 0 10px 24px rgba(0, 0, 0, 0.42) !important;
-            z-index: 2147483601 !important;
+        body.elo-guard-enhanced-focus.elo-guard-enhanced-focus-visual-flipped #elo-guard-enhanced-focus-stage .elo-guard-enhanced-focus-board {
+            rotate: 180deg !important;
+        }
+        body.elo-guard-enhanced-focus.elo-guard-enhanced-focus-visual-flipped #elo-guard-enhanced-focus-stage .elo-guard-enhanced-focus-board piece,
+        body.elo-guard-enhanced-focus.elo-guard-enhanced-focus-visual-flipped #elo-guard-enhanced-focus-stage .elo-guard-enhanced-focus-board .piece,
+        body.elo-guard-enhanced-focus.elo-guard-enhanced-focus-visual-flipped #elo-guard-enhanced-focus-stage .elo-guard-enhanced-focus-board [class*="piece"] {
+            rotate: 180deg !important;
         }
     `;
     document.head.appendChild(style);
@@ -465,6 +719,7 @@
             applySelfAnonymization();
             applyEnhancedFocusMode();
             ensureEnhancedFocusToggle();
+            processOpponentLegitimacyDetector();
 
             if (!USERNAME) return;
 
@@ -502,6 +757,8 @@
     // Process chat constantly so we wrap text even if Zen Mode is off initially.
     // This ensures that if you turn Zen Mode ON later, the text is already wrapped and ready to hide.
     setInterval(processChatForZen, 500);
+    setInterval(processOpponentLegitimacyDetector, 2000);
+    setInterval(positionOpponentLegitimacyBadge, 500);
     setInterval(() => {
         if (ENHANCED_FOCUS_MODE) {
             applyEnhancedFocusMode();
@@ -511,6 +768,9 @@
         }
         ensureEnhancedFocusToggle();
     }, 1000);
+    setInterval(() => {
+        if (ENHANCED_FOCUS_MODE) syncEnhancedFocusCustomClocks();
+    }, 250);
 
     // --- LOGIC ---
 
@@ -726,7 +986,15 @@
 
             if (!currentRating) return 'error';
 
-            updateLossTracking(currentRating);
+            const previousRating = lastKnownRating;
+            const ratingDiff = updateLossTracking(currentRating);
+            if (preventUnlock) {
+                recordPostGameMatchupFeedback({
+                    previousRating,
+                    currentRating,
+                    ratingDiff
+                });
+            }
 
             if (STOP_LOSS_STREAK > 0 && consecutiveLosses >= STOP_LOSS_STREAK) {
                 activeLockState = { type: "streak", rating: currentRating };
@@ -1108,6 +1376,11 @@
         return `${LAST_RATING_KEY_PREFIX}:${USERNAME}:${GAME_MODE}`;
     }
 
+    function getMatchupFeedbackKey() {
+        if (!USERNAME) return null;
+        return `${MATCHUP_FEEDBACK_KEY_PREFIX}:${USERNAME}:${GAME_MODE}`;
+    }
+
     function loadLossTrackingFromStorage(onLoaded) {
         const streakKey = getLossStreakKey();
         const ratingKey = getLastRatingKey();
@@ -1167,6 +1440,78 @@
         lastKnownRating = currentRating;
         persistLossTracking();
         return diff;
+    }
+
+    async function recordPostGameMatchupFeedback(ratingInfo = {}, attempt = 0) {
+        const feedbackKey = getMatchupFeedbackKey();
+        if (!feedbackKey || !USERNAME || !LEGITIMACY_LAST_RESULT?.matchup) return;
+
+        try {
+            const games = await fetchRecentOpponentGames(encodeURIComponent(USERNAME));
+            const latestRatedModeGame = games.find(game => (
+                game?.rules === 'chess'
+                && game.rated === true
+                && game.time_class === GAME_MODE
+                && Number.isFinite(game.end_time)
+                && (Math.floor(Date.now() / 1000) - game.end_time) <= MATCHUP_FEEDBACK_RECENT_GAME_WINDOW_SECONDS
+            ));
+
+            if (!latestRatedModeGame) {
+                if (attempt < 3) {
+                    setTimeout(() => recordPostGameMatchupFeedback(ratingInfo, attempt + 1), 15000);
+                }
+                return;
+            }
+
+            const selfSide = getPlayerGameSide(latestRatedModeGame, normalizeIdentity(USERNAME));
+            if (!selfSide) return;
+
+            const opponentUsername = selfSide.opponent?.username || '';
+            const expectedOpponent = LEGITIMACY_LAST_RESULT.username || '';
+            if (expectedOpponent && normalizeIdentity(opponentUsername) !== normalizeIdentity(expectedOpponent)) {
+                if (attempt < 3) {
+                    setTimeout(() => recordPostGameMatchupFeedback(ratingInfo, attempt + 1), 15000);
+                }
+                return;
+            }
+
+            const entry = {
+                id: latestRatedModeGame.url || `${latestRatedModeGame.end_time}:${normalizeIdentity(opponentUsername)}`,
+                savedAt: Date.now(),
+                mode: GAME_MODE,
+                rated: true,
+                gameUrl: latestRatedModeGame.url || '',
+                endedAt: latestRatedModeGame.end_time,
+                opponent: opponentUsername,
+                result: normalizeGameResult(selfSide.player?.result),
+                score: getResultScore(normalizeGameResult(selfSide.player?.result)),
+                selfRating: parseInt(selfSide.player?.rating, 10) || null,
+                opponentRating: parseInt(selfSide.opponent?.rating, 10) || null,
+                previousRating: Number.isFinite(ratingInfo.previousRating) ? ratingInfo.previousRating : null,
+                currentRating: Number.isFinite(ratingInfo.currentRating) ? ratingInfo.currentRating : null,
+                ratingDiff: Number.isFinite(ratingInfo.ratingDiff) ? ratingInfo.ratingDiff : null,
+                recommendation: LEGITIMACY_LAST_RESULT.matchup.verdict,
+                matchupScore: LEGITIMACY_LAST_RESULT.matchup.score,
+                riskScore: LEGITIMACY_LAST_RESULT.score,
+                visibleVerdict: LEGITIMACY_LAST_RESULT.verdict,
+                adjustedExpectedScore: LEGITIMACY_LAST_RESULT.matchup.odds?.adjustedExpectedScore ?? null,
+                baseExpectedScore: LEGITIMACY_LAST_RESULT.matchup.odds?.baseExpectedScore ?? null,
+                ratingEv: LEGITIMACY_LAST_RESULT.matchup.odds?.ratingDelta?.expected ?? null,
+                accountRiskPenalty: LEGITIMACY_LAST_RESULT.matchup.riskPenalty?.points ?? null,
+                poolTrap: LEGITIMACY_LAST_RESULT.matchup.poolTrap?.points ?? null,
+                selfContext: LEGITIMACY_LAST_RESULT.matchup.self?.points ?? null,
+                reasons: LEGITIMACY_LAST_RESULT.matchup.reasons || []
+            };
+
+            chrome.storage.local.get(feedbackKey, result => {
+                const existing = Array.isArray(result?.[feedbackKey]) ? result[feedbackKey] : [];
+                if (existing.some(item => item.id === entry.id)) return;
+                const next = [entry, ...existing].slice(0, MATCHUP_FEEDBACK_MAX_ENTRIES);
+                chrome.storage.local.set({ [feedbackKey]: next });
+            });
+        } catch (error) {
+            console.warn('EloGuard: could not save matchup feedback', error);
+        }
     }
 
     function lockHomeScreen(title, sub, bgColor, color) {
@@ -1744,8 +2089,8 @@
 
             body.elo-guard-enhanced-focus {
                 --elo-guard-clock-column-width: 190px;
-                --elo-guard-board-size: min(calc(100vw - var(--elo-guard-clock-column-width) - var(--elo-guard-clock-column-width) - 64px), calc(100vh - 32px));
-                background: #262522 !important;
+                --elo-guard-board-size: min(calc(100vw - var(--elo-guard-clock-column-width) - var(--elo-guard-clock-column-width) - 64px), calc(100vh - 112px));
+                background: #302E2B !important;
                 overflow: hidden !important;
             }
 
@@ -1816,8 +2161,6 @@
             body.elo-guard-enhanced-focus [class*="-ad"],
             body.elo-guard-enhanced-focus [id*="ad-"],
             body.elo-guard-enhanced-focus [id*="-ad"],
-            body.elo-guard-enhanced-focus wc-captured-pieces,
-            body.elo-guard-enhanced-focus [class*="captured-pieces"],
             body.elo-guard-enhanced-focus [class*="coordinate"] {
                 display: none !important;
             }
@@ -1840,15 +2183,15 @@
                 justify-items: center !important;
                 gap: 8px !important;
                 z-index: 2147483000 !important;
-                background: #262522 !important;
+                background: #302E2B !important;
             }
 
             body.elo-guard-enhanced-focus #board-layout-player-top,
             body.elo-guard-enhanced-focus .board-layout-player-top,
             body.elo-guard-enhanced-focus #board-layout-player-bottom,
             body.elo-guard-enhanced-focus .board-layout-player-bottom {
-                width: var(--elo-guard-board-size) !important;
-                max-width: calc(100vw - 48px) !important;
+                width: var(--elo-guard-clock-column-width) !important;
+                max-width: var(--elo-guard-clock-column-width) !important;
                 min-height: 32px !important;
                 height: auto !important;
                 margin: 0 !important;
@@ -1858,10 +2201,15 @@
                 transform: none !important;
                 display: flex !important;
                 align-items: center !important;
-                justify-content: flex-end !important;
+                justify-content: center !important;
                 visibility: visible !important;
                 opacity: 1 !important;
-                z-index: 2147483100 !important;
+                z-index: 2147483602 !important;
+                background: transparent !important;
+                border: 0 !important;
+                box-shadow: none !important;
+                overflow: visible !important;
+                pointer-events: none !important;
             }
 
             body.elo-guard-enhanced-focus #board-layout-player-top,
@@ -1907,13 +2255,54 @@
                 overflow: hidden !important;
             }
 
+            body.elo-guard-enhanced-focus #board-layout-player-top .player-avatar,
+            body.elo-guard-enhanced-focus .board-layout-player-top .player-avatar,
+            body.elo-guard-enhanced-focus #board-layout-player-top .player-avatar-component,
+            body.elo-guard-enhanced-focus .board-layout-player-top .player-avatar-component,
+            body.elo-guard-enhanced-focus #board-layout-player-top .cc-avatar-component,
+            body.elo-guard-enhanced-focus .board-layout-player-top .cc-avatar-component,
+            body.elo-guard-enhanced-focus #board-layout-player-top .cc-avatar-img,
+            body.elo-guard-enhanced-focus .board-layout-player-top .cc-avatar-img,
+            body.elo-guard-enhanced-focus #board-layout-player-top [data-cy*="avatar"],
+            body.elo-guard-enhanced-focus .board-layout-player-top [data-cy*="avatar"],
+            body.elo-guard-enhanced-focus #board-layout-player-top [class*="avatar"],
+            body.elo-guard-enhanced-focus .board-layout-player-top [class*="avatar"],
+            body.elo-guard-enhanced-focus #board-layout-player-top img,
+            body.elo-guard-enhanced-focus .board-layout-player-top img,
+            body.elo-guard-enhanced-focus #board-layout-player-bottom .player-avatar,
+            body.elo-guard-enhanced-focus .board-layout-player-bottom .player-avatar,
+            body.elo-guard-enhanced-focus #board-layout-player-bottom .player-avatar-component,
+            body.elo-guard-enhanced-focus .board-layout-player-bottom .player-avatar-component,
+            body.elo-guard-enhanced-focus #board-layout-player-bottom .cc-avatar-component,
+            body.elo-guard-enhanced-focus .board-layout-player-bottom .cc-avatar-component,
+            body.elo-guard-enhanced-focus #board-layout-player-bottom .cc-avatar-img,
+            body.elo-guard-enhanced-focus .board-layout-player-bottom .cc-avatar-img,
+            body.elo-guard-enhanced-focus #board-layout-player-bottom [data-cy*="avatar"],
+            body.elo-guard-enhanced-focus .board-layout-player-bottom [data-cy*="avatar"],
+            body.elo-guard-enhanced-focus #board-layout-player-bottom [class*="avatar"],
+            body.elo-guard-enhanced-focus .board-layout-player-bottom [class*="avatar"],
+            body.elo-guard-enhanced-focus #board-layout-player-top [class*="profile"],
+            body.elo-guard-enhanced-focus .board-layout-player-top [class*="profile"],
+            body.elo-guard-enhanced-focus #board-layout-player-top [class*="user-image"],
+            body.elo-guard-enhanced-focus .board-layout-player-top [class*="user-image"],
+            body.elo-guard-enhanced-focus #board-layout-player-bottom [class*="profile"],
+            body.elo-guard-enhanced-focus .board-layout-player-bottom [class*="profile"],
+            body.elo-guard-enhanced-focus #board-layout-player-bottom [class*="user-image"],
+            body.elo-guard-enhanced-focus .board-layout-player-bottom [class*="user-image"],
+            body.elo-guard-enhanced-focus #board-layout-player-bottom img,
+            body.elo-guard-enhanced-focus .board-layout-player-bottom img {
+                display: none !important;
+                visibility: hidden !important;
+                opacity: 0 !important;
+            }
+
             body.elo-guard-enhanced-focus .clock-component,
-            body.elo-guard-enhanced-focus [class*="clock"],
+            body.elo-guard-enhanced-focus [class*="clock-component"],
             body.elo-guard-enhanced-focus [data-cy*="clock"] {
-                display: flex !important;
-                visibility: visible !important;
-                opacity: 1 !important;
+                visibility: hidden !important;
+                opacity: 0 !important;
                 z-index: 2147483200 !important;
+                pointer-events: none !important;
             }
 
             body.elo-guard-enhanced-focus #board-layout-chessboard,
@@ -1934,22 +2323,9 @@
 
             body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-clock-top,
             body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-clock-bottom {
-                position: fixed !important;
-                left: max(16px, calc((100vw - var(--elo-guard-board-size)) / 2 - var(--elo-guard-clock-column-width) - 12px)) !important;
-                right: auto !important;
-                width: var(--elo-guard-clock-column-width) !important;
-                min-width: 144px !important;
-                min-height: 52px !important;
-                box-sizing: border-box !important;
-                align-items: center !important;
-                justify-content: center !important;
-                transform: none !important;
-                visibility: visible !important;
-                opacity: 1 !important;
-                display: flex !important;
-                outline: 2px solid rgba(255, 255, 255, 0.42) !important;
-                box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.72), 0 10px 24px rgba(0, 0, 0, 0.42) !important;
-                z-index: 2147483602 !important;
+                display: none !important;
+                visibility: hidden !important;
+                opacity: 0 !important;
             }
 
             body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-clock-top {
@@ -1965,8 +2341,9 @@
             body.elo-guard-enhanced-focus #board-layout-player-top,
             body.elo-guard-enhanced-focus .board-layout-player-top {
                 position: fixed !important;
-                left: calc((100vw - var(--elo-guard-board-size)) / 2) !important;
-                top: max(16px, calc((100vh - var(--elo-guard-board-size)) / 2 - 48px)) !important;
+                left: calc((100vw - var(--elo-guard-board-size)) / 2 - var(--elo-guard-clock-column-width) - 12px) !important;
+                top: calc((100vh - var(--elo-guard-board-size)) / 2) !important;
+                width: var(--elo-guard-clock-column-width) !important;
                 bottom: auto !important;
                 transform: none !important;
             }
@@ -1974,10 +2351,15 @@
             body.elo-guard-enhanced-focus #board-layout-player-bottom,
             body.elo-guard-enhanced-focus .board-layout-player-bottom {
                 position: fixed !important;
-                left: calc((100vw - var(--elo-guard-board-size)) / 2) !important;
+                left: calc((100vw - var(--elo-guard-board-size)) / 2 - var(--elo-guard-clock-column-width) - 12px) !important;
+                width: var(--elo-guard-clock-column-width) !important;
                 top: auto !important;
-                bottom: max(16px, calc((100vh - var(--elo-guard-board-size)) / 2 - 48px)) !important;
+                bottom: calc((100vh - var(--elo-guard-board-size)) / 2) !important;
                 transform: none !important;
+                border: 0 !important;
+                background: transparent !important;
+                box-shadow: none !important;
+                overflow: visible !important;
             }
 
             body.elo-guard-enhanced-focus.elo-guard-enhanced-focus-ready > *:not(#elo-guard-enhanced-focus-stage):not(script):not(style):not(link) {
@@ -2000,30 +2382,207 @@
                 align-items: center !important;
                 column-gap: 12px !important;
                 row-gap: 0 !important;
-                background: #262522 !important;
+                background: #302E2B !important;
                 visibility: visible !important;
                 pointer-events: none !important;
             }
 
             body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-top-slot,
             body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-bottom-slot {
-                grid-column: 1 !important;
-                grid-row: 1 !important;
+                position: fixed !important;
+                left: calc((100vw - var(--elo-guard-board-size)) / 2 - var(--elo-guard-clock-column-width) - 12px) !important;
                 width: var(--elo-guard-clock-column-width) !important;
-                min-height: 48px !important;
-                display: none !important;
+                min-width: var(--elo-guard-clock-column-width) !important;
+                max-width: var(--elo-guard-clock-column-width) !important;
+                height: 56px !important;
+                min-height: 56px !important;
+                max-height: 56px !important;
+                display: flex !important;
                 align-items: center !important;
-                justify-content: flex-end !important;
+                justify-content: center !important;
                 visibility: visible !important;
+                opacity: 1 !important;
                 pointer-events: none !important;
+                z-index: 2147483603 !important;
             }
 
             body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-top-slot {
-                align-self: start !important;
+                top: calc((100vh - var(--elo-guard-board-size)) / 2) !important;
+                bottom: auto !important;
             }
 
             body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-bottom-slot {
-                align-self: end !important;
+                top: auto !important;
+                bottom: calc((100vh - var(--elo-guard-board-size)) / 2) !important;
+            }
+
+            body.elo-guard-enhanced-focus .elo-guard-focus-timebox {
+                width: var(--elo-guard-clock-column-width) !important;
+                min-width: var(--elo-guard-clock-column-width) !important;
+                max-width: var(--elo-guard-clock-column-width) !important;
+                height: 56px !important;
+                min-height: 56px !important;
+                max-height: 56px !important;
+                box-sizing: border-box !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: space-between !important;
+                gap: 12px !important;
+                padding: 0 16px !important;
+                border: 2px solid rgba(255, 255, 255, 0.64) !important;
+                border-radius: 6px !important;
+                background: #262522 !important;
+                color: #f7f7f7 !important;
+                box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.88), 0 8px 18px rgba(0, 0, 0, 0.34) !important;
+                font-family: Arial, sans-serif !important;
+                font-size: 30px !important;
+                font-weight: 700 !important;
+                line-height: 1 !important;
+                letter-spacing: 0 !important;
+                font-variant-numeric: tabular-nums !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                pointer-events: none !important;
+                overflow: hidden !important;
+                transition: none !important;
+                animation: none !important;
+            }
+
+            body.elo-guard-enhanced-focus .elo-guard-focus-timebox[data-active="true"] {
+                background: #f7f7f7 !important;
+                color: #262522 !important;
+                border-color: #ffffff !important;
+                box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.88), 0 8px 18px rgba(0, 0, 0, 0.36) !important;
+            }
+
+            body.elo-guard-enhanced-focus .elo-guard-focus-timebox-icon {
+                position: relative !important;
+                flex: 0 0 22px !important;
+                width: 22px !important;
+                height: 22px !important;
+                box-sizing: border-box !important;
+                border: 3px solid currentColor !important;
+                border-radius: 999px !important;
+                opacity: 0.96 !important;
+            }
+
+            body.elo-guard-enhanced-focus .elo-guard-focus-timebox-icon::before {
+                content: "" !important;
+                position: absolute !important;
+                left: 8px !important;
+                top: 4px !important;
+                width: 3px !important;
+                height: 8px !important;
+                background: currentColor !important;
+                border-radius: 999px !important;
+            }
+
+            body.elo-guard-enhanced-focus .elo-guard-focus-timebox-icon::after {
+                content: "" !important;
+                position: absolute !important;
+                left: 9px !important;
+                top: 9px !important;
+                width: 7px !important;
+                height: 3px !important;
+                background: currentColor !important;
+                border-radius: 999px !important;
+            }
+
+            body.elo-guard-enhanced-focus .elo-guard-focus-timebox-text {
+                display: block !important;
+                flex: 1 1 auto !important;
+                min-width: 0 !important;
+                text-align: right !important;
+                white-space: nowrap !important;
+                overflow: hidden !important;
+                text-overflow: clip !important;
+            }
+
+            body.elo-guard-enhanced-focus .elo-guard-focus-clock-mirror {
+                width: var(--elo-guard-clock-column-width) !important;
+                min-width: var(--elo-guard-clock-column-width) !important;
+                max-width: var(--elo-guard-clock-column-width) !important;
+                height: 56px !important;
+                min-height: 56px !important;
+                max-height: 56px !important;
+                box-sizing: border-box !important;
+                display: flex !important;
+                align-items: stretch !important;
+                justify-content: stretch !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                overflow: hidden !important;
+                pointer-events: none !important;
+            }
+
+            body.elo-guard-enhanced-focus .elo-guard-focus-clock-mirror > * {
+                position: relative !important;
+                inset: auto !important;
+                transform: none !important;
+                display: flex !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                width: 100% !important;
+                min-width: 100% !important;
+                max-width: 100% !important;
+                height: 56px !important;
+                min-height: 56px !important;
+                max-height: 56px !important;
+                margin: 0 !important;
+                box-sizing: border-box !important;
+            }
+
+            body.elo-guard-enhanced-focus #elo-guard-enhanced-focus-stage .elo-guard-focus-clock-mirror .clock-component,
+            body.elo-guard-enhanced-focus #elo-guard-enhanced-focus-stage .elo-guard-focus-clock-mirror [class*="clock-component"],
+            body.elo-guard-enhanced-focus #elo-guard-enhanced-focus-stage .elo-guard-focus-clock-mirror [data-cy*="clock"] {
+                visibility: visible !important;
+                opacity: 1 !important;
+                pointer-events: none !important;
+            }
+
+            body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-material-slot {
+                position: fixed !important;
+                left: 50% !important;
+                width: var(--elo-guard-board-size) !important;
+                min-height: 22px !important;
+                transform: translateX(-50%) !important;
+                display: flex !important;
+                align-items: flex-start !important;
+                justify-content: flex-start !important;
+                gap: 0 !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                pointer-events: none !important;
+                z-index: 2147483602 !important;
+            }
+
+            body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-material-slot[hidden] {
+                display: none !important;
+            }
+
+            body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-material-top-slot {
+                top: calc((100vh - var(--elo-guard-board-size)) / 2 - 30px) !important;
+            }
+
+            body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-material-bottom-slot {
+                top: calc((100vh + var(--elo-guard-board-size)) / 2 + 8px) !important;
+            }
+
+            body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-material {
+                display: inline-flex !important;
+                align-items: center !important;
+                justify-content: flex-start !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                width: auto !important;
+                min-width: 0 !important;
+                max-width: none !important;
+                height: 22px !important;
+                min-height: 22px !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                overflow: visible !important;
+                letter-spacing: 0 !important;
             }
 
             body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-board-slot {
@@ -2054,30 +2613,6 @@
                 visibility: visible !important;
             }
 
-            body.elo-guard-enhanced-focus #elo-guard-enhanced-focus-stage .elo-guard-enhanced-focus-clock-top,
-            body.elo-guard-enhanced-focus #elo-guard-enhanced-focus-stage .elo-guard-enhanced-focus-clock-bottom {
-                position: relative !important;
-                inset: auto !important;
-                left: auto !important;
-                top: auto !important;
-                right: auto !important;
-                bottom: auto !important;
-                transform: none !important;
-                display: flex !important;
-                visibility: visible !important;
-                opacity: 1 !important;
-                margin: 0 !important;
-                min-width: 144px !important;
-                min-height: 52px !important;
-                padding: 0 14px !important;
-                align-items: center !important;
-                justify-content: center !important;
-                border: 2px solid rgba(255, 255, 255, 0.42) !important;
-                border-radius: 6px !important;
-                box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.72), 0 10px 24px rgba(0, 0, 0, 0.42) !important;
-                z-index: 2147483601 !important;
-            }
-
             #${ANONYMOUS_BUTTON_ID} {
                 position: absolute !important;
                 z-index: 2147483647 !important;
@@ -2097,6 +2632,2282 @@
                 cursor: pointer !important;
             }
         `;
+    }
+
+    function processOpponentLegitimacyDetector() {
+        if (!document.body) return;
+
+        const root = getTopOpponentRoot();
+        const username = getCurrentOpponentUsername(root);
+        if (!root || !username) {
+            hideOpponentLegitimacyBadge();
+            LEGITIMACY_LAST_USERNAME = "";
+            LEGITIMACY_LAST_RESULT = null;
+            return;
+        }
+
+        const normalizedUsername = normalizeIdentity(username);
+        if (!normalizedUsername) {
+            hideOpponentLegitimacyBadge();
+            return;
+        }
+        const cacheKey = getLegitimacyCacheKey(normalizedUsername);
+
+        const badge = ensureOpponentLegitimacyBadge();
+        badge.hidden = false;
+        positionOpponentLegitimacyBadge();
+
+        const cached = LEGITIMACY_CACHE.get(cacheKey);
+        if (cached && Date.now() - cached.createdAt < LEGITIMACY_CACHE_TTL_MS) {
+            renderOpponentLegitimacyResult(badge, cached.result);
+            return;
+        }
+
+        if (LEGITIMACY_LAST_USERNAME !== cacheKey) {
+            LEGITIMACY_LAST_USERNAME = cacheKey;
+            renderOpponentLegitimacyLoading(badge, username);
+        }
+
+        if (LEGITIMACY_PENDING_USERNAME === cacheKey) return;
+
+        LEGITIMACY_PENDING_USERNAME = cacheKey;
+        const requestId = ++LEGITIMACY_REQUEST_ID;
+
+        evaluateOpponentLegitimacy(username)
+            .then(result => {
+                LEGITIMACY_CACHE.set(cacheKey, {
+                    createdAt: Date.now(),
+                    result
+                });
+
+                if (requestId !== LEGITIMACY_REQUEST_ID) return;
+                const currentRoot = getTopOpponentRoot();
+                if (!currentRoot || normalizeIdentity(getCurrentOpponentUsername(currentRoot)) !== normalizedUsername) return;
+
+                const currentBadge = ensureOpponentLegitimacyBadge();
+                renderOpponentLegitimacyResult(currentBadge, result);
+                positionOpponentLegitimacyBadge();
+            })
+            .catch(() => {
+                if (requestId !== LEGITIMACY_REQUEST_ID) return;
+                const currentRoot = getTopOpponentRoot();
+                if (!currentRoot || normalizeIdentity(getCurrentOpponentUsername(currentRoot)) !== normalizedUsername) return;
+                const currentBadge = ensureOpponentLegitimacyBadge();
+                renderOpponentLegitimacyError(currentBadge, username);
+                positionOpponentLegitimacyBadge();
+            })
+            .finally(() => {
+                if (LEGITIMACY_PENDING_USERNAME === cacheKey) {
+                    LEGITIMACY_PENDING_USERNAME = "";
+                }
+            });
+    }
+
+    function getLegitimacyCacheKey(normalizedOpponentUsername) {
+        const selfKey = normalizeIdentity(USERNAME) || 'self-unknown';
+        const modeKey = GAME_MODE || 'mode-unknown';
+        return `${selfKey}:${modeKey}:${normalizedOpponentUsername}`;
+    }
+
+    function ensureOpponentLegitimacyBadge() {
+        let badge = document.getElementById(LEGITIMACY_BADGE_ID);
+        if (badge) {
+            if (!badge.querySelector('.elo-guard-matchup-text')) {
+                const matchupText = document.createElement('span');
+                matchupText.className = 'elo-guard-matchup-text';
+                badge.appendChild(matchupText);
+            }
+            return badge;
+        }
+
+        badge = document.createElement('div');
+        badge.id = LEGITIMACY_BADGE_ID;
+        badge.setAttribute('role', 'status');
+        badge.setAttribute('aria-live', 'polite');
+
+        const dot = document.createElement('span');
+        dot.className = 'elo-guard-legitimacy-dot';
+
+        const text = document.createElement('span');
+        text.className = 'elo-guard-legitimacy-text';
+
+        const matchupText = document.createElement('span');
+        matchupText.className = 'elo-guard-matchup-text';
+
+        badge.append(dot, text, matchupText);
+        document.body.appendChild(badge);
+        return badge;
+    }
+
+    function hideOpponentLegitimacyBadge() {
+        const badge = document.getElementById(LEGITIMACY_BADGE_ID);
+        if (badge) badge.hidden = true;
+    }
+
+    function renderOpponentLegitimacyLoading(badge, username) {
+        badge.dataset.state = 'loading';
+        badge.style.setProperty('--elo-guard-legitimacy-color', '#9b9b9b');
+        badge.style.setProperty('--elo-guard-matchup-color', '#9b9b9b');
+        badge.querySelector('.elo-guard-legitimacy-text').textContent = 'Risk ...';
+        badge.querySelector('.elo-guard-matchup-text').textContent = '';
+        badge.title = `Checking public Chess.com account data for ${username}...`;
+        badge.setAttribute('aria-label', `Checking cheat risk estimate for ${username}`);
+    }
+
+    function renderOpponentLegitimacyError(badge, username) {
+        badge.dataset.state = 'error';
+        badge.style.setProperty('--elo-guard-legitimacy-color', '#9b9b9b');
+        badge.style.setProperty('--elo-guard-matchup-color', '#9b9b9b');
+        badge.querySelector('.elo-guard-legitimacy-text').textContent = 'No data';
+        badge.querySelector('.elo-guard-matchup-text').textContent = '';
+        badge.title = `Could not load enough public data for ${username}.`;
+        badge.setAttribute('aria-label', `Cheat risk estimate unavailable for ${username}`);
+    }
+
+    function renderOpponentLegitimacyResult(badge, result) {
+        badge.dataset.state = 'ready';
+        LEGITIMACY_LAST_RESULT = {
+            ...result,
+            capturedAt: Date.now()
+        };
+        badge.style.setProperty('--elo-guard-legitimacy-color', result.color);
+        badge.style.setProperty('--elo-guard-matchup-color', result.matchup.color);
+        badge.querySelector('.elo-guard-legitimacy-text').textContent = `${result.verdict} ${result.score}/100`;
+        badge.querySelector('.elo-guard-matchup-text').textContent = result.matchup.displayText;
+        badge.title = result.title;
+        badge.setAttribute(
+            'aria-label',
+            `EloGuard cheat risk estimate for ${result.username}: ${result.verdict}, ${result.score} out of 100. Matchup recommendation: ${result.matchup.displayText}`
+        );
+    }
+
+    function positionOpponentLegitimacyBadge() {
+        const badge = document.getElementById(LEGITIMACY_BADGE_ID);
+        if (!badge || badge.hidden) return;
+
+        const root = getTopOpponentRoot();
+        const anchor = findOpponentAvatarAnchor(root) || root;
+        const rect = getUsableRect(anchor);
+        if (!rect) {
+            badge.hidden = true;
+            return;
+        }
+
+        const badgeRect = badge.getBoundingClientRect();
+        const badgeWidth = badgeRect.width || 72;
+        const badgeHeight = badgeRect.height || 22;
+        let left = rect.right + 6;
+        let top = rect.top + ((rect.height - badgeHeight) / 2);
+
+        if (left + badgeWidth > window.innerWidth - 8) {
+            left = rect.left - badgeWidth - 6;
+        }
+
+        left = clamp(left, 6, Math.max(6, window.innerWidth - badgeWidth - 6));
+        top = clamp(top, 6, Math.max(6, window.innerHeight - badgeHeight - 6));
+
+        badge.style.left = `${Math.round(left)}px`;
+        badge.style.top = `${Math.round(top)}px`;
+    }
+
+    function findOpponentAvatarAnchor(root) {
+        if (!root || !root.querySelectorAll) return null;
+
+        const selectors = [
+            '.player-avatar-component',
+            '.player-avatar',
+            '.cc-avatar-img',
+            '[data-cy*="avatar"]',
+            'img[alt^="Avatar"]',
+            '[class*="avatar"]',
+            '[class*="profile-picture"]',
+            '[class*="profile-image"]',
+            '[class*="user-image"]',
+            'img'
+        ];
+
+        const candidates = [];
+        selectors.forEach(selector => {
+            root.querySelectorAll(selector).forEach(el => candidates.push(el));
+        });
+
+        return [...new Set(candidates)]
+            .map(el => {
+                const parent = el.parentElement && /avatar|profile|user/i.test(el.parentElement.className || '')
+                    ? el.parentElement
+                    : el;
+                const rect = getUsableRect(parent) || getUsableRect(el);
+                return rect ? { el: parent, area: rect.width * rect.height } : null;
+            })
+            .filter(Boolean)
+            .sort((a, b) => b.area - a.area)[0]?.el || null;
+    }
+
+    function getUsableRect(el) {
+        if (!el?.getBoundingClientRect) return null;
+        const rect = el.getBoundingClientRect();
+        if (rect.width < 4 || rect.height < 4) return null;
+        if (rect.bottom < 0 || rect.right < 0 || rect.top > window.innerHeight || rect.left > window.innerWidth) return null;
+        return rect;
+    }
+
+    function getCurrentOpponentUsername(root = getTopOpponentRoot()) {
+        const candidates = [];
+        const usernameEl = getTopOpponentUsernameElement();
+
+        if (usernameEl && (!root || root.contains(usernameEl))) {
+            candidates.push(...getIdentityStrings(usernameEl));
+        }
+
+        if (root?.querySelectorAll) {
+            root.querySelectorAll(OPPONENT_IDENTITY_SELECTOR).forEach(el => {
+                candidates.push(...getIdentityStrings(el));
+            });
+
+            root.querySelectorAll('img[alt^="Avatar of "]').forEach(img => {
+                const name = (img.getAttribute('alt') || '').replace(/^Avatar of\s+/i, '').trim();
+                if (name) candidates.push(name);
+            });
+        }
+
+        candidates.push(...getOpponentNameCandidates());
+
+        return candidates.find(isLikelyOpponentUsername) || '';
+    }
+
+    function isLikelyOpponentUsername(value) {
+        const normalized = normalizeIdentity(value);
+        if (!normalized || normalized.length < 2) return false;
+        if (/^\d+$/.test(normalized)) return false;
+        if (/^(opponent|player|you|guest|anonymous|hidden)$/i.test(normalized)) return false;
+        return !identityMatchesCurrentUser(value);
+    }
+
+    async function evaluateOpponentLegitimacy(username) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), LEGITIMACY_FETCH_TIMEOUT_MS);
+        const encodedUsername = encodeURIComponent(username);
+
+        try {
+            const profilePromise = fetchChessComJson(`https://api.chess.com/pub/player/${encodedUsername}`, controller.signal);
+            const statsPromise = fetchChessComJson(`https://api.chess.com/pub/player/${encodedUsername}/stats`, controller.signal)
+                .catch(() => null);
+            const gamesPromise = fetchRecentOpponentGames(encodedUsername, controller.signal)
+                .catch(() => []);
+            const selfStatsPromise = USERNAME
+                ? fetchChessComJson(`https://api.chess.com/pub/player/${encodeURIComponent(USERNAME)}/stats`, controller.signal).catch(() => null)
+                : Promise.resolve(null);
+            const selfGamesPromise = USERNAME
+                ? fetchRecentOpponentGames(encodeURIComponent(USERNAME), controller.signal).catch(() => [])
+                : Promise.resolve([]);
+
+            const [profile, stats, games, selfStats, selfGames] = await Promise.all([profilePromise, statsPromise, gamesPromise, selfStatsPromise, selfGamesPromise]);
+            return calculateOpponentLegitimacy(username, profile, stats, games, selfStats, selfGames);
+        } finally {
+            clearTimeout(timeoutId);
+        }
+    }
+
+    async function fetchRecentOpponentGames(encodedUsername, signal) {
+        const archivesData = await fetchChessComJson(
+            `https://api.chess.com/pub/player/${encodedUsername}/games/archives`,
+            signal
+        );
+        const archiveUrls = Array.isArray(archivesData.archives)
+            ? archivesData.archives.slice(-LEGITIMACY_MAX_ARCHIVES).reverse()
+            : [];
+
+        const archives = await Promise.all(archiveUrls.map(url => (
+            fetchChessComJson(url, signal).catch(() => ({ games: [] }))
+        )));
+
+        return archives
+            .flatMap(archive => Array.isArray(archive.games) ? archive.games : [])
+            .sort((a, b) => (b.end_time || 0) - (a.end_time || 0));
+    }
+
+    async function fetchChessComJson(url, signal) {
+        const response = await fetch(url, { signal });
+        if (!response.ok) throw new Error(`Chess.com API returned ${response.status}`);
+        return response.json();
+    }
+
+    function calculateOpponentLegitimacy(username, profile, stats, games, selfStats = null, selfGames = []) {
+        const resolvedUsername = profile?.username || username;
+        const samples = buildOpponentGameSamples(resolvedUsername, games);
+        const selfSamples = USERNAME ? buildOpponentGameSamples(USERNAME, selfGames) : null;
+        const accountAge = getAccountAgeMetric(profile?.joined);
+        const totalGames = getTotalRatedGames(stats, GAME_MODE);
+        const currentRating = getCurrentModeRating(stats);
+        const selfRating = getCurrentModeRating(selfStats);
+        const peak = getPeakRatingMetric(stats, currentRating, accountAge.days, totalGames);
+        const selfFormPerformance = selfSamples
+            ? getPerformanceRatingMetric(selfSamples.formRated, selfRating, MATCHUP_FORM_WINDOW_DAYS)
+            : null;
+        const selfContext = getSelfMatchupContext(selfSamples, selfFormPerformance);
+        const winRate = getWinRateMetric(samples);
+        const accuracy = getAccuracyMetric(samples.recentRated, currentRating);
+        const performance = getPerformanceRatingMetric(samples.monthRated, currentRating);
+        const matchupPerformance = getPerformanceRatingMetric(samples.formRated, currentRating, MATCHUP_FORM_WINDOW_DAYS);
+        const surge = getRatingSurgeMetric(samples.recentRated, accountAge.days);
+        const volume = getVolumeMetric(totalGames, accountAge.days);
+        const trajectory = getRatingTrajectoryMetric(samples.recentRated, accountAge.days);
+        const smurf = getSmurfMetric(accountAge, winRate, surge, trajectory, volume, totalGames);
+
+        const riskScore = getCalibratedLegitimacyScore({
+            accountAge,
+            winRate,
+            accuracy,
+            performance,
+            peak,
+            surge,
+            volume,
+            trajectory,
+            smurf,
+            totalGames,
+            formGames: samples.formGames
+        });
+        const score = riskScore.score;
+        const color = getLegitimacyColor(score);
+        const primaryConcern = getPrimaryLegitimacyConcern(accountAge, winRate, accuracy, performance, surge, trajectory, smurf);
+        const confidence = getLegitimacyConfidence(accountAge, samples, accuracy, trajectory, performance, peak);
+        const matchup = getMatchupMetric(samples, matchupPerformance, score, primaryConcern, selfRating, currentRating, selfContext, {
+            accountAge,
+            winRate,
+            accuracy,
+            performance,
+            peak,
+            surge,
+            volume,
+            trajectory,
+            smurf,
+            totalGames
+        });
+
+        return {
+            username: resolvedUsername,
+            score,
+            color,
+            verdict: getVisibleLegitimacyVerdict(score, primaryConcern, smurf, accuracy),
+            matchup,
+            title: buildLegitimacyTitle({
+                username: resolvedUsername,
+                score,
+                confidence,
+                accountAge,
+                winRate,
+                accuracy,
+                performance,
+                peak,
+                surge,
+                volume,
+                trajectory,
+                smurf,
+                matchup,
+                primaryConcern,
+                totalGames,
+                currentRating,
+                selfRating,
+                selfContext,
+                mode: GAME_MODE
+            })
+        };
+    }
+
+    function getVisibleLegitimacyVerdict(score, primaryConcern, smurf, accuracy) {
+        if (primaryConcern === 'Engine-accuracy spike') {
+            return accuracy.playingWellToday ? 'Hot 24h' : 'Accuracy spike';
+        }
+
+        if (primaryConcern === 'Performance spike') return 'Perf spike';
+
+        if (primaryConcern === 'Smurf-like new account' || smurf.likely) {
+            return 'Smurf?';
+        }
+
+        if (primaryConcern === 'Consistent rating climb') return 'Steady climb';
+
+        if (score >= 75) return 'High risk';
+        if (score >= 55) return 'Suspicious';
+        if (score >= 42) return 'Watch';
+        return 'Likely clean';
+    }
+
+    function getCalibratedLegitimacyScore(metrics) {
+        const {
+            accountAge,
+            winRate,
+            accuracy,
+            performance,
+            peak,
+            surge,
+            volume,
+            trajectory,
+            smurf,
+            totalGames,
+            formGames
+        } = metrics;
+        const shortForm = getLegitimacyShortFormSignal(formGames);
+        const newAccount = accountAge.days !== null && accountAge.days < 90;
+        const veryNewAccount = accountAge.days !== null && accountAge.days < 30;
+        const lowFormatInvestment = Number.isFinite(totalGames) && totalGames < 150;
+        const veryLowFormatInvestment = Number.isFinite(totalGames) && totalGames < 75;
+        const strongSmurf = smurf.risk >= 18;
+        const mediumSmurf = smurf.risk >= 10;
+        const strongPerformance = Number.isFinite(performance.gap)
+            && performance.count >= 4
+            && performance.gap >= 180
+            && performance.outperformance >= 0.10;
+        const mildPerformance = Number.isFinite(performance.gap)
+            && performance.count >= 4
+            && performance.gap >= 95
+            && performance.outperformance >= 0.06;
+        const engineLikeAccuracy = accuracy.count >= 3 && (
+            accuracy.risk >= 30
+            || accuracy.playingWellRecently
+            || accuracy.playingWellToday
+        );
+
+        let score = 0;
+        score += compressRisk(accountAge.risk, 10, 42, 10);
+        score += compressRisk(winRate.risk, 10, 32, 12);
+        score += compressRisk(accuracy.risk, 8, 45, 22);
+        score += compressRisk(performance.risk, 4, 24, 20);
+        score += Math.min(0, peak.risk);
+        score += compressRisk(surge.risk, 4, 10, 7);
+        score += compressRisk(trajectory.risk, 6, 22, 13);
+        score += compressRisk(smurf.risk, 7, 28, 22);
+        score += volume.risk < 0 ? volume.risk * 0.55 : compressRisk(volume.risk, 8, 26, 8);
+
+        if (shortForm.scoreRate >= 0.66 && shortForm.count >= 4) score += 8;
+        else if (shortForm.scoreRate >= 0.58 && shortForm.count >= 4) score += 4;
+
+        if (mediumSmurf && newAccount) score += 8;
+        if (strongSmurf && veryNewAccount) score += 12;
+        if (strongSmurf && veryLowFormatInvestment) score += 10;
+        else if (mediumSmurf && lowFormatInvestment) score += 5;
+        if (mediumSmurf && shortForm.scoreRate >= 0.66) score += 9;
+        if (strongSmurf && shortForm.scoreRate >= 0.75) score += 8;
+        if (mildPerformance && shortForm.scoreRate >= 0.66) score += 7;
+        if (strongPerformance) score += 14;
+        if (strongPerformance && newAccount) score += 9;
+        if (engineLikeAccuracy) score += 12;
+        if (engineLikeAccuracy && (newAccount || strongPerformance || strongSmurf)) score += 10;
+        if (winRate.winRate >= 0.78 && winRate.games >= 8 && newAccount) score += 7;
+        if (trajectory.risk >= 14 && surge.risk >= 5 && newAccount) score += 7;
+
+        if (!newAccount && !mediumSmurf && !engineLikeAccuracy && !strongPerformance && volume.risk < 0) {
+            score -= 8;
+        }
+
+        let scoreFloor = 0;
+        if (engineLikeAccuracy && accuracy.playingWellToday) scoreFloor = Math.max(scoreFloor, 62);
+        else if (engineLikeAccuracy && accuracy.risk >= 34) scoreFloor = Math.max(scoreFloor, 56);
+        if (engineLikeAccuracy && (newAccount || strongPerformance || strongSmurf)) scoreFloor = Math.max(scoreFloor, 68);
+        if (strongPerformance) scoreFloor = Math.max(scoreFloor, newAccount ? 60 : 52);
+        if (strongSmurf && (veryNewAccount || veryLowFormatInvestment || shortForm.scoreRate >= 0.75)) scoreFloor = Math.max(scoreFloor, 58);
+        if (trajectory.risk >= 14 && surge.risk >= 5 && newAccount) scoreFloor = Math.max(scoreFloor, 50);
+
+        score = Math.max(score, scoreFloor);
+
+        return {
+            score: clamp(Math.round(score), 0, 100),
+            shortForm,
+            engineLikeAccuracy,
+            strongSmurf,
+            strongPerformance,
+            scoreFloor
+        };
+    }
+
+    function compressRisk(value, floor, ceiling, weight) {
+        const risk = Number.isFinite(value) ? value : 0;
+        return clamp((risk - floor) / Math.max(1, ceiling - floor), 0, 1) * weight;
+    }
+
+    function getLegitimacyShortFormSignal(formGames) {
+        const games = Array.isArray(formGames) ? formGames : [];
+        const count = games.length;
+        if (!count) return { count: 0, scoreRate: null };
+
+        const points = games.reduce((sum, game) => sum + getResultScore(game.result), 0);
+        return {
+            count,
+            scoreRate: points / count
+        };
+    }
+
+    function buildOpponentGameSamples(username, games) {
+        const normalizedUsername = normalizeIdentity(username);
+        const modeGames = [];
+        const modeRated = [];
+
+        (Array.isArray(games) ? games : []).forEach(game => {
+            if (!game || game.rules !== 'chess') return;
+            if (GAME_MODE && game.time_class !== GAME_MODE) return;
+
+            const side = getPlayerGameSide(game, normalizedUsername);
+            if (!side) return;
+
+            const sample = {
+                game,
+                side: side.side,
+                playerRating: parseInt(side.player?.rating, 10),
+                opponentRating: parseInt(side.opponent?.rating, 10),
+                result: normalizeGameResult(side.player?.result),
+                accuracy: getPlayerAccuracy(game, side.side),
+                endTime: game.end_time || 0,
+                timeClass: game.time_class || '',
+                rated: Boolean(game.rated)
+            };
+
+            modeGames.push(sample);
+            if (sample.rated) modeRated.push(sample);
+        });
+
+        const recentRated = modeRated
+            .sort((a, b) => b.endTime - a.endTime)
+            .slice(0, LEGITIMACY_MAX_RECENT_GAMES);
+        const monthStart = Math.floor(Date.now() / 1000) - (LEGITIMACY_PERFORMANCE_WINDOW_DAYS * 86400);
+        const monthRated = modeRated
+            .filter(sample => (sample.endTime || 0) >= monthStart)
+            .sort((a, b) => b.endTime - a.endTime);
+        const activityStart = Math.floor(Date.now() / 1000) - (MATCHUP_ACTIVITY_WINDOW_DAYS * 86400);
+        const weekGames = modeGames
+            .filter(sample => (sample.endTime || 0) >= activityStart)
+            .sort((a, b) => b.endTime - a.endTime);
+        const formStart = Math.floor(Date.now() / 1000) - (MATCHUP_FORM_WINDOW_DAYS * 86400);
+        const formGames = modeGames
+            .filter(sample => (sample.endTime || 0) >= formStart)
+            .sort((a, b) => b.endTime - a.endTime);
+        const formRated = modeRated
+            .filter(sample => (sample.endTime || 0) >= formStart)
+            .sort((a, b) => b.endTime - a.endTime);
+
+        const similarRated = recentRated.filter(sample => ratingsAreSimilar(sample.playerRating, sample.opponentRating));
+
+        return {
+            modeGames,
+            modeRated,
+            recentRated,
+            monthRated,
+            weekGames,
+            formGames,
+            formRated,
+            similarRated,
+            modeRatedCount: modeRated.length,
+            modeGameCount: modeGames.length
+        };
+    }
+
+    function getPlayerGameSide(game, normalizedUsername) {
+        const whiteName = normalizeIdentity(game.white?.username);
+        const blackName = normalizeIdentity(game.black?.username);
+
+        if (whiteName === normalizedUsername) {
+            return { side: 'white', player: game.white, opponent: game.black };
+        }
+        if (blackName === normalizedUsername) {
+            return { side: 'black', player: game.black, opponent: game.white };
+        }
+        return null;
+    }
+
+    function normalizeGameResult(result) {
+        const value = String(result || '').toLowerCase();
+        const drawResults = new Set([
+            'agreed',
+            'repetition',
+            'stalemate',
+            'insufficient',
+            'timevsinsufficient',
+            'fiftymove',
+            '50move',
+            'threefold'
+        ]);
+
+        if (value === 'win') return 'win';
+        if (drawResults.has(value)) return 'draw';
+        return 'loss';
+    }
+
+    function getPlayerAccuracy(game, side) {
+        const accuracy = game?.accuracies?.[side];
+        const value = typeof accuracy === 'number' ? accuracy : parseFloat(accuracy);
+        return Number.isFinite(value) ? value : null;
+    }
+
+    function ratingsAreSimilar(playerRating, opponentRating) {
+        if (!Number.isFinite(playerRating) || !Number.isFinite(opponentRating)) return false;
+        const windowSize = Math.max(150, Math.min(300, playerRating * 0.12));
+        return Math.abs(playerRating - opponentRating) <= windowSize;
+    }
+
+    function getAccountAgeMetric(joinedTimestamp) {
+        const joinedMs = Number(joinedTimestamp) * 1000;
+        const days = Number.isFinite(joinedMs) && joinedMs > 0
+            ? Math.max(0, Math.floor((Date.now() - joinedMs) / 86400000))
+            : null;
+
+        let risk = 12;
+        if (days === null) risk = 8;
+        else if (days < 14) risk = 42;
+        else if (days < 30) risk = 38;
+        else if (days < 90) risk = 31;
+        else if (days < 180) risk = 23;
+        else if (days < 365) risk = 14;
+        else if (days < 730) risk = 7;
+        else if (days < 1825) risk = 2;
+        else risk = 0;
+
+        return { days, risk };
+    }
+
+    function getWinRateMetric(samples) {
+        const similarEnough = samples.similarRated.length >= 6;
+        const sample = similarEnough
+            ? samples.similarRated
+            : samples.recentRated.filter(game => Number.isFinite(game.playerRating) && Number.isFinite(game.opponentRating));
+
+        const wins = sample.filter(game => game.result === 'win').length;
+        const draws = sample.filter(game => game.result === 'draw').length;
+        const games = sample.length;
+        const winRate = games ? wins / games : null;
+        const scoreRate = games ? (wins + (draws * 0.5)) / games : null;
+        const maxRisk = similarEnough ? 36 : 22;
+
+        let risk = 0;
+        if (games >= 5 && winRate !== null) {
+            risk = clamp((winRate - 0.62) / 0.3, 0, 1) * maxRisk;
+            if (scoreRate !== null && scoreRate > 0.82) risk += clamp((scoreRate - 0.82) / 0.16, 0, 1) * 5;
+            if (games < 10) risk *= 0.75;
+        }
+
+        const streak = getRecentWinStreak(samples.recentRated);
+        if (streak >= 10) risk += 7;
+        else if (streak >= 7) risk += 4;
+
+        return {
+            risk: clamp(risk, 0, similarEnough ? 42 : 28),
+            games,
+            wins,
+            draws,
+            winRate,
+            scoreRate,
+            similarEnough,
+            streak
+        };
+    }
+
+    function getRecentWinStreak(recentRated) {
+        let streak = 0;
+        for (const game of recentRated) {
+            if (game.result !== 'win') break;
+            streak += 1;
+        }
+        return streak;
+    }
+
+    function getPerformanceRatingMetric(monthRated, currentRating, windowDays = LEGITIMACY_PERFORMANCE_WINDOW_DAYS) {
+        const games = monthRated.filter(game => (
+            Number.isFinite(game.playerRating)
+            && Number.isFinite(game.opponentRating)
+            && game.opponentRating > 0
+        ));
+        const count = games.length;
+
+        if (count < 4) {
+            return {
+                risk: 0,
+                count,
+                label: 'Not enough games',
+                performanceRating: null,
+                baselineRating: Number.isFinite(currentRating) ? currentRating : null,
+                gap: null,
+                actualScoreRate: null,
+                expectedScoreRate: null,
+                outperformance: null,
+                confidence: 0,
+                windowDays
+            };
+        }
+
+        const actualPoints = games.reduce((sum, game) => sum + getResultScore(game.result), 0);
+        const expectedPoints = games.reduce((sum, game) => (
+            sum + getEloExpectedScore(game.playerRating, game.opponentRating)
+        ), 0);
+        const actualScoreRate = actualPoints / count;
+        const expectedScoreRate = expectedPoints / count;
+        const opponentRatings = games.map(game => game.opponentRating);
+        const averagePlayerRating = games.reduce((sum, game) => sum + game.playerRating, 0) / count;
+        const baselineRating = Number.isFinite(currentRating) ? currentRating : averagePlayerRating;
+        const performanceRating = solvePerformanceRating(opponentRatings, actualScoreRate);
+        const gap = performanceRating - baselineRating;
+        const outperformance = actualScoreRate - expectedScoreRate;
+        const confidence = clamp((count - 3) / 27, 0.12, 1);
+
+        let risk = (
+            clamp((outperformance - 0.08) / 0.22, 0, 1) * 13
+            + clamp((gap - 120) / 260, 0, 1) * 12
+        ) * confidence;
+
+        if (count >= 20 && outperformance >= 0.18 && gap >= 180) risk += 4;
+        if (count >= 35 && outperformance >= 0.14 && gap >= 150) risk += 3;
+
+        const label = gap >= 250 && outperformance >= 0.18
+            ? 'Huge performance overrating'
+            : gap >= 150 && outperformance >= 0.10
+                ? 'Strong performance overrating'
+                : gap >= 80 && outperformance >= 0.06
+                    ? 'Mild performance overrating'
+                    : Math.abs(outperformance) <= 0.06
+                        ? 'Near expected score'
+                        : outperformance < -0.06
+                            ? 'Below expected score'
+                            : 'Slightly above expected score';
+
+        return {
+            risk: clamp(risk, 0, 26),
+            count,
+            label,
+            performanceRating,
+            baselineRating,
+            gap,
+            actualScoreRate,
+            expectedScoreRate,
+            outperformance,
+            confidence,
+            windowDays
+        };
+    }
+
+    function getSelfMatchupContext(selfSamples, selfPerformance) {
+        if (!selfSamples) {
+            return {
+                points: 0,
+                edge: 0,
+                label: 'Self form unavailable',
+                activity: { points: 0, count: 0, label: 'No self activity sample' },
+                form: { points: 0, count: 0, label: 'No self form sample', scoreRate: null },
+                performance: { points: 0, gap: null, count: 0, label: 'No self PR sample' },
+                session: { points: 0, count: 0, label: 'No active session sample', scoreRate: null }
+            };
+        }
+
+        const activity = getSelfActivityMetric(selfSamples.weekGames);
+        const form = getSelfFormMetric(selfSamples.formGames);
+        const performance = getSelfPerformanceMetric(selfPerformance);
+        const session = getSelfSessionMetric(selfSamples.modeGames || []);
+        const points = clamp(activity.points + form.points + performance.points + session.points, -30, 30);
+        const edge = clamp(points / 520, -0.045, 0.045);
+        const label = points >= 12
+            ? 'You look in form'
+            : points >= 4
+                ? 'Small self-form boost'
+                : points <= -12
+                    ? 'You look cold'
+                    : points <= -4
+                        ? 'Small self-form drag'
+                        : 'Neutral self form';
+
+        return {
+            points,
+            edge,
+            label,
+            activity,
+            form,
+            performance,
+            session
+        };
+    }
+
+    function getSelfActivityMetric(weekGames) {
+        const count = Array.isArray(weekGames) ? weekGames.length : 0;
+
+        if (count <= 1) return { points: -4, count, label: 'Very little recent activity' };
+        if (count <= 4) return { points: -2, count, label: 'Light recent activity' };
+        if (count <= 30) return { points: 2, count, label: 'Recently active' };
+        if (count <= 70) return { points: 1, count, label: 'Very active recently' };
+        return { points: -2, count, label: 'Extremely active / possible fatigue' };
+    }
+
+    function getSelfFormMetric(formGames) {
+        const count = Array.isArray(formGames) ? formGames.length : 0;
+        if (count < 3) {
+            return {
+                points: 0,
+                count,
+                label: 'Not enough self short-term form',
+                scoreRate: null,
+                winRate: null,
+                lossStreak: getRecentResultStreak(formGames || [], 'loss'),
+                winStreak: getRecentResultStreak(formGames || [], 'win')
+            };
+        }
+
+        const wins = formGames.filter(game => game.result === 'win').length;
+        const draws = formGames.filter(game => game.result === 'draw').length;
+        const losses = formGames.filter(game => game.result === 'loss').length;
+        const scoreRate = (wins + (draws * 0.5)) / count;
+        const winRate = wins / count;
+        const confidence = clamp((count - 2) / 9, 0.25, 1);
+        const lossStreak = getRecentResultStreak(formGames, 'loss');
+        const winStreak = getRecentResultStreak(formGames, 'win');
+        let points = 0;
+
+        if (scoreRate >= 0.70) points += (9 + (Math.min((scoreRate - 0.70) / 0.20, 1) * 5)) * confidence;
+        else if (scoreRate >= 0.60) points += (4 + (((scoreRate - 0.60) / 0.10) * 5)) * confidence;
+        else if (scoreRate <= 0.30) points -= (9 + (Math.min((0.30 - scoreRate) / 0.20, 1) * 5)) * confidence;
+        else if (scoreRate <= 0.42) points -= (4 + (((0.42 - scoreRate) / 0.12) * 5)) * confidence;
+
+        if (winStreak >= 4) points += 5;
+        else if (winStreak >= 2) points += 2;
+        if (lossStreak >= 3) points -= 6;
+        else if (lossStreak >= 2) points -= 3;
+
+        const label = scoreRate >= 0.70
+            ? 'Strong self recent form'
+            : scoreRate >= 0.60
+                ? 'Good self recent form'
+                : scoreRate <= 0.30
+                    ? 'Poor self recent form'
+                    : scoreRate <= 0.42
+                        ? 'Below-average self recent form'
+                        : 'Neutral self recent form';
+
+        return {
+            points: clamp(points, -16, 16),
+            count,
+            wins,
+            draws,
+            losses,
+            label,
+            scoreRate,
+            winRate,
+            lossStreak,
+            winStreak
+        };
+    }
+
+    function getSelfPerformanceMetric(performance) {
+        if (!performance || performance.performanceRating === null || !Number.isFinite(performance.gap)) {
+            return {
+                points: 0,
+                label: 'No reliable self PR signal',
+                gap: null,
+                count: performance?.count || 0,
+                performanceRating: null,
+                confidence: 0,
+                windowDays: performance?.windowDays || MATCHUP_FORM_WINDOW_DAYS
+            };
+        }
+
+        const confidence = Number.isFinite(performance.confidence) ? performance.confidence : 0;
+        let points = 0;
+
+        if (performance.gap >= 160) {
+            points += (8 + (Math.min((performance.gap - 160) / 180, 1) * 6)) * confidence;
+        } else if (performance.gap >= 90) {
+            points += (3 + (((performance.gap - 90) / 70) * 5)) * confidence;
+        } else if (performance.gap <= -160) {
+            points -= (8 + (Math.min((-performance.gap - 160) / 180, 1) * 6)) * confidence;
+        } else if (performance.gap <= -90) {
+            points -= (3 + (((-performance.gap - 90) / 70) * 5)) * confidence;
+        }
+
+        if (performance.outperformance >= 0.14) points += 3 * confidence;
+        if (performance.outperformance <= -0.16) points -= 3 * confidence;
+
+        const label = performance.gap >= 160
+            ? 'Self PR above rating'
+            : performance.gap >= 90
+                ? 'Self PR slightly above rating'
+                : performance.gap <= -160
+                    ? 'Self PR below rating'
+                    : performance.gap <= -90
+                        ? 'Self PR slightly below rating'
+                        : 'Self PR near rating';
+
+        return {
+            points: clamp(points, -16, 16),
+            label,
+            gap: performance.gap,
+            count: performance.count,
+            performanceRating: performance.performanceRating,
+            actualScoreRate: performance.actualScoreRate,
+            expectedScoreRate: performance.expectedScoreRate,
+            confidence,
+            windowDays: performance.windowDays || MATCHUP_FORM_WINDOW_DAYS
+        };
+    }
+
+    function getSelfSessionMetric(modeGames) {
+        const games = Array.isArray(modeGames)
+            ? modeGames.filter(game => game?.endTime).sort((a, b) => b.endTime - a.endTime)
+            : [];
+        const now = Math.floor(Date.now() / 1000);
+        const session = [];
+        let previousEnd = null;
+
+        for (const game of games) {
+            if (!previousEnd) {
+                if (now - game.endTime > 3 * 3600) break;
+            } else if (previousEnd - game.endTime > 90 * 60) {
+                break;
+            }
+
+            session.push(game);
+            previousEnd = game.endTime;
+            if (session.length >= 20) break;
+        }
+
+        if (!session.length) {
+            return {
+                points: 0,
+                count: 0,
+                label: 'No active session sample',
+                scoreRate: null,
+                lossStreak: 0,
+                winStreak: 0
+            };
+        }
+
+        const wins = session.filter(game => game.result === 'win').length;
+        const draws = session.filter(game => game.result === 'draw').length;
+        const scoreRate = (wins + (draws * 0.5)) / session.length;
+        const lossStreak = getRecentResultStreak(session, 'loss');
+        const winStreak = getRecentResultStreak(session, 'win');
+        let points = 0;
+
+        if (session.length === 1) points -= 1;
+        if (session.length >= 3 && scoreRate >= 0.70) points += 4;
+        else if (session.length >= 3 && scoreRate <= 0.35) points -= 5;
+        if (winStreak >= 3) points += 3;
+        else if (winStreak >= 2) points += 1;
+        if (lossStreak >= 3) points -= 5;
+        else if (lossStreak >= 2) points -= 3;
+        if (session.length >= 12) points -= 3;
+        else if (session.length >= 8) points -= 1;
+
+        const label = lossStreak >= 2
+            ? 'Session loss streak'
+            : winStreak >= 2
+                ? 'Session win streak'
+                : session.length >= 12
+                    ? 'Long session / fatigue risk'
+                    : scoreRate >= 0.70 && session.length >= 3
+                        ? 'Strong current session'
+                        : scoreRate <= 0.35 && session.length >= 3
+                            ? 'Cold current session'
+                            : 'Neutral current session';
+
+        return {
+            points: clamp(points, -9, 7),
+            count: session.length,
+            label,
+            scoreRate,
+            lossStreak,
+            winStreak
+        };
+    }
+
+    function getMatchupMetric(samples, performance, riskScore, primaryConcern, selfRating, opponentRating, selfContext = null, riskMetrics = {}) {
+        const activity = getMatchupActivityMetric(samples.weekGames);
+        const form = getMatchupFormMetric(samples.formGames);
+        const performanceMatchup = getMatchupPerformanceMetric(performance);
+        const riskPenalty = getMatchupRiskPenalty(riskScore, primaryConcern, riskMetrics);
+        const self = selfContext || getSelfMatchupContext(null, null);
+        const formDifferential = getFormDifferentialMetric(self.form, form);
+        const peak = getPeakRatingMatchupMetric(riskMetrics.peak);
+        const formCap = getMatchupFormRecommendationCap(form);
+        const odds = getMatchupOddsMetric(selfRating, opponentRating, activity, form, performanceMatchup, riskPenalty, self, formDifferential, peak);
+        const poolTrap = getOpponentPoolTrapMetric(selfRating, opponentRating, riskScore, form, odds);
+        const rawScore = activity.points + form.points + performanceMatchup.points + peak.points + odds.points + riskPenalty.points + self.points + formDifferential.points + poolTrap.points;
+        const matchupScore = clamp(Math.round(50 + rawScore), 0, 100);
+
+        let verdict = 'Playable';
+        let color = '#b7b95a';
+
+        const lowAccountRisk = riskScore < 35;
+        const moderateAccountRisk = riskScore < 58;
+        const ratingEvEdge = Number.isFinite(odds.edge) ? odds.edge : 0;
+        const estimatedRatingEv = Number.isFinite(odds.ratingDelta?.expected)
+            ? odds.ratingDelta.expected
+            : ratingEvEdge * getEstimatedRatingKFactor(selfRating);
+        const positiveRatingEv = estimatedRatingEv >= 0.12;
+        const strongRatingEv = estimatedRatingEv >= 0.40;
+        const negativeRatingEv = estimatedRatingEv <= -0.28;
+        const strongNegativeRatingEv = estimatedRatingEv <= -0.70;
+        const strongPerformanceDrop = Number.isFinite(performanceMatchup.gap)
+            && performanceMatchup.gap <= -130
+            && (performanceMatchup.confidence || 0) >= 0.35;
+        const engineLikeRisk = riskMetrics.accuracy?.count >= 3 && (
+            riskMetrics.accuracy.risk >= 30
+            || riskMetrics.accuracy.playingWellRecently
+            || riskMetrics.accuracy.playingWellToday
+        );
+        const smurfTrap = riskMetrics.smurf?.risk >= 18
+            && riskMetrics.accountAge?.days !== null
+            && riskMetrics.accountAge?.days < 180
+            && odds.adjustedExpectedScore < 0.60;
+
+        const leanAvoid = (
+            riskPenalty.points <= -16
+            || riskScore >= 58
+            || poolTrap.points <= -8
+            || negativeRatingEv
+            || rawScore < -3
+            || (
+                odds.adjustedExpectedScore < 0.42
+                && !positiveRatingEv
+                && !strongPerformanceDrop
+            )
+        );
+
+        if (
+            riskPenalty.hardAvoid
+            || engineLikeRisk
+            || (odds.adjustedExpectedScore < 0.435 && !positiveRatingEv)
+            || strongNegativeRatingEv
+            || rawScore <= -19
+            || formCap.maxVerdict === 'Avoid'
+            || smurfTrap
+        ) {
+            verdict = 'Avoid';
+            color = '#e05a47';
+        } else if (
+            (
+                odds.adjustedExpectedScore >= 0.585
+                && rawScore >= 14
+                && moderateAccountRisk
+            )
+            || (
+                strongRatingEv
+                && rawScore >= 10
+                && lowAccountRisk
+            )
+        ) {
+            verdict = 'Play';
+            color = '#81b64c';
+        } else if (leanAvoid) {
+            verdict = 'Lean avoid';
+            color = '#d8943d';
+        } else if (
+            odds.adjustedExpectedScore >= 0.535
+            && rawScore >= 3
+            && lowAccountRisk
+            && positiveRatingEv
+        ) {
+            verdict = 'Playable';
+            color = '#9fc65a';
+        }
+
+        const capped = applyMatchupRecommendationCap(verdict, formCap);
+        if (capped !== verdict) {
+            verdict = capped;
+            color = getMatchupVerdictColor(verdict);
+        }
+
+        return {
+            verdict,
+            displayText: verdict,
+            color,
+            score: matchupScore,
+            rawScore,
+            odds,
+            activity,
+            form,
+            formCap,
+            performance: performanceMatchup,
+            peak,
+            riskPenalty,
+            self,
+            formDifferential,
+            poolTrap,
+            reasons: getMatchupReasons({ odds, form, performance: performanceMatchup, peak, riskPenalty, self, formDifferential, poolTrap, activity })
+        };
+    }
+
+    function getMatchupFormRecommendationCap(form) {
+        if (!Number.isFinite(form?.scoreRate) || !Number.isFinite(form?.count) || form.count < 4) {
+            return {
+                maxVerdict: null,
+                label: 'No recent-form cap',
+                scoreRate: form?.scoreRate ?? null,
+                count: form?.count || 0
+            };
+        }
+
+        if (form.count >= 8 && form.scoreRate >= 0.72) {
+            return {
+                maxVerdict: 'Avoid',
+                label: 'Sustained very hot opponent form',
+                scoreRate: form.scoreRate,
+                count: form.count
+            };
+        }
+
+        if (form.count >= 5 && form.scoreRate >= 0.66) {
+            return {
+                maxVerdict: 'Lean avoid',
+                label: 'Hot opponent form caps recommendation',
+                scoreRate: form.scoreRate,
+                count: form.count
+            };
+        }
+
+        if (form.scoreRate >= 0.58) {
+            return {
+                maxVerdict: 'Playable',
+                label: 'Good opponent form blocks Play',
+                scoreRate: form.scoreRate,
+                count: form.count
+            };
+        }
+
+        return {
+            maxVerdict: null,
+            label: 'No recent-form cap',
+            scoreRate: form.scoreRate,
+            count: form.count
+        };
+    }
+
+    function applyMatchupRecommendationCap(verdict, cap) {
+        if (!cap?.maxVerdict) return verdict;
+        const currentRank = getMatchupVerdictRank(verdict);
+        const capRank = getMatchupVerdictRank(cap.maxVerdict);
+        return currentRank > capRank ? cap.maxVerdict : verdict;
+    }
+
+    function getMatchupVerdictRank(verdict) {
+        if (verdict === 'Play') return 3;
+        if (verdict === 'Playable') return 2;
+        if (verdict === 'Lean avoid') return 1;
+        return 0;
+    }
+
+    function getMatchupVerdictColor(verdict) {
+        if (verdict === 'Play') return '#81b64c';
+        if (verdict === 'Playable') return '#9fc65a';
+        if (verdict === 'Lean avoid') return '#d8943d';
+        return '#e05a47';
+    }
+
+    function getPeakRatingMatchupMetric(peak) {
+        if (!peak || peak.rating === null || !Number.isFinite(peak.gap)) {
+            return {
+                points: 0,
+                edge: 0,
+                label: 'No peak-rating matchup signal',
+                rating: null,
+                gap: null,
+                effectiveGap: 0,
+                daysSince: null
+            };
+        }
+
+        const effectiveGap = Number.isFinite(peak.effectiveGap)
+            ? peak.effectiveGap
+            : Math.max(0, peak.gap);
+        let points = 0;
+        let label = 'Current rating close to peak';
+
+        if (effectiveGap >= 240) {
+            points = -14;
+            label = 'Danger: recent peak far above current';
+        } else if (effectiveGap >= 150) {
+            points = -9;
+            label = 'Peak suggests underrated opponent';
+        } else if (effectiveGap >= 80) {
+            points = -4;
+            label = 'Peak slightly above current';
+        } else if (peak.gap <= 35) {
+            points = -2;
+            label = 'Opponent near all-time high';
+        }
+
+        if (peak.daysSince !== null && peak.daysSince > 365 && points < 0) {
+            points *= 0.65;
+            label = 'Old peak above current';
+        }
+
+        return {
+            points: clamp(points, -14, 0),
+            edge: clamp(points / 360, -0.04, 0),
+            label,
+            rating: peak.rating,
+            gap: peak.gap,
+            effectiveGap,
+            daysSince: peak.daysSince
+        };
+    }
+
+    function getFormDifferentialMetric(selfForm, opponentForm) {
+        if (!Number.isFinite(selfForm?.scoreRate) || !Number.isFinite(opponentForm?.scoreRate)) {
+            return {
+                points: 0,
+                edge: 0,
+                label: 'No reliable form differential',
+                differential: null
+            };
+        }
+
+        const sampleConfidence = Math.min(
+            clamp((selfForm.count - 2) / 8, 0.25, 1),
+            clamp((opponentForm.count - 2) / 8, 0.25, 1)
+        );
+        const differential = selfForm.scoreRate - opponentForm.scoreRate;
+        let points = 0;
+
+        if (differential >= 0.30) points += 12 * sampleConfidence;
+        else if (differential >= 0.18) points += (6 + (((differential - 0.18) / 0.12) * 6)) * sampleConfidence;
+        else if (differential >= 0.10) points += 3 * sampleConfidence;
+        else if (differential <= -0.30) points -= 16 * sampleConfidence;
+        else if (differential <= -0.18) points -= (8 + (((-differential - 0.18) / 0.12) * 8)) * sampleConfidence;
+        else if (differential <= -0.10) points -= 4 * sampleConfidence;
+
+        const edge = clamp(points / 620, -0.035, 0.025);
+        const label = differential >= 0.18
+            ? 'Your form is better'
+            : differential <= -0.18
+                ? 'Opponent form is better'
+                : 'Similar recent form';
+
+        return {
+            points: clamp(points, -16, 12),
+            edge,
+            label,
+            differential,
+            sampleConfidence
+        };
+    }
+
+    function getOpponentPoolTrapMetric(selfRating, opponentRating, riskScore, form, odds) {
+        if (!Number.isFinite(selfRating) || !Number.isFinite(opponentRating)) {
+            return { points: 0, label: 'No rating-value trap signal', ratingGap: null };
+        }
+
+        const ratingGap = selfRating - opponentRating;
+        const ratingEv = odds?.ratingDelta?.expected;
+        let points = 0;
+        let label = 'No rating-value trap signal';
+
+        if (ratingGap >= 700) {
+            points -= 16;
+            label = 'Very low-rated opponent / bad rating value';
+        } else if (ratingGap >= 400) {
+            points -= 10;
+            label = 'Low-rated opponent / poor rating value';
+        } else if (ratingGap >= 220 && Number.isFinite(ratingEv) && ratingEv <= 0.10) {
+            points -= 5;
+            label = 'Slightly poor rating value';
+        }
+
+        if (riskScore >= 45 && ratingGap >= 150) {
+            points -= 6;
+            label = 'Risky underrated pool trap';
+        }
+
+        if (form.count >= 4 && Number.isFinite(form.scoreRate) && form.scoreRate >= 0.66 && ratingGap >= 100) {
+            points -= 5;
+            label = 'Hot lower-rated opponent';
+        }
+
+        return {
+            points: clamp(points, -22, 0),
+            label,
+            ratingGap
+        };
+    }
+
+    function getMatchupReasons(parts) {
+        const reasons = [];
+        addReason(reasons, 'Rating value', parts.odds?.ratingDelta?.expected, value => (
+            `Estimated rating EV ${formatSignedDecimal(value)}`
+        ));
+        addReason(reasons, 'Opponent form', -parts.form.points, () => parts.form.label);
+        addReason(reasons, 'Opponent PR', -parts.performance.points, () => parts.performance.label);
+        addReason(reasons, 'Peak rating', parts.peak.points, () => parts.peak.label);
+        addReason(reasons, 'Your form', parts.self.points, () => parts.self.label);
+        addReason(reasons, 'Form differential', parts.formDifferential.points, () => parts.formDifferential.label);
+        addReason(reasons, 'Account safety', parts.riskPenalty.points, () => parts.riskPenalty.label);
+        addReason(reasons, 'Pool trap', parts.poolTrap.points, () => parts.poolTrap.label);
+        addReason(reasons, 'Opponent activity', parts.activity.points, () => parts.activity.label);
+
+        return reasons
+            .filter(reason => Math.abs(reason.impact) >= 2)
+            .sort((a, b) => Math.abs(b.impact) - Math.abs(a.impact))
+            .slice(0, 4);
+    }
+
+    function addReason(reasons, label, impact, describe) {
+        if (!Number.isFinite(impact)) return;
+        reasons.push({
+            label,
+            impact,
+            text: describe(impact)
+        });
+    }
+
+    function getMatchupActivityMetric(weekGames) {
+        const count = weekGames.length;
+
+        if (count <= 2) {
+            return { points: 10, count, label: 'Very low activity / possibly rusty' };
+        }
+        if (count <= 6) {
+            return { points: 6, count, label: 'Low activity / likely not fully warm' };
+        }
+        if (count <= 12) {
+            return { points: 2, count, label: 'Light activity' };
+        }
+        if (count <= 25) {
+            return { points: 0, count, label: 'Normal activity' };
+        }
+        if (count <= 60) {
+            return { points: -1, count, label: 'Active recently' };
+        }
+        return { points: -3, count, label: 'Very active / likely warmed up' };
+    }
+
+    function getMatchupOddsMetric(selfRating, opponentRating, activity, form, performance, riskPenalty, selfContext = null, formDifferential = null, peak = null) {
+        const hasRatings = Number.isFinite(selfRating) && Number.isFinite(opponentRating);
+        const baseExpectedScore = hasRatings
+            ? getEloExpectedScore(selfRating, opponentRating)
+            : null;
+
+        if (baseExpectedScore === null) {
+            return {
+                points: 0,
+                label: 'No self/opponent rating odds',
+                baseExpectedScore: null,
+                adjustedExpectedScore: 0.5,
+                winProbability: null,
+                drawProbability: null,
+                lossProbability: null,
+                edge: 0,
+                peakEdge: 0,
+                selfRating,
+                opponentRating
+            };
+        }
+
+        const activityEdge = clamp(activity.points / 650, -0.01, 0.025);
+        const formSampleConfidence = Number.isFinite(form.count)
+            ? clamp((form.count - 2) / 8, 0.25, 1)
+            : 0;
+        const formEdge = Number.isFinite(form.scoreRate)
+            ? form.scoreRate >= 0.58
+                ? clamp((0.55 - form.scoreRate) * 0.34 * formSampleConfidence, -0.12, -0.006)
+                : clamp((0.50 - form.scoreRate) * 0.13 * formSampleConfidence, 0, 0.035)
+            : 0;
+        const performanceEdge = Number.isFinite(performance.gap)
+            ? performance.gap <= -100
+                ? clamp(((-performance.gap - 100) / 520) * (performance.confidence || 0), 0, 0.045)
+                : performance.gap >= 95
+                    ? clamp(-((performance.gap - 95) / 520) * (performance.confidence || 0), -0.05, 0)
+                    : 0
+            : 0;
+        const riskDrag = riskPenalty.hardAvoid
+            ? -0.18
+            : clamp(riskPenalty.points / 500, -0.05, 0.004);
+        const selfEdge = selfContext && Number.isFinite(selfContext.edge)
+            ? selfContext.edge
+            : 0;
+        const formDifferentialEdge = formDifferential && Number.isFinite(formDifferential.edge)
+            ? formDifferential.edge
+            : 0;
+        const peakEdge = peak && Number.isFinite(peak.edge)
+            ? peak.edge
+            : 0;
+        const adjustedExpectedScore = clamp(
+            baseExpectedScore + activityEdge + formEdge + performanceEdge + riskDrag + selfEdge + formDifferentialEdge + peakEdge,
+            0.05,
+            0.95
+        );
+        const drawProbability = getEstimatedDrawRate(form);
+        const winProbability = clamp(adjustedExpectedScore - (drawProbability * 0.5), 0, 1 - drawProbability);
+        const lossProbability = clamp(1 - drawProbability - winProbability, 0, 1);
+        const edge = adjustedExpectedScore - baseExpectedScore;
+        const ratingDelta = estimateRatingDeltaValue(selfRating, opponentRating, winProbability, drawProbability, lossProbability);
+        const ratingSpread = opponentRating - selfRating;
+        const rewardMultiplier = clamp(1 + (ratingSpread / 800), 0.65, 1.45);
+        const downsideMultiplier = clamp(1 - (ratingSpread / 800), 0.65, 1.45);
+        const casinoValue = (
+            (winProbability * rewardMultiplier)
+            - (lossProbability * downsideMultiplier)
+            + (drawProbability * (ratingSpread / 1200))
+        );
+        const points = clamp((edge * 105) + (casinoValue * 16), -22, 22);
+
+        const label = adjustedExpectedScore >= 0.60
+            ? 'Favourable odds'
+            : adjustedExpectedScore >= 0.52
+                ? 'Small positive edge'
+                : adjustedExpectedScore >= 0.47
+                    ? 'Coin-flip odds'
+                    : 'Negative edge';
+
+        return {
+            points,
+            label,
+            baseExpectedScore,
+            adjustedExpectedScore,
+            winProbability,
+            drawProbability,
+            lossProbability,
+            edge,
+            ratingDelta,
+            casinoValue,
+            selfRating,
+            opponentRating,
+            activityEdge,
+            formEdge,
+            performanceEdge,
+            riskDrag,
+            selfEdge,
+            formDifferentialEdge,
+            peakEdge
+        };
+    }
+
+    function getEstimatedDrawRate(form) {
+        if (form.count >= 5 && Number.isFinite(form.draws)) {
+            return clamp(form.draws / form.count, 0.03, 0.25);
+        }
+
+        if (GAME_MODE === 'rapid') return 0.12;
+        if (GAME_MODE === 'blitz') return 0.08;
+        return 0.05;
+    }
+
+    function estimateRatingDeltaValue(selfRating, opponentRating, winProbability, drawProbability, lossProbability) {
+        if (![selfRating, opponentRating, winProbability, drawProbability, lossProbability].every(Number.isFinite)) {
+            return {
+                expected: null,
+                win: null,
+                draw: null,
+                loss: null,
+                kFactor: null
+            };
+        }
+
+        const kFactor = getEstimatedRatingKFactor(selfRating);
+        const baseExpected = getEloExpectedScore(selfRating, opponentRating);
+        const win = kFactor * (1 - baseExpected);
+        const draw = kFactor * (0.5 - baseExpected);
+        const loss = kFactor * (0 - baseExpected);
+        const expected = (winProbability * win) + (drawProbability * draw) + (lossProbability * loss);
+
+        return {
+            expected,
+            win,
+            draw,
+            loss,
+            kFactor
+        };
+    }
+
+    function getEstimatedRatingKFactor(rating) {
+        if (!Number.isFinite(rating)) return 16;
+        if (rating < 1200) return 32;
+        if (rating < 1800) return 24;
+        return 16;
+    }
+
+    function getMatchupFormMetric(formGames) {
+        const count = formGames.length;
+        if (count < 3) {
+            return {
+                points: 0,
+                count,
+                label: 'Not enough short-term form',
+                winRate: null,
+                scoreRate: null,
+                lossStreak: getRecentResultStreak(formGames, 'loss'),
+                winStreak: getRecentResultStreak(formGames, 'win')
+            };
+        }
+
+        const wins = formGames.filter(game => game.result === 'win').length;
+        const draws = formGames.filter(game => game.result === 'draw').length;
+        const losses = formGames.filter(game => game.result === 'loss').length;
+        const scoreRate = (wins + (draws * 0.5)) / count;
+        const winRate = wins / count;
+        const confidence = clamp((count - 2) / 9, 0.25, 1);
+        const lossStreak = getRecentResultStreak(formGames, 'loss');
+        const winStreak = getRecentResultStreak(formGames, 'win');
+        let points = 0;
+
+        if (scoreRate <= 0.30) {
+            points += 22 * confidence;
+        } else if (scoreRate <= 0.43) {
+            points += (9 + (((0.43 - scoreRate) / 0.13) * 9)) * confidence;
+        } else if (scoreRate < 0.52) {
+            points += (((0.52 - scoreRate) / 0.09) * 4) * confidence;
+        } else if (scoreRate >= 0.68) {
+            points -= (22 + (Math.min((scoreRate - 0.68) / 0.22, 1) * 12)) * confidence;
+        } else if (scoreRate >= 0.58) {
+            points -= (10 + (((scoreRate - 0.58) / 0.10) * 12)) * confidence;
+        } else if (scoreRate >= 0.53) {
+            points -= (((scoreRate - 0.53) / 0.05) * 6) * confidence;
+        }
+
+        if (lossStreak >= 3) points += 5;
+        else if (lossStreak >= 2) points += 2;
+        if (winStreak >= 4) points -= 10;
+        else if (winStreak >= 2) points -= 5;
+
+        const label = scoreRate <= 0.30
+            ? 'Poor recent form / possible tilt'
+            : scoreRate <= 0.43
+                ? 'Below-average recent form'
+                : scoreRate >= 0.68
+                    ? 'Strong recent form'
+                    : scoreRate >= 0.58
+                        ? 'Slightly good recent form'
+                        : 'Neutral recent form';
+
+        return {
+            points: clamp(points, -34, 22),
+            count,
+            wins,
+            draws,
+            losses,
+            label,
+            winRate,
+            scoreRate,
+            lossStreak,
+            winStreak
+        };
+    }
+
+    function getMatchupPerformanceMetric(performance) {
+        if (performance.performanceRating === null || !Number.isFinite(performance.gap)) {
+            return {
+                points: 0,
+                label: 'No reliable performance signal',
+                gap: null,
+                count: performance.count || 0
+            };
+        }
+
+        const confidence = Number.isFinite(performance.confidence) ? performance.confidence : 0;
+        let points = 0;
+
+        if (performance.gap <= -160) {
+            points += (14 + (Math.min((-performance.gap - 160) / 180, 1) * 10)) * confidence;
+        } else if (performance.gap <= -100) {
+            points += (6 + (((-performance.gap - 100) / 60) * 8)) * confidence;
+        } else if (performance.gap <= -75) {
+            points += 2 * confidence;
+        } else if (performance.gap >= 180) {
+            points -= (14 + (Math.min((performance.gap - 180) / 180, 1) * 8)) * confidence;
+        } else if (performance.gap >= 95) {
+            points -= (6 + (((performance.gap - 95) / 85) * 8)) * confidence;
+        }
+
+        if (performance.outperformance <= -0.16) points += 4 * confidence;
+        if (performance.outperformance >= 0.14) points -= 5 * confidence;
+
+        const label = performance.gap <= -160
+            ? 'Bad current-window performance'
+            : performance.gap <= -100
+                ? 'Underperforming rating'
+                : performance.gap >= 180
+                    ? 'Overperforming rating'
+                    : performance.gap >= 95
+                        ? 'Playing above rating'
+                        : 'Near rating expectation';
+
+        return {
+            points: clamp(points, -24, 24),
+            label,
+            gap: performance.gap,
+            count: performance.count,
+            performanceRating: performance.performanceRating,
+            actualScoreRate: performance.actualScoreRate,
+            expectedScoreRate: performance.expectedScoreRate,
+            confidence,
+            windowDays: performance.windowDays || MATCHUP_FORM_WINDOW_DAYS
+        };
+    }
+
+    function getMatchupRiskPenalty(riskScore, primaryConcern, riskMetrics = {}) {
+        const accuracy = riskMetrics.accuracy || {};
+        const accountAge = riskMetrics.accountAge || {};
+        const smurf = riskMetrics.smurf || {};
+        const performance = riskMetrics.performance || {};
+        const volume = riskMetrics.volume || {};
+        const winRate = riskMetrics.winRate || {};
+        const totalGames = riskMetrics.totalGames;
+        const engineLikeRisk = accuracy.count >= 3 && (
+            accuracy.risk >= 30
+            || accuracy.playingWellRecently
+            || accuracy.playingWellToday
+        );
+        const strongSmurfRisk = smurf.risk >= 18 && accountAge.days !== null && accountAge.days < 180;
+        const lowFormatInvestment = Number.isFinite(totalGames) && totalGames < 75;
+        const strongPerformanceSpike = performance.count >= 8
+            && performance.gap >= 180
+            && performance.outperformance >= 0.10;
+
+        if (engineLikeRisk && riskScore >= 48) {
+            return {
+                points: -42,
+                hardAvoid: true,
+                label: 'Avoid: accuracy risk is too high'
+            };
+        }
+
+        if ((strongSmurfRisk && lowFormatInvestment && riskScore >= 58) || (strongPerformanceSpike && riskScore >= 62)) {
+            return {
+                points: -30,
+                hardAvoid: false,
+                label: 'Heavy caution: smurf/performance risk'
+            };
+        }
+
+        if (riskScore >= 76) {
+            return {
+                points: -28,
+                hardAvoid: false,
+                label: 'Heavy caution: account risk'
+            };
+        }
+
+        if (riskScore >= 60 || primaryConcern === 'Performance spike') {
+            return {
+                points: -16,
+                hardAvoid: false,
+                label: 'Caution: account risk offsets matchup value'
+            };
+        }
+
+        if (riskScore >= 45 || smurf.likely || winRate.risk >= 20) {
+            return {
+                points: -7,
+                hardAvoid: false,
+                label: 'Small caution from account risk'
+            };
+        }
+
+        if (volume.risk < 0 && accountAge.risk <= 2 && riskScore < 30) {
+            return {
+                points: 2,
+                hardAvoid: false,
+                label: 'Established account history helps safety'
+            };
+        }
+
+        return {
+            points: 0,
+            hardAvoid: false,
+            label: 'No account-risk penalty'
+        };
+    }
+
+    function getRecentResultStreak(games, result) {
+        let streak = 0;
+        for (const game of games) {
+            if (game.result !== result) break;
+            streak += 1;
+        }
+        return streak;
+    }
+
+    function getResultScore(result) {
+        if (result === 'win') return 1;
+        if (result === 'draw') return 0.5;
+        return 0;
+    }
+
+    function getEloExpectedScore(playerRating, opponentRating) {
+        return 1 / (1 + Math.pow(10, (opponentRating - playerRating) / 400));
+    }
+
+    function solvePerformanceRating(opponentRatings, actualScoreRate) {
+        const ratings = opponentRatings.filter(Number.isFinite);
+        if (!ratings.length) return null;
+
+        const minOpponent = Math.min(...ratings);
+        const maxOpponent = Math.max(...ratings);
+
+        if (actualScoreRate >= 0.995) return maxOpponent + 800;
+        if (actualScoreRate <= 0.005) return minOpponent - 800;
+
+        let low = minOpponent - 1000;
+        let high = maxOpponent + 1000;
+
+        for (let i = 0; i < 50; i += 1) {
+            const mid = (low + high) / 2;
+            const expected = ratings.reduce((sum, opponentRating) => (
+                sum + getEloExpectedScore(mid, opponentRating)
+            ), 0) / ratings.length;
+
+            if (expected < actualScoreRate) low = mid;
+            else high = mid;
+        }
+
+        return Math.round((low + high) / 2);
+    }
+
+    function getAccuracyMetric(recentRated, currentRating) {
+        const accuracyGames = recentRated
+            .filter(game => Number.isFinite(game.accuracy))
+            .slice(0, 24);
+        const count = accuracyGames.length;
+
+        if (!count) {
+            return {
+                risk: 0,
+                count: 0,
+                average: null,
+                threshold: null,
+                veryHighCount: 0,
+                recentCount: 0,
+                recentAverage: null,
+                todayCount: 0,
+                todayAverage: null,
+                todayHighCount: 0,
+                hotWindowHours: LEGITIMACY_HOT_ACCURACY_WINDOW_HOURS,
+                playingWellToday: false,
+                playingWellRecently: false
+            };
+        }
+
+        const average = accuracyGames.reduce((sum, game) => sum + game.accuracy, 0) / count;
+        const rating = Number.isFinite(currentRating) ? currentRating : null;
+        let threshold = 90;
+        if (rating !== null && rating < 1400) threshold = 88;
+        else if (rating !== null && rating < 1800) threshold = 90;
+        else if (rating !== null && rating < 2200) threshold = 92;
+        else if (rating !== null) threshold = 94;
+
+        const recentWindow = accuracyGames.slice(0, 6);
+        const recentAverage = getAverageAccuracy(recentWindow);
+        const hotWindowStart = getRollingWindowStartUnixSeconds(LEGITIMACY_HOT_ACCURACY_WINDOW_HOURS);
+        const hotWindowGames = accuracyGames.filter(game => (game.endTime || 0) >= hotWindowStart);
+        const hotWindowAverage = getAverageAccuracy(hotWindowGames);
+        const veryHighCount = accuracyGames.filter(game => game.accuracy >= threshold + 4).length;
+        const recentHighCount = recentWindow.filter(game => game.accuracy >= threshold + 3).length;
+        const hotWindowHighCount = hotWindowGames.filter(game => game.accuracy >= threshold + 3).length;
+        const playingWellToday = hotWindowGames.length >= 2 && (
+            hotWindowAverage >= threshold + 1.5
+            || hotWindowHighCount >= 2
+        );
+        const playingWellRecently = recentWindow.length >= 3 && (
+            recentAverage >= threshold + 1
+            || recentHighCount >= 3
+        );
+
+        let risk = clamp((average - (threshold - 5)) / 11, 0, 1) * 34;
+        if (veryHighCount >= 4) risk += 10;
+        else if (veryHighCount >= 2) risk += 6;
+        if (playingWellRecently) risk += 7;
+        if (playingWellToday) risk += 11;
+        if (count < 4) risk *= 0.78;
+
+        return {
+            risk: clamp(risk, 0, 52),
+            count,
+            average,
+            threshold,
+            veryHighCount,
+            recentCount: recentWindow.length,
+            recentAverage,
+            todayCount: hotWindowGames.length,
+            todayAverage: hotWindowAverage,
+            todayHighCount: hotWindowHighCount,
+            hotWindowHours: LEGITIMACY_HOT_ACCURACY_WINDOW_HOURS,
+            playingWellToday,
+            playingWellRecently
+        };
+    }
+
+    function getAverageAccuracy(games) {
+        if (!games.length) return null;
+        return games.reduce((sum, game) => sum + game.accuracy, 0) / games.length;
+    }
+
+    function getRollingWindowStartUnixSeconds(hours) {
+        return Math.floor(Date.now() / 1000) - (hours * 3600);
+    }
+
+    function getRatingSurgeMetric(recentRated, accountAgeDays) {
+        const ratedWithRatings = recentRated.filter(game => Number.isFinite(game.playerRating));
+        if (ratedWithRatings.length < 8) {
+            return { risk: 0, gain: null, games: ratedWithRatings.length };
+        }
+
+        const newest = ratedWithRatings[0].playerRating;
+        const oldest = ratedWithRatings[ratedWithRatings.length - 1].playerRating;
+        const gain = newest - oldest;
+        let risk = clamp((gain - 80) / 220, 0, 1) * 8;
+        if (risk > 0 && accountAgeDays !== null && accountAgeDays < 180) risk += 2;
+
+        return {
+            risk: clamp(risk, 0, 10),
+            gain,
+            games: ratedWithRatings.length
+        };
+    }
+
+    function getRatingTrajectoryMetric(recentRated, accountAgeDays) {
+        const ratedWithRatings = recentRated
+            .filter(game => Number.isFinite(game.playerRating))
+            .slice(0, 50)
+            .sort((a, b) => a.endTime - b.endTime);
+
+        if (ratedWithRatings.length < 10) {
+            return {
+                risk: 0,
+                label: 'Not enough rating history',
+                games: ratedWithRatings.length,
+                gain: null,
+                positiveRate: null,
+                flipRate: null,
+                efficiency: null
+            };
+        }
+
+        const deltas = [];
+        for (let i = 1; i < ratedWithRatings.length; i += 1) {
+            deltas.push(ratedWithRatings[i].playerRating - ratedWithRatings[i - 1].playerRating);
+        }
+
+        const meaningfulDeltas = deltas.filter(delta => delta !== 0);
+        const positives = meaningfulDeltas.filter(delta => delta > 0).length;
+        const negatives = meaningfulDeltas.filter(delta => delta < 0).length;
+        const positiveRate = meaningfulDeltas.length ? positives / meaningfulDeltas.length : 0;
+        const negativeRate = meaningfulDeltas.length ? negatives / meaningfulDeltas.length : 0;
+        const gain = ratedWithRatings[ratedWithRatings.length - 1].playerRating - ratedWithRatings[0].playerRating;
+        const absoluteMovement = meaningfulDeltas.reduce((sum, delta) => sum + Math.abs(delta), 0);
+        const efficiency = absoluteMovement ? clamp(gain / absoluteMovement, -1, 1) : 0;
+        const signFlips = getRatingDirectionFlipCount(meaningfulDeltas);
+        const flipRate = meaningfulDeltas.length > 1 ? signFlips / (meaningfulDeltas.length - 1) : 0;
+        const trendStrength = clamp((gain - 45) / 170, 0, 1);
+        const consistencyScore = (
+            clamp((positiveRate - 0.58) / 0.34, 0, 1) * 0.45
+            + clamp((efficiency - 0.22) / 0.58, 0, 1) * 0.45
+            + clamp((0.62 - flipRate) / 0.62, 0, 1) * 0.10
+        );
+
+        let risk = trendStrength * consistencyScore * 20;
+        if (gain >= 120 && positiveRate >= 0.68 && efficiency >= 0.35) risk += 4;
+        if (risk > 0 && accountAgeDays !== null && accountAgeDays < 180) risk += 3;
+
+        const plateauing = Math.abs(gain) <= 35 && flipRate >= 0.42;
+        const steadyClimb = gain >= 80 && positiveRate >= 0.64 && efficiency >= 0.30;
+        const label = plateauing
+            ? 'Plateau / up-down pattern'
+            : steadyClimb
+                ? 'Consistent climb'
+                : gain >= 50
+                    ? 'Uneven climb'
+                    : gain <= -35
+                        ? 'Losing rating'
+                        : 'Mostly flat';
+
+        return {
+            risk: plateauing ? 0 : clamp(risk, 0, 24),
+            label,
+            games: ratedWithRatings.length,
+            gain,
+            positiveRate,
+            negativeRate,
+            flipRate,
+            efficiency,
+            signFlips
+        };
+    }
+
+    function getRatingDirectionFlipCount(deltas) {
+        let flips = 0;
+        let lastSign = 0;
+
+        deltas.forEach(delta => {
+            const sign = Math.sign(delta);
+            if (!sign) return;
+            if (lastSign && sign !== lastSign) flips += 1;
+            lastSign = sign;
+        });
+
+        return flips;
+    }
+
+    function getVolumeMetric(totalGames, accountAgeDays) {
+        if (!Number.isFinite(totalGames)) {
+            return {
+                risk: 0,
+                label: 'Rated game count unavailable'
+            };
+        }
+
+        let risk = 0;
+        let label = 'Moderate rated history';
+
+        if (totalGames < 10) {
+            risk = 22;
+            label = 'Very low rated history';
+        } else if (totalGames < 25) {
+            risk = 17;
+            label = 'Low rated history';
+        } else if (totalGames < 75) {
+            risk = 10;
+            label = 'Limited rated history';
+        } else if (totalGames < 150) {
+            risk = 5;
+            label = 'Some rated history';
+        } else if (totalGames >= 2000) {
+            risk = -18;
+            label = 'Very deep rated history';
+        } else if (totalGames >= 800) {
+            risk = -12;
+            label = 'Deep rated history';
+        } else if (totalGames >= 300) {
+            risk = -7;
+            label = 'Established rated history';
+        } else if (totalGames >= 150) {
+            risk = -3;
+            label = 'Solid rated history';
+        }
+
+        if (accountAgeDays !== null && accountAgeDays < 90 && totalGames < 75) {
+            risk += 4;
+            label = `${label} on a new account`;
+        }
+
+        return {
+            risk: clamp(risk, -18, 26),
+            label
+        };
+    }
+
+    function getPeakRatingMetric(stats, currentRating, accountAgeDays, totalGames) {
+        const modeStats = stats?.[`chess_${GAME_MODE}`];
+        const rawPeak = parseInt(modeStats?.best?.rating, 10);
+        const peakRating = Number.isFinite(rawPeak) ? rawPeak : null;
+        const rawDate = parseInt(modeStats?.best?.date, 10);
+        const peakDate = Number.isFinite(rawDate) && rawDate > 0 ? rawDate : null;
+        const daysSince = peakDate === null
+            ? null
+            : Math.max(0, Math.floor((Math.floor(Date.now() / 1000) - peakDate) / 86400));
+        const gap = peakRating !== null && Number.isFinite(currentRating)
+            ? peakRating - currentRating
+            : null;
+
+        const recencyWeight = daysSince === null
+            ? 0.55
+            : daysSince <= 30
+                ? 1
+                : daysSince <= 90
+                    ? 0.82
+                    : daysSince <= 180
+                        ? 0.65
+                        : daysSince <= 365
+                            ? 0.45
+                            : daysSince <= 1095
+                                ? 0.25
+                                : 0.12;
+        const effectiveGap = Number.isFinite(gap) && gap > 0
+            ? gap * recencyWeight
+            : 0;
+
+        let risk = 0;
+        let label = 'Peak rating unavailable';
+
+        if (peakRating === null) {
+            return {
+                risk,
+                label,
+                rating: null,
+                gap: null,
+                daysSince,
+                recencyWeight,
+                effectiveGap: 0
+            };
+        }
+
+        const establishedHistory = accountAgeDays !== null
+            && accountAgeDays >= 365
+            && Number.isFinite(totalGames)
+            && totalGames >= 300;
+
+        if (Number.isFinite(gap) && gap >= 300) {
+            risk -= 8;
+            label = 'Well below all-time peak';
+        } else if (Number.isFinite(gap) && gap >= 180) {
+            risk -= 5;
+            label = 'Below all-time peak';
+        } else if (Number.isFinite(gap) && gap >= 100) {
+            risk -= 2;
+            label = 'Slightly below all-time peak';
+        } else if (Number.isFinite(gap) && gap <= 35) {
+            label = 'Current rating near all-time peak';
+        } else {
+            label = 'Known peak rating history';
+        }
+
+        if (establishedHistory && daysSince !== null && daysSince > 365) {
+            risk -= 2;
+            label = 'Old established peak history';
+        } else if (establishedHistory && Number.isFinite(gap) && gap < 120) {
+            risk -= 1;
+            label = 'Established peak history';
+        }
+
+        return {
+            risk: clamp(risk, -10, 0),
+            label,
+            rating: peakRating,
+            gap,
+            daysSince,
+            recencyWeight,
+            effectiveGap
+        };
+    }
+
+    function getSmurfMetric(accountAge, winRate, surge, trajectory, volume, totalGames) {
+        const days = accountAge.days;
+        if (days === null || days >= 365) {
+            return { risk: 0, likely: false, label: 'No strong smurf signal' };
+        }
+
+        let risk = 0;
+        if (days < 30) risk += 8;
+        else if (days < 90) risk += 5;
+
+        if (winRate.games >= 6 && winRate.winRate !== null) {
+            if (winRate.winRate >= 0.82) risk += 12;
+            else if (winRate.winRate >= 0.72) risk += 8;
+        }
+
+        if (surge.gain !== null) {
+            if (surge.gain >= 220) risk += 9;
+            else if (surge.gain >= 140) risk += 6;
+        }
+
+        if (trajectory.risk >= 14) risk += 6;
+        else if (trajectory.risk >= 8) risk += 3;
+
+        if (Number.isFinite(totalGames) && totalGames < 75) risk += 5;
+        else risk += volume.risk * 0.5;
+
+        risk = clamp(risk, 0, 28);
+
+        return {
+            risk,
+            likely: risk >= 14,
+            label: risk >= 18 ? 'Strong smurf-like signal' : risk >= 10 ? 'Possible smurf-like signal' : 'No strong smurf signal'
+        };
+    }
+
+    function getTotalRatedGames(stats, mode) {
+        if (!stats) return null;
+        const record = stats[`chess_${mode}`]?.record;
+        if (!record) return null;
+
+        return (parseInt(record.win, 10) || 0)
+            + (parseInt(record.loss, 10) || 0)
+            + (parseInt(record.draw, 10) || 0);
+    }
+
+    function getCurrentModeRating(stats) {
+        const value = stats?.[`chess_${GAME_MODE}`]?.last?.rating;
+        const rating = parseInt(value, 10);
+        return Number.isFinite(rating) ? rating : null;
+    }
+
+    function getPrimaryLegitimacyConcern(accountAge, winRate, accuracy, performance, surge, trajectory, smurf) {
+        if (accuracy.risk >= 34 || accuracy.playingWellToday) {
+            return 'Engine-accuracy spike';
+        }
+
+        if (performance.risk >= 16) return 'Performance spike';
+
+        if (smurf.likely && trajectory.risk >= 12) {
+            return 'Smurf-like steady climb';
+        }
+
+        if (smurf.likely && accountAge.risk >= 23 && (winRate.risk >= 12 || surge.risk >= 5)) {
+            return 'Smurf-like new account';
+        }
+
+        if (trajectory.risk >= 15) return 'Consistent rating climb';
+        if (winRate.risk >= 22) return 'Unusual win rate';
+        if (accountAge.risk >= 31) return 'Very new account';
+        return 'No single strong signal';
+    }
+
+    function getLegitimacyConfidence(accountAge, samples, accuracy, trajectory, performance, peak) {
+        let points = 0;
+        if (accountAge.days !== null) points += 1;
+        if (Number.isFinite(peak?.rating)) points += 1;
+        if (samples.recentRated.length >= 12) points += 1;
+        if (samples.similarRated.length >= 6) points += 1;
+        if (accuracy.count >= 3) points += 1;
+        if (accuracy.todayCount >= 2) points += 1;
+        if (trajectory.games >= 12) points += 1;
+        if (performance.count >= 12) points += 1;
+
+        if (points >= 3) return 'medium';
+        if (points >= 2) return 'low-medium';
+        return 'low';
+    }
+
+    function buildLegitimacyTitle(data) {
+        const ageText = data.accountAge.days === null ? 'unknown' : formatAgeDays(data.accountAge.days);
+        const winRateText = data.winRate.winRate === null ? 'not enough data' : `${Math.round(data.winRate.winRate * 100)}%`;
+        const sampleType = data.winRate.similarEnough ? 'similar-rating rated' : 'selected-mode rated';
+        const accuracyText = data.accuracy.count
+            ? `${data.accuracy.average.toFixed(1)}% over ${data.accuracy.count} analysed game${data.accuracy.count === 1 ? '' : 's'}`
+            : 'no public analysed games found';
+        const hotWindowHours = data.accuracy.hotWindowHours || LEGITIMACY_HOT_ACCURACY_WINDOW_HOURS;
+        const hotWindowLabel = `last ${hotWindowHours}h`;
+        const hotWindowAccuracyText = data.accuracy.todayCount
+            ? `${data.accuracy.todayAverage.toFixed(1)}% over ${data.accuracy.todayCount} analysed game${data.accuracy.todayCount === 1 ? '' : 's'} in the ${hotWindowLabel}`
+            : `no analysed games in the ${hotWindowLabel}`;
+        const recentAccuracyText = data.accuracy.recentCount
+            ? `${data.accuracy.recentAverage.toFixed(1)}% over latest ${data.accuracy.recentCount} analysed game${data.accuracy.recentCount === 1 ? '' : 's'}`
+            : 'not enough analysed games';
+        const formText = data.accuracy.playingWellToday
+            ? `Yes: high-accuracy games in the ${hotWindowLabel} (${hotWindowAccuracyText})`
+            : data.accuracy.playingWellRecently
+                ? `Recently hot: ${recentAccuracyText}`
+                : `No clear high-accuracy spike (${hotWindowAccuracyText})`;
+        const trajectoryText = data.trajectory.gain === null
+            ? `${data.trajectory.label} (${data.trajectory.games} games)`
+            : `${data.trajectory.label}: ${data.trajectory.gain >= 0 ? '+' : ''}${data.trajectory.gain} over ${data.trajectory.games} games; ${Math.round(data.trajectory.positiveRate * 100)}% gains; ${Math.round(data.trajectory.flipRate * 100)}% direction flips; ${Math.round(data.trajectory.efficiency * 100)}% climb efficiency`;
+        const performanceText = data.performance.performanceRating === null
+            ? `${data.performance.label} (${data.performance.count} ${data.mode} games in ${LEGITIMACY_PERFORMANCE_WINDOW_DAYS} days)`
+            : `${data.performance.label}: PR ${data.performance.performanceRating}; rated ${data.mode} only; last ${LEGITIMACY_PERFORMANCE_WINDOW_DAYS} days; baseline ${Math.round(data.performance.baselineRating)}; gap ${formatSignedNumber(data.performance.gap)}; actual ${formatPercent(data.performance.actualScoreRate)} vs expected ${formatPercent(data.performance.expectedScoreRate)} over ${data.performance.count} games; sample confidence ${formatPercent(data.performance.confidence)}`;
+        const matchupActivityText = `${data.matchup.activity.label}; ${data.matchup.activity.count} ${data.mode} game${data.matchup.activity.count === 1 ? '' : 's'} in ${MATCHUP_ACTIVITY_WINDOW_DAYS} days, unrated included (${formatSignedNumber(data.matchup.activity.points)})`;
+        const matchupFormText = data.matchup.form.scoreRate === null
+            ? `${data.matchup.form.label}; ${data.matchup.form.count} game${data.matchup.form.count === 1 ? '' : 's'} in ${MATCHUP_FORM_WINDOW_DAYS} days (${formatSignedNumber(data.matchup.form.points)})`
+            : `${data.matchup.form.label}; score ${formatPercent(data.matchup.form.scoreRate)}, win ${formatPercent(data.matchup.form.winRate)}, ${data.matchup.form.wins}-${data.matchup.form.losses}-${data.matchup.form.draws} W-L-D in ${MATCHUP_FORM_WINDOW_DAYS} days (${formatSignedNumber(data.matchup.form.points)})`;
+        const matchupFormCapText = data.matchup.formCap?.maxVerdict
+            ? `${data.matchup.formCap.label}; max recommendation ${data.matchup.formCap.maxVerdict}; score ${formatPercent(data.matchup.formCap.scoreRate)} over ${data.matchup.formCap.count} game${data.matchup.formCap.count === 1 ? '' : 's'}`
+            : `${data.matchup.formCap?.label || 'No recent-form cap'}; recommendation uncapped`;
+        const matchupPerformanceText = data.matchup.performance.gap === null
+            ? `${data.matchup.performance.label} (${formatSignedNumber(data.matchup.performance.points)})`
+            : `${data.matchup.performance.label}; mathematical PR ${data.matchup.performance.performanceRating}; rated ${data.mode} only; last ${data.matchup.performance.windowDays || MATCHUP_FORM_WINDOW_DAYS} days; PR gap ${formatSignedNumber(data.matchup.performance.gap)} over ${data.matchup.performance.count} games (${formatSignedNumber(data.matchup.performance.points)})`;
+        const matchupPeakText = data.matchup.peak.rating === null
+            ? `${data.matchup.peak.label} (${formatSignedNumber(data.matchup.peak.points)})`
+            : `${data.matchup.peak.label}; all-time best ${data.matchup.peak.rating}; peak gap ${formatSignedNumber(data.matchup.peak.gap)}; effective gap ${Math.round(data.matchup.peak.effectiveGap)}; EV edge ${formatSignedPercent(data.matchup.odds.peakEdge)} (${formatSignedNumber(data.matchup.peak.points)})`;
+        const selfFormText = data.matchup.self.form.scoreRate === null
+            ? `${data.matchup.self.form.label}; ${data.matchup.self.form.count} game${data.matchup.self.form.count === 1 ? '' : 's'} in ${MATCHUP_FORM_WINDOW_DAYS} days`
+            : `${data.matchup.self.form.label}; score ${formatPercent(data.matchup.self.form.scoreRate)}, win ${formatPercent(data.matchup.self.form.winRate)}, ${data.matchup.self.form.wins}-${data.matchup.self.form.losses}-${data.matchup.self.form.draws} W-L-D in ${MATCHUP_FORM_WINDOW_DAYS} days`;
+        const selfPerformanceText = data.matchup.self.performance.gap === null
+            ? `${data.matchup.self.performance.label}`
+            : `${data.matchup.self.performance.label}; PR ${data.matchup.self.performance.performanceRating}; last ${data.matchup.self.performance.windowDays || MATCHUP_FORM_WINDOW_DAYS} days; gap ${formatSignedNumber(data.matchup.self.performance.gap)} over ${data.matchup.self.performance.count} games`;
+        const selfSessionText = data.matchup.self.session.scoreRate === null
+            ? `${data.matchup.self.session.label}; ${data.matchup.self.session.count} session game${data.matchup.self.session.count === 1 ? '' : 's'}`
+            : `${data.matchup.self.session.label}; session score ${formatPercent(data.matchup.self.session.scoreRate)} over ${data.matchup.self.session.count} game${data.matchup.self.session.count === 1 ? '' : 's'}`;
+        const selfContextText = `${data.matchup.self.label}; ${selfFormText}; ${selfPerformanceText}; ${selfSessionText}; self EV edge ${formatSignedPercent(data.matchup.odds.selfEdge)} (${formatSignedNumber(data.matchup.self.points)})`;
+        const formDifferentialText = data.matchup.formDifferential.differential === null
+            ? `${data.matchup.formDifferential.label} (${formatSignedNumber(data.matchup.formDifferential.points)})`
+            : `${data.matchup.formDifferential.label}; differential ${formatSignedPercent(data.matchup.formDifferential.differential)}; EV edge ${formatSignedPercent(data.matchup.odds.formDifferentialEdge)} (${formatSignedNumber(data.matchup.formDifferential.points)})`;
+        const ratingDelta = data.matchup.odds.ratingDelta || {};
+        const ratingDeltaText = Number.isFinite(ratingDelta.expected)
+            ? `rating EV ${formatSignedDecimal(ratingDelta.expected)}; W/D/L rating ${formatSignedDecimal(ratingDelta.win)}/${formatSignedDecimal(ratingDelta.draw)}/${formatSignedDecimal(ratingDelta.loss)}`
+            : 'rating EV unknown';
+        const poolTrapText = `${data.matchup.poolTrap.label} (${formatSignedNumber(data.matchup.poolTrap.points)})`;
+        const reasonsText = data.matchup.reasons?.length
+            ? data.matchup.reasons.map(reason => `${reason.label}: ${reason.text}`).join('; ')
+            : 'No dominant factors';
+        const matchupOddsText = data.matchup.odds.baseExpectedScore === null
+            ? data.matchup.odds.label
+            : `${data.matchup.odds.label}; your rating ${Math.round(data.matchup.odds.selfRating)}, opponent ${Math.round(data.matchup.odds.opponentRating)}; base expected ${formatPercent(data.matchup.odds.baseExpectedScore)}, adjusted ${formatPercent(data.matchup.odds.adjustedExpectedScore)}; rating EV edge ${formatSignedPercent(data.matchup.odds.edge)}; ${ratingDeltaText}; W/D/L ${formatPercent(data.matchup.odds.winProbability)}/${formatPercent(data.matchup.odds.drawProbability)}/${formatPercent(data.matchup.odds.lossProbability)} (${formatSignedNumber(data.matchup.odds.points)})`;
+        const surgeText = data.surge.gain === null ? 'not enough games' : `${data.surge.gain >= 0 ? '+' : ''}${data.surge.gain} over ${data.surge.games} games`;
+        const totalGamesText = Number.isFinite(data.totalGames) ? data.totalGames : 'unknown';
+        const ratingText = Number.isFinite(data.currentRating) ? data.currentRating : 'unknown';
+        const volumeImpactText = formatRiskImpact(data.volume.risk);
+        const peakAgeText = data.peak.daysSince === null ? 'unknown age' : `${formatAgeDays(data.peak.daysSince)} ago`;
+        const peakText = data.peak.rating === null
+            ? `not available for ${data.mode}`
+            : `best ${data.peak.rating}; peak gap ${formatSignedNumber(data.peak.gap)} vs current; reached ${peakAgeText}; legitimacy impact ${formatRiskImpact(data.peak.risk)}`;
+
+        return [
+            `EloGuard cheat-risk estimate for ${data.username}: ${data.score}/100`,
+            `Matchup recommendation: ${data.matchup.verdict} (${data.matchup.score}/100)`,
+            `Matchup activity: ${matchupActivityText}`,
+            `Matchup form: ${matchupFormText}`,
+            `Recent-form recommendation cap: ${matchupFormCapText}`,
+            `Matchup performance: ${matchupPerformanceText}`,
+            `Peak rating matchup: ${matchupPeakText}`,
+            `Your form context: ${selfContextText}`,
+            `Form differential: ${formDifferentialText}`,
+            `Matchup odds desk: ${matchupOddsText}`,
+            `Rating-value trap: ${poolTrapText}`,
+            `Top matchup reasons: ${reasonsText}`,
+            `Matchup safety: ${data.matchup.riskPenalty.label} (${formatSignedNumber(data.matchup.riskPenalty.points)})`,
+            `Primary concern: ${data.primaryConcern}`,
+            `Confidence: ${data.confidence}`,
+            `Accuracy hot window: ${formText}`,
+            `Account age: ${ageText} (+${Math.round(data.accountAge.risk)})`,
+            `Smurf signal: ${data.smurf.label} (+${Math.round(data.smurf.risk)})`,
+            `Visible score calibration: mild standalone risk is compressed; strong smurf/performance/accuracy combinations can set minimum score floors`,
+            `Recent win rate: ${winRateText} in ${data.winRate.games} ${sampleType} ${data.mode} game${data.winRate.games === 1 ? '' : 's'} (+${Math.round(data.winRate.risk)})`,
+            `Current streak: ${data.winRate.streak} win${data.winRate.streak === 1 ? '' : 's'}`,
+            `Engine accuracy: ${accuracyText} (+${Math.round(data.accuracy.risk)})`,
+            `Recent accuracy: ${recentAccuracyText}`,
+            `30-day performance rating: ${performanceText} (+${Math.round(data.performance.risk)})`,
+            `All-time best ${data.mode} rating: ${peakText}`,
+            `Rating trajectory: ${trajectoryText} (+${Math.round(data.trajectory.risk)})`,
+            `Rating surge: ${surgeText} (+${Math.round(data.surge.risk)})`,
+            `Rated ${data.mode} history: ${data.volume.label}; ${totalGamesText} rated games; current rating: ${ratingText} (${volumeImpactText})`,
+            'Heuristic only; report through Chess.com if you have serious concerns.'
+        ].join('\n');
+    }
+
+    function formatRiskImpact(value) {
+        const rounded = Math.round(value || 0);
+        if (rounded > 0) return `+${rounded}`;
+        return String(rounded);
+    }
+
+    function formatSignedNumber(value) {
+        const rounded = Math.round(value || 0);
+        return rounded >= 0 ? `+${rounded}` : String(rounded);
+    }
+
+    function formatPercent(value) {
+        if (!Number.isFinite(value)) return 'unknown';
+        return `${Math.round(value * 100)}%`;
+    }
+
+    function formatSignedPercent(value) {
+        if (!Number.isFinite(value)) return 'unknown';
+        const percentage = value * 100;
+        const rounded = Math.round(percentage * 10) / 10;
+        return `${rounded >= 0 ? '+' : ''}${rounded}pp`;
+    }
+
+    function formatSignedDecimal(value) {
+        if (!Number.isFinite(value)) return 'unknown';
+        const rounded = Math.round(value * 10) / 10;
+        return `${rounded >= 0 ? '+' : ''}${rounded}`;
+    }
+
+    function formatAgeDays(days) {
+        if (days < 31) return `${days} day${days === 1 ? '' : 's'}`;
+        if (days < 365) {
+            const months = Math.floor(days / 30);
+            return `${months} month${months === 1 ? '' : 's'}`;
+        }
+        const years = days / 365;
+        return `${years.toFixed(years < 10 ? 1 : 0)} years`;
+    }
+
+    function getLegitimacyColor(score) {
+        const hue = 120 - (clamp(score, 0, 100) * 1.2);
+        return `hsl(${hue}, 72%, 46%)`;
+    }
+
+    function clamp(value, min, max) {
+        return Math.min(max, Math.max(min, value));
     }
 
     function elementIsCurrentUser(el) {
@@ -2323,18 +5134,29 @@
             moveEnhancedFocusElement(stage.boardSlot, boardEl, ENHANCED_FOCUS_BOARD_CLASS);
         }
 
+        refreshEnhancedFocusBoardSignature();
+        startEnhancedFocusObserver();
         restoreLegacyEnhancedFocusStageClocks();
-        markEnhancedFocusClocks();
+        clearEnhancedFocusClockMarks();
+        syncEnhancedFocusCustomClocks(stage);
+        moveEnhancedFocusMaterial(stage.topMaterialSlot, stage.bottomMaterialSlot);
+        ensureEnhancedFocusFlipButton(stage.stage);
+        syncEnhancedFocusVisualFlip();
         document.body.classList.add(ENHANCED_FOCUS_READY_CLASS);
     }
 
     function clearEnhancedFocusLayout() {
         document.body?.classList.remove(ENHANCED_FOCUS_READY_CLASS);
+        document.body?.classList.remove(ENHANCED_FOCUS_VISUAL_FLIPPED_CLASS);
+        stopEnhancedFocusObserver();
         clearEnhancedFocusClockMarks();
+        resetEnhancedFocusClockState();
 
         const toggle = document.getElementById(ENHANCED_FOCUS_TOGGLE_ID);
         if (toggle && toggle.parentNode !== document.body) document.body.appendChild(toggle);
 
+        document.getElementById(ENHANCED_FOCUS_FLIP_BUTTON_ID)?.remove();
+        ENHANCED_FOCUS_VISUAL_FLIPPED = false;
         ENHANCED_FOCUS_MOVED_ELEMENTS.forEach(restoreEnhancedFocusElement);
         ENHANCED_FOCUS_MOVED_ELEMENTS = [];
 
@@ -2357,15 +5179,34 @@
             const bottomSlot = document.createElement('div');
             bottomSlot.className = ENHANCED_FOCUS_BOTTOM_SLOT_CLASS;
 
-            stage.append(topSlot, boardSlot, bottomSlot);
+            const topMaterialSlot = document.createElement('div');
+            topMaterialSlot.className = `${ENHANCED_FOCUS_MATERIAL_SLOT_CLASS} ${ENHANCED_FOCUS_TOP_MATERIAL_SLOT_CLASS}`;
+
+            const bottomMaterialSlot = document.createElement('div');
+            bottomMaterialSlot.className = `${ENHANCED_FOCUS_MATERIAL_SLOT_CLASS} ${ENHANCED_FOCUS_BOTTOM_MATERIAL_SLOT_CLASS}`;
+
+            stage.append(topSlot, topMaterialSlot, boardSlot, bottomSlot, bottomMaterialSlot);
             document.body.appendChild(stage);
+        } else {
+            if (!stage.querySelector(`.${ENHANCED_FOCUS_TOP_MATERIAL_SLOT_CLASS}`)) {
+                const topMaterialSlot = document.createElement('div');
+                topMaterialSlot.className = `${ENHANCED_FOCUS_MATERIAL_SLOT_CLASS} ${ENHANCED_FOCUS_TOP_MATERIAL_SLOT_CLASS}`;
+                stage.appendChild(topMaterialSlot);
+            }
+            if (!stage.querySelector(`.${ENHANCED_FOCUS_BOTTOM_MATERIAL_SLOT_CLASS}`)) {
+                const bottomMaterialSlot = document.createElement('div');
+                bottomMaterialSlot.className = `${ENHANCED_FOCUS_MATERIAL_SLOT_CLASS} ${ENHANCED_FOCUS_BOTTOM_MATERIAL_SLOT_CLASS}`;
+                stage.appendChild(bottomMaterialSlot);
+            }
         }
 
         return {
             stage,
             topSlot: stage.querySelector(`.${ENHANCED_FOCUS_TOP_SLOT_CLASS}`),
             boardSlot: stage.querySelector(`.${ENHANCED_FOCUS_BOARD_SLOT_CLASS}`),
-            bottomSlot: stage.querySelector(`.${ENHANCED_FOCUS_BOTTOM_SLOT_CLASS}`)
+            bottomSlot: stage.querySelector(`.${ENHANCED_FOCUS_BOTTOM_SLOT_CLASS}`),
+            topMaterialSlot: stage.querySelector(`.${ENHANCED_FOCUS_TOP_MATERIAL_SLOT_CLASS}`),
+            bottomMaterialSlot: stage.querySelector(`.${ENHANCED_FOCUS_BOTTOM_MATERIAL_SLOT_CLASS}`)
         };
     }
 
@@ -2395,6 +5236,225 @@
         return toggle;
     }
 
+    function ensureEnhancedFocusFlipButton(parent = document.getElementById(ENHANCED_FOCUS_STAGE_ID)) {
+        if (!document.body || !parent) return null;
+
+        let button = document.getElementById(ENHANCED_FOCUS_FLIP_BUTTON_ID);
+        if (!button) {
+            button = document.createElement('button');
+            button.id = ENHANCED_FOCUS_FLIP_BUTTON_ID;
+            button.type = 'button';
+            button.addEventListener('click', (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                flipEnhancedFocusBoard();
+            });
+        }
+
+        button.textContent = 'Flip';
+        button.title = 'Flip chessboard orientation';
+        button.setAttribute('aria-label', 'Flip chessboard orientation');
+        button.hidden = !ENHANCED_FOCUS_MODE;
+
+        if (button.parentNode !== parent) parent.appendChild(button);
+        return button;
+    }
+
+    function flipEnhancedFocusBoard() {
+        const flippedNatively = clickNativeBoardFlipControl() || flipBoardWithKnownApi(findEnhancedFocusBoardElement());
+
+        if (flippedNatively) {
+            ENHANCED_FOCUS_VISUAL_FLIPPED = false;
+        } else {
+            ENHANCED_FOCUS_VISUAL_FLIPPED = !ENHANCED_FOCUS_VISUAL_FLIPPED;
+        }
+
+        syncEnhancedFocusVisualFlip();
+        requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
+    }
+
+    function syncEnhancedFocusVisualFlip() {
+        if (!document.body) return;
+        document.body.classList.toggle(
+            ENHANCED_FOCUS_VISUAL_FLIPPED_CLASS,
+            Boolean(ENHANCED_FOCUS_MODE && ENHANCED_FOCUS_VISUAL_FLIPPED)
+        );
+    }
+
+    function clickNativeBoardFlipControl() {
+        const stage = document.getElementById(ENHANCED_FOCUS_STAGE_ID);
+        const candidates = Array.from(document.querySelectorAll([
+            'button',
+            '[role="button"]',
+            '[aria-label]',
+            '[title]',
+            '[data-cy]',
+            '[data-test-element]',
+            '[class*="flip"]',
+            '[class*="rotate"]'
+        ].join(',')));
+
+        for (const candidate of candidates) {
+            if (!(candidate instanceof HTMLElement)) continue;
+            if (candidate.id === ENHANCED_FOCUS_FLIP_BUTTON_ID || candidate.id === ENHANCED_FOCUS_TOGGLE_ID) continue;
+            if (stage?.contains(candidate)) continue;
+            if (candidate.disabled || candidate.getAttribute('aria-disabled') === 'true') continue;
+
+            const descriptor = getBoardFlipDescriptor(candidate);
+            if (!/\b(flip|rotate)\b/i.test(descriptor)) continue;
+
+            const hasBoardContext = /\b(board|orientation)\b/i.test(descriptor)
+                || Boolean(candidate.closest('[class*="board"], [id*="board"], [data-cy*="board"], [class*="game-controls"], [class*="game-buttons"]'));
+            if (!hasBoardContext) continue;
+
+            try {
+                candidate.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, view: window }));
+                candidate.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, view: window }));
+                candidate.click();
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        return false;
+    }
+
+    function getBoardFlipDescriptor(el) {
+        return [
+            el.textContent,
+            el.getAttribute('aria-label'),
+            el.getAttribute('title'),
+            el.getAttribute('data-cy'),
+            el.getAttribute('data-test-element'),
+            el.getAttribute('data-tooltip'),
+            el.getAttribute('class')
+        ]
+            .filter(Boolean)
+            .join(' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
+    function flipBoardWithKnownApi(boardEl) {
+        const targets = [
+            boardEl,
+            boardEl?.parentElement,
+            boardEl?.closest?.('wc-chess-board, chess-board, cg-board, [class*="chess-board"], [class*="board-layout-chessboard"], [class*="board-layout-board"]')
+        ].filter((target, index, all) => target && all.indexOf(target) === index);
+
+        for (const target of targets) {
+            for (const method of ['flip', 'flipBoard', 'toggleOrientation', 'toggleBoardOrientation', 'togglePerspective']) {
+                if (typeof target[method] !== 'function') continue;
+                try {
+                    target[method]();
+                    return true;
+                } catch (e) {
+                    // Try the next known board hook.
+                }
+            }
+        }
+
+        for (const target of targets) {
+            const currentOrientation = getBoardOrientationState(target);
+            if (!currentOrientation) continue;
+            if (setBoardOrientationState(target, currentOrientation === 'black' ? 'white' : 'black')) return true;
+        }
+
+        return false;
+    }
+
+    function getBoardOrientationState(el) {
+        if (!el) return '';
+
+        for (const prop of ['orientation', 'boardOrientation', 'perspective']) {
+            const value = normalizeBoardOrientationValue(el[prop]);
+            if (value) return value;
+        }
+
+        for (const attr of ['orientation', 'data-orientation', 'data-board-orientation', 'perspective']) {
+            const value = normalizeBoardOrientationValue(el.getAttribute?.(attr));
+            if (value) return value;
+        }
+
+        for (const prop of ['flipped', 'isFlipped']) {
+            if (typeof el[prop] === 'boolean') return el[prop] ? 'black' : 'white';
+        }
+
+        const classText = el.getAttribute?.('class') || '';
+        if (/\borientation-black\b|\bblack-bottom\b|\bflipped\b/i.test(classText)) return 'black';
+        if (/\borientation-white\b|\bwhite-bottom\b/i.test(classText)) return 'white';
+        return '';
+    }
+
+    function normalizeBoardOrientationValue(value) {
+        const normalized = String(value || '').toLowerCase();
+        if (/\bblack\b|flipped/.test(normalized)) return 'black';
+        if (/\bwhite\b|normal/.test(normalized)) return 'white';
+        return '';
+    }
+
+    function setBoardOrientationState(el, orientation) {
+        if (!el) return false;
+        const flipped = orientation === 'black';
+        let changed = false;
+
+        for (const prop of ['orientation', 'boardOrientation', 'perspective']) {
+            if (!(prop in el)) continue;
+            try {
+                el[prop] = orientation;
+                changed = true;
+            } catch (e) {
+                // Some custom element properties are read-only.
+            }
+        }
+
+        for (const prop of ['flipped', 'isFlipped']) {
+            if (!(prop in el)) continue;
+            try {
+                el[prop] = flipped;
+                changed = true;
+            } catch (e) {
+                // Some custom element properties are read-only.
+            }
+        }
+
+        for (const attr of ['orientation', 'data-orientation', 'data-board-orientation', 'perspective']) {
+            if (!el.hasAttribute?.(attr)) continue;
+            el.setAttribute(attr, orientation);
+            changed = true;
+        }
+
+        if (el.hasAttribute?.('flipped')) {
+            if (flipped) el.setAttribute('flipped', '');
+            else el.removeAttribute('flipped');
+            changed = true;
+        }
+
+        if (el.classList?.contains('orientation-white') || el.classList?.contains('orientation-black')) {
+            el.classList.toggle('orientation-white', !flipped);
+            el.classList.toggle('orientation-black', flipped);
+            changed = true;
+        }
+
+        if (el.classList?.contains('white-bottom') || el.classList?.contains('black-bottom')) {
+            el.classList.toggle('white-bottom', !flipped);
+            el.classList.toggle('black-bottom', flipped);
+            changed = true;
+        }
+
+        if (el.classList?.contains('flipped')) {
+            el.classList.toggle('flipped', flipped);
+            changed = true;
+        }
+
+        if (!changed) return false;
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+        el.dispatchEvent(new CustomEvent('orientationchange', { bubbles: true, detail: { orientation } }));
+        el.dispatchEvent(new CustomEvent('boardorientationchange', { bubbles: true, detail: { orientation } }));
+        return true;
+    }
+
     function moveEnhancedFocusElement(slot, el, className) {
         if (!slot || !el) return;
 
@@ -2410,7 +5470,9 @@
         el.classList.remove(
             ENHANCED_FOCUS_BOARD_CLASS,
             ENHANCED_FOCUS_TOP_CLOCK_CLASS,
-            ENHANCED_FOCUS_BOTTOM_CLOCK_CLASS
+            ENHANCED_FOCUS_BOTTOM_CLOCK_CLASS,
+            ENHANCED_FOCUS_NATIVE_CLOCK_CLASS,
+            ENHANCED_FOCUS_MATERIAL_CLASS
         );
         el.classList.add(className);
         const moved = el.parentNode !== slot;
@@ -2426,7 +5488,9 @@
         el.classList.remove(
             ENHANCED_FOCUS_BOARD_CLASS,
             ENHANCED_FOCUS_TOP_CLOCK_CLASS,
-            ENHANCED_FOCUS_BOTTOM_CLOCK_CLASS
+            ENHANCED_FOCUS_BOTTOM_CLOCK_CLASS,
+            ENHANCED_FOCUS_NATIVE_CLOCK_CLASS,
+            ENHANCED_FOCUS_MATERIAL_CLASS
         );
 
         const original = ENHANCED_FOCUS_ORIGINAL_PLACEMENTS.get(el);
@@ -2448,7 +5512,10 @@
         return el?.id === ENHANCED_FOCUS_STAGE_ID
             || el?.classList?.contains(ENHANCED_FOCUS_TOP_SLOT_CLASS)
             || el?.classList?.contains(ENHANCED_FOCUS_BOARD_SLOT_CLASS)
-            || el?.classList?.contains(ENHANCED_FOCUS_BOTTOM_SLOT_CLASS);
+            || el?.classList?.contains(ENHANCED_FOCUS_BOTTOM_SLOT_CLASS)
+            || el?.classList?.contains(ENHANCED_FOCUS_MATERIAL_SLOT_CLASS)
+            || el?.classList?.contains(ENHANCED_FOCUS_TOP_MATERIAL_SLOT_CLASS)
+            || el?.classList?.contains(ENHANCED_FOCUS_BOTTOM_MATERIAL_SLOT_CLASS);
     }
 
     function getEnhancedFocusSortRect(el) {
@@ -2526,6 +5593,434 @@
         }
     }
 
+    function startEnhancedFocusObserver() {
+        if (ENHANCED_FOCUS_OBSERVER || !document.body) return;
+
+        ENHANCED_FOCUS_OBSERVER = new MutationObserver((mutations) => {
+            if (!ENHANCED_FOCUS_MODE) return;
+            if (!mutations.some(isEnhancedFocusRealtimeMutation)) return;
+            syncEnhancedFocusRealtime();
+        });
+
+        ENHANCED_FOCUS_OBSERVER.observe(document.body, {
+            subtree: true,
+            childList: true,
+            characterData: true,
+            attributes: true,
+            attributeFilter: ['class', 'style', 'aria-label', 'title', 'data-cy', 'data-test-element']
+        });
+    }
+
+    function stopEnhancedFocusObserver() {
+        if (!ENHANCED_FOCUS_OBSERVER) return;
+        ENHANCED_FOCUS_OBSERVER.disconnect();
+        ENHANCED_FOCUS_OBSERVER = null;
+    }
+
+    function isEnhancedFocusRealtimeMutation(mutation) {
+        const target = mutation.target?.nodeType === Node.ELEMENT_NODE
+            ? mutation.target
+            : mutation.target?.parentElement;
+        if (!target || elementIsInsideEnhancedFocusStage(target)) return false;
+
+        const targetText = [
+            target.id,
+            target.getAttribute?.('class'),
+            target.getAttribute?.('data-cy'),
+            target.getAttribute?.('data-test-element'),
+            target.tagName
+        ].filter(Boolean).join(' ');
+
+        if (/\b(clock|player|captured|piece|board|move|time)\b/i.test(targetText)) return true;
+        if (target.closest?.('.clock-component, [class*="clock-component"], [data-cy*="clock"], wc-captured-pieces, .player-pieces, [class*="captured-pieces"], #board-layout-player-top, #board-layout-player-bottom, .board-layout-player-top, .board-layout-player-bottom, [class*="player-top"], [class*="player-bottom"], [class*="move-list"], [class*="board"]')) return true;
+
+        return Array.from(mutation.addedNodes || []).some(node => {
+            if (node.nodeType !== Node.ELEMENT_NODE) return false;
+            const text = `${node.id || ''} ${node.getAttribute?.('class') || ''} ${node.tagName || ''}`;
+            return /\b(clock|player|captured|piece|board|move|time)\b/i.test(text);
+        });
+    }
+
+    function syncEnhancedFocusRealtime() {
+        const parts = getEnhancedFocusStageParts();
+        if (!parts) return;
+        const boardChanged = refreshEnhancedFocusBoardSignature();
+        syncEnhancedFocusCustomClocks(parts, { boardChanged });
+        moveEnhancedFocusMaterial(parts.topMaterialSlot, parts.bottomMaterialSlot);
+    }
+
+    function syncEnhancedFocusCustomClocks(stageParts = null, options = {}) {
+        if (!ENHANCED_FOCUS_MODE) return;
+
+        const parts = stageParts || getEnhancedFocusStageParts();
+        if (!parts?.topSlot || !parts?.bottomSlot) return;
+
+        const topBox = ensureEnhancedFocusClockMirror(parts.topSlot, 'top');
+        const bottomBox = ensureEnhancedFocusClockMirror(parts.bottomSlot, 'bottom');
+        const stagedTopClock = getEnhancedFocusClockFromMirror(topBox);
+        const stagedBottomClock = getEnhancedFocusClockFromMirror(bottomBox);
+        const clocks = getEnhancedFocusClockElements();
+        const topNativeClock = clocks[0] || stagedTopClock || null;
+        const bottomNativeClock = clocks.length > 1 ? clocks[clocks.length - 1] : stagedBottomClock || null;
+
+        const previousTopText = ENHANCED_FOCUS_CLOCK_STATE.topText;
+        const previousBottomText = ENHANCED_FOCUS_CLOCK_STATE.bottomText;
+        const topText = getEnhancedFocusClockText(topNativeClock) || previousTopText || '--:--';
+        const bottomText = getEnhancedFocusClockText(bottomNativeClock) || previousBottomText || '--:--';
+        updateEnhancedFocusClockMirror(topBox, topNativeClock, topText);
+        updateEnhancedFocusClockMirror(bottomBox, bottomNativeClock, bottomText);
+
+        ENHANCED_FOCUS_CLOCK_STATE.topText = topText;
+        ENHANCED_FOCUS_CLOCK_STATE.bottomText = bottomText;
+
+        const previousActivePosition = ENHANCED_FOCUS_CLOCK_STATE.activePosition;
+        const directActivePosition = getEnhancedFocusActiveClockPosition(topNativeClock, bottomNativeClock);
+        const tickActivePosition = inferEnhancedFocusActiveClockFromTick(previousTopText, topText, previousBottomText, bottomText);
+        let activePosition = directActivePosition || tickActivePosition || previousActivePosition;
+
+        if (options.boardChanged && previousActivePosition && !tickActivePosition) {
+            activePosition = directActivePosition && directActivePosition !== previousActivePosition
+                ? directActivePosition
+                : getOppositeEnhancedFocusClockPosition(previousActivePosition);
+        }
+
+        if (activePosition) {
+            ENHANCED_FOCUS_CLOCK_STATE.activePosition = activePosition;
+        }
+
+        topBox.dataset.active = activePosition === 'top' ? 'true' : 'false';
+        bottomBox.dataset.active = activePosition === 'bottom' ? 'true' : 'false';
+        topBox.querySelector(`.${ENHANCED_FOCUS_TIMEBOX_CLASS}`)?.setAttribute('data-active', topBox.dataset.active);
+        bottomBox.querySelector(`.${ENHANCED_FOCUS_TIMEBOX_CLASS}`)?.setAttribute('data-active', bottomBox.dataset.active);
+    }
+
+    function getEnhancedFocusStageParts() {
+        const stage = document.getElementById(ENHANCED_FOCUS_STAGE_ID);
+        if (!stage) return null;
+        return {
+            stage,
+            topSlot: stage.querySelector(`.${ENHANCED_FOCUS_TOP_SLOT_CLASS}`),
+            bottomSlot: stage.querySelector(`.${ENHANCED_FOCUS_BOTTOM_SLOT_CLASS}`),
+            topMaterialSlot: stage.querySelector(`.${ENHANCED_FOCUS_TOP_MATERIAL_SLOT_CLASS}`),
+            bottomMaterialSlot: stage.querySelector(`.${ENHANCED_FOCUS_BOTTOM_MATERIAL_SLOT_CLASS}`)
+        };
+    }
+
+    function ensureEnhancedFocusClockMirror(slot, position) {
+        let box = slot.querySelector(`.${ENHANCED_FOCUS_CLOCK_MIRROR_CLASS}[data-position="${position}"]`);
+        if (!box) {
+            box = document.createElement('div');
+            box.className = ENHANCED_FOCUS_CLOCK_MIRROR_CLASS;
+            box.dataset.position = position;
+            box.dataset.active = 'false';
+            slot.appendChild(box);
+        }
+        return box;
+    }
+
+    function updateEnhancedFocusClockMirror(box, nativeClock, fallbackText) {
+        if (!box) return;
+
+        if (nativeClock) {
+            removeEnhancedFocusClockMirrorChildren(box, nativeClock);
+            moveEnhancedFocusElement(box, nativeClock, ENHANCED_FOCUS_NATIVE_CLOCK_CLASS);
+            box.dataset.clockSignature = 'native';
+            return;
+        }
+
+        if (getEnhancedFocusClockFromMirror(box)) return;
+
+        const fallback = box.querySelector(`.${ENHANCED_FOCUS_TIMEBOX_CLASS}`) || createEnhancedFocusFallbackClock(fallbackText);
+        fallback.querySelector(`.${ENHANCED_FOCUS_TIMEBOX_TEXT_CLASS}`).textContent = fallbackText || '--:--';
+        if (fallback.parentNode !== box) {
+            removeEnhancedFocusClockMirrorChildren(box, fallback);
+            box.appendChild(fallback);
+        }
+        box.dataset.clockSignature = `fallback:${fallbackText}`;
+    }
+
+    function getEnhancedFocusClockFromMirror(box) {
+        if (!box) return null;
+        return Array.from(box.children)
+            .map(child => child.matches?.(`.${ENHANCED_FOCUS_NATIVE_CLOCK_CLASS}, .clock-component, [class*="clock-component"], [data-cy*="clock"]`)
+                ? child
+                : child.querySelector?.(`.${ENHANCED_FOCUS_NATIVE_CLOCK_CLASS}, .clock-component, [class*="clock-component"], [data-cy*="clock"]`))
+            .find(clock => clock && !clock.classList?.contains(ENHANCED_FOCUS_TIMEBOX_CLASS)) || null;
+    }
+
+    function removeEnhancedFocusClockMirrorChildren(box, keep) {
+        Array.from(box.children).forEach(child => {
+            if (child === keep || child.contains?.(keep)) return;
+            if (ENHANCED_FOCUS_ORIGINAL_PLACEMENTS.has(child)) {
+                restoreEnhancedFocusElement(child);
+            } else {
+                child.remove();
+            }
+        });
+    }
+
+    function sanitizeEnhancedFocusClockClone(clone) {
+        clone.removeAttribute?.('id');
+        clone.setAttribute?.('aria-hidden', 'true');
+        clone.querySelectorAll?.('[id]').forEach(el => el.removeAttribute('id'));
+        clone.querySelectorAll?.('button, a, [role="button"], input, select, textarea').forEach(el => {
+            el.setAttribute('tabindex', '-1');
+            el.setAttribute('aria-hidden', 'true');
+        });
+    }
+
+    function createEnhancedFocusFallbackClock(text) {
+        const clock = document.createElement('div');
+        clock.className = ENHANCED_FOCUS_TIMEBOX_CLASS;
+
+        const icon = document.createElement('span');
+        icon.className = ENHANCED_FOCUS_TIMEBOX_ICON_CLASS;
+        icon.setAttribute('aria-hidden', 'true');
+
+        const time = document.createElement('span');
+        time.className = ENHANCED_FOCUS_TIMEBOX_TEXT_CLASS;
+        time.textContent = text || '--:--';
+
+        clock.append(icon, time);
+        return clock;
+    }
+
+    function resetEnhancedFocusClockState() {
+        ENHANCED_FOCUS_CLOCK_STATE.topText = '';
+        ENHANCED_FOCUS_CLOCK_STATE.bottomText = '';
+        ENHANCED_FOCUS_CLOCK_STATE.activePosition = '';
+        ENHANCED_FOCUS_CLOCK_STATE.boardSignature = '';
+        ENHANCED_FOCUS_CLOCK_STATE.lastBoardFlipAt = 0;
+    }
+
+    function getEnhancedFocusClockText(clockEl) {
+        if (!clockEl) return '';
+        const source = [
+            clockEl.getAttribute?.('aria-label'),
+            clockEl.getAttribute?.('title'),
+            clockEl.textContent
+        ].filter(Boolean).join(' ');
+        const match = source.match(/\b\d{1,2}\s*:\s*\d{2}(?:\.\d)?\b/);
+        return match ? match[0].replace(/\s+/g, '') : '';
+    }
+
+    function getEnhancedFocusActiveClockPosition(topClock, bottomClock) {
+        const topActive = isEnhancedFocusNativeClockActive(topClock);
+        const bottomActive = isEnhancedFocusNativeClockActive(bottomClock);
+
+        if (topActive && !bottomActive) return 'top';
+        if (bottomActive && !topActive) return 'bottom';
+        return '';
+    }
+
+    function inferEnhancedFocusActiveClockFromTick(previousTopText, topText, previousBottomText, bottomText) {
+        const previousTop = parseEnhancedFocusClockSeconds(previousTopText);
+        const top = parseEnhancedFocusClockSeconds(topText);
+        const previousBottom = parseEnhancedFocusClockSeconds(previousBottomText);
+        const bottom = parseEnhancedFocusClockSeconds(bottomText);
+
+        const topTicked = Number.isFinite(previousTop) && Number.isFinite(top) && top < previousTop;
+        const bottomTicked = Number.isFinite(previousBottom) && Number.isFinite(bottom) && bottom < previousBottom;
+
+        if (topTicked && !bottomTicked) return 'top';
+        if (bottomTicked && !topTicked) return 'bottom';
+        return '';
+    }
+
+    function getOppositeEnhancedFocusClockPosition(position) {
+        if (position === 'top') return 'bottom';
+        if (position === 'bottom') return 'top';
+        return '';
+    }
+
+    function refreshEnhancedFocusBoardSignature() {
+        const signature = getEnhancedFocusBoardSignature();
+        if (!signature) return false;
+
+        const previousSignature = ENHANCED_FOCUS_CLOCK_STATE.boardSignature;
+        ENHANCED_FOCUS_CLOCK_STATE.boardSignature = signature;
+        if (!previousSignature || previousSignature === signature) return false;
+
+        const now = performance.now();
+        if (now - ENHANCED_FOCUS_CLOCK_STATE.lastBoardFlipAt < 300) return false;
+        ENHANCED_FOCUS_CLOCK_STATE.lastBoardFlipAt = now;
+        return true;
+    }
+
+    function getEnhancedFocusBoardSignature() {
+        const board = findEnhancedFocusBoardElement();
+        if (!board) return '';
+
+        const pieces = Array.from(board.querySelectorAll('piece, .piece'))
+            .map(piece => [
+                piece.getAttribute?.('class') || '',
+                piece.getAttribute?.('style') || '',
+                piece.getAttribute?.('data-square') || '',
+                piece.getAttribute?.('square') || ''
+            ].join('|'))
+            .filter(Boolean)
+            .sort();
+
+        if (pieces.length) return pieces.join(';');
+
+        return [
+            board.getAttribute?.('fen') || '',
+            board.getAttribute?.('position') || '',
+            board.getAttribute?.('style') || '',
+            board.textContent || ''
+        ].join('|').trim();
+    }
+
+    function parseEnhancedFocusClockSeconds(text) {
+        const match = String(text || '').match(/^(\d{1,2}):(\d{2})(?:\.(\d))?$/);
+        if (!match) return NaN;
+        return (Number(match[1]) * 60) + Number(match[2]) + (match[3] ? Number(`0.${match[3]}`) : 0);
+    }
+
+    function isEnhancedFocusNativeClockActive(clockEl) {
+        if (!clockEl) return false;
+
+        const descriptor = [
+            getEnhancedFocusAncestorClassText(clockEl, 6),
+            clockEl.getAttribute?.('aria-label'),
+            clockEl.getAttribute?.('title'),
+            clockEl.getAttribute?.('data-cy'),
+            clockEl.getAttribute?.('data-test-element')
+        ].filter(Boolean).join(' ');
+
+        if (/\b(active|current|running|turn|player-turn|clock-player-turn|highlight)\b/i.test(descriptor)
+            && !/\b(inactive|paused|disabled)\b/i.test(descriptor)) {
+            return true;
+        }
+
+        return getEnhancedFocusClockVisualBrightness(clockEl) >= 205;
+    }
+
+    function getEnhancedFocusAncestorClassText(el, limit = 6) {
+        const classes = [];
+        let current = el;
+        while (current && classes.length < limit && !elementIsInsideEnhancedFocusStage(current)) {
+            classes.push(current.className, current.getAttribute?.('class'));
+            current = current.parentElement;
+        }
+        return classes.filter(Boolean).join(' ');
+    }
+
+    function getEnhancedFocusClockVisualBrightness(clockEl) {
+        const parents = [];
+        let parent = clockEl.parentElement;
+        while (parent && parents.length < 3 && !elementIsInsideEnhancedFocusStage(parent)) {
+            parents.push(parent);
+            parent = parent.parentElement;
+        }
+
+        const targets = [clockEl, ...parents, ...Array.from(clockEl.querySelectorAll?.('*') || []).slice(0, 12)];
+        let brightest = 0;
+
+        for (const target of targets) {
+            const style = window.getComputedStyle(target);
+            const bg = parseEnhancedFocusRgb(style.backgroundColor);
+            if (!bg || bg.alpha < 0.5) continue;
+            const brightness = ((bg.red * 299) + (bg.green * 587) + (bg.blue * 114)) / 1000;
+            brightest = Math.max(brightest, brightness);
+        }
+
+        return brightest;
+    }
+
+    function parseEnhancedFocusRgb(color) {
+        const match = String(color || '').match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/i);
+        if (!match) return null;
+        return {
+            red: Number(match[1]),
+            green: Number(match[2]),
+            blue: Number(match[3]),
+            alpha: match[4] === undefined ? 1 : Number(match[4])
+        };
+    }
+
+    function moveEnhancedFocusMaterial(topSlot, bottomSlot) {
+        if (!topSlot && !bottomSlot) return;
+
+        const materialRows = getEnhancedFocusMaterialElementsWithPosition();
+        moveEnhancedFocusMaterialRowForPosition(topSlot, materialRows, 'top');
+        moveEnhancedFocusMaterialRowForPosition(bottomSlot, materialRows, 'bottom');
+        if (topSlot) topSlot.hidden = !topSlot.querySelector(`.${ENHANCED_FOCUS_MATERIAL_CLASS}`);
+        if (bottomSlot) bottomSlot.hidden = !bottomSlot.querySelector(`.${ENHANCED_FOCUS_MATERIAL_CLASS}`);
+    }
+
+    function moveEnhancedFocusMaterialRowForPosition(slot, materialRows, position) {
+        if (!slot) return;
+        const rows = materialRows.filter(item => item.position === position).map(item => item.row);
+        const sourceRow = rows.find(row => !elementIsInsideEnhancedFocusStage(row));
+        const row = sourceRow || rows[0] || null;
+        removeEnhancedFocusMaterialSlotChildren(slot, row);
+        if (!row) return;
+        prepareEnhancedFocusMaterialRow(row, position);
+        moveEnhancedFocusElement(slot, row, ENHANCED_FOCUS_MATERIAL_CLASS);
+    }
+
+    function removeEnhancedFocusMaterialSlotChildren(slot, keep) {
+        Array.from(slot.children).forEach(child => {
+            if (child === keep || child.contains?.(keep)) return;
+            if (ENHANCED_FOCUS_ORIGINAL_PLACEMENTS.has(child)) {
+                restoreEnhancedFocusElement(child);
+            } else {
+                child.remove();
+            }
+        });
+    }
+
+    function prepareEnhancedFocusMaterialRow(row, position) {
+        if (!row) return;
+        row.dataset.eloGuardMaterialPosition = position || '';
+        if (row.matches?.('wc-captured-pieces')) {
+            row.setAttribute('vertical-layout', 'false');
+        }
+        row.querySelectorAll?.('wc-captured-pieces').forEach(pieceRow => {
+            pieceRow.setAttribute('vertical-layout', 'false');
+        });
+    }
+
+    function getEnhancedFocusMaterialElementsWithPosition() {
+        return getEnhancedFocusMaterialElements()
+            .map(row => ({ row, position: getEnhancedFocusMaterialPosition(row) }))
+            .filter(item => item.position === 'top' || item.position === 'bottom')
+            .sort((a, b) => (a.position === 'top' ? 0 : 1) - (b.position === 'top' ? 0 : 1));
+    }
+
+    function getEnhancedFocusMaterialElements() {
+        const candidates = Array.from(document.querySelectorAll('wc-captured-pieces.player-pieces, wc-captured-pieces, .player-pieces, .elo-guard-enhanced-focus-material'))
+            .filter(el => {
+                if (!el) return false;
+                if (elementIsInsideEnhancedFocusStage(el)) {
+                    return el.classList?.contains(ENHANCED_FOCUS_MATERIAL_CLASS);
+                }
+                if (el.closest('[class*="sidebar"], [class*="move-list"], [class*="analysis-sidebar"]')) return false;
+                return Boolean(el.closest('#board-layout-player-top, #board-layout-player-bottom, .board-layout-player-top, .board-layout-player-bottom, [class*="player-top"], [class*="player-bottom"]'));
+            })
+            .filter((el, index, all) => !all.some((other, otherIndex) => otherIndex !== index && other.contains(el)))
+            .sort((a, b) => getEnhancedFocusMaterialSortKey(a) - getEnhancedFocusMaterialSortKey(b));
+
+        return [...new Set(candidates)];
+    }
+
+    function getEnhancedFocusMaterialPosition(el) {
+        if (el.dataset?.eloGuardMaterialPosition) return el.dataset.eloGuardMaterialPosition;
+        const host = el.closest('#board-layout-player-top, #board-layout-player-bottom, .board-layout-player-top, .board-layout-player-bottom, [class*="player-top"], [class*="player-bottom"]');
+        const classText = `${host?.id || ''} ${host?.getAttribute?.('class') || ''}`;
+        if (/\btop\b/i.test(classText)) return 'top';
+        if (/\bbottom\b/i.test(classText)) return 'bottom';
+        return '';
+    }
+
+    function getEnhancedFocusMaterialSortKey(el) {
+        const position = getEnhancedFocusMaterialPosition(el);
+        if (position === 'top') return 0;
+        if (position === 'bottom') return 1;
+        return getEnhancedFocusSortRect(el).top;
+    }
+
     function findEnhancedFocusBoardElement() {
         clearStaleEnhancedFocusClasses();
 
@@ -2562,17 +6057,48 @@
     }
 
     function getEnhancedFocusClockElements() {
-        const clocks = Array.from(document.querySelectorAll('.clock-component, [data-cy*="clock"], [class*="clock-component"], [class*="clock-"]'))
-            .filter(el => {
-                if (elementIsInsideEnhancedFocusStage(el)) return false;
-                const rect = el.getBoundingClientRect();
-                if (rect.width < 40 || rect.height < 20) return false;
-                const text = `${el.textContent || ''} ${el.getAttribute('aria-label') || ''}`.trim();
-                return /\d+\s*:\s*\d+/.test(text) || /\bclock\b/i.test(text);
-            })
+        const playerHosts = [
+            document.querySelector('#board-layout-player-top, .board-layout-player-top, [class*="player-top"]'),
+            document.querySelector('#board-layout-player-bottom, .board-layout-player-bottom, [class*="player-bottom"]')
+        ].filter(Boolean);
+
+        const hostedClocks = playerHosts
+            .map(getEnhancedFocusClockFromHost)
+            .filter(Boolean);
+
+        if (hostedClocks.length >= 2) {
+            return [...new Set(hostedClocks)].sort((a, b) => getEnhancedFocusSortRect(a).top - getEnhancedFocusSortRect(b).top);
+        }
+
+        const clocks = Array.from(document.querySelectorAll('.clock-component, [class*="clock-component"], [data-cy*="clock"]'))
+            .map(normalizeEnhancedFocusClockElement)
+            .filter(isEnhancedFocusClockCandidate)
+            .filter((el, index, all) => all.indexOf(el) === index)
             .filter((el, index, all) => !all.some((other, otherIndex) => otherIndex !== index && other.contains(el)));
 
         return [...new Set(clocks)].sort((a, b) => getEnhancedFocusSortRect(a).top - getEnhancedFocusSortRect(b).top);
+    }
+
+    function getEnhancedFocusClockFromHost(host) {
+        return Array.from(host.querySelectorAll('.clock-component, [class*="clock-component"], [data-cy*="clock"]'))
+            .map(normalizeEnhancedFocusClockElement)
+            .filter(isEnhancedFocusClockCandidate)
+            .filter((el, index, all) => all.indexOf(el) === index)
+            .find(Boolean) || null;
+    }
+
+    function normalizeEnhancedFocusClockElement(el) {
+        return el?.closest?.('.clock-component, [class*="clock-component"]') || el;
+    }
+
+    function isEnhancedFocusClockCandidate(el) {
+        if (!el || elementIsInsideEnhancedFocusStage(el)) return false;
+        if (el.id === ENHANCED_FOCUS_TOGGLE_ID || el.id === ENHANCED_FOCUS_FLIP_BUTTON_ID) return false;
+        if (el.closest(`#${ENHANCED_FOCUS_STAGE_ID}, #${ENHANCED_FOCUS_TOGGLE_ID}, #${ENHANCED_FOCUS_FLIP_BUTTON_ID}`)) return false;
+        const rect = el.getBoundingClientRect();
+        if (rect.width < 40 || rect.height < 20) return false;
+        const text = `${el.textContent || ''} ${el.getAttribute('aria-label') || ''}`.trim();
+        return /\b\d{1,2}\s*:\s*\d{2}(?:\.\d)?\b/.test(text);
     }
 
     function applyEnhancedFocusMode() {

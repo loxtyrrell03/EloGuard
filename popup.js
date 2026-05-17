@@ -542,8 +542,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             body.elo-guard-enhanced-focus {
                 --elo-guard-clock-column-width: 190px;
-                --elo-guard-board-size: min(calc(100vw - var(--elo-guard-clock-column-width) - var(--elo-guard-clock-column-width) - 64px), calc(100vh - 32px));
-                background: #262522 !important;
+                --elo-guard-board-size: min(calc(100vw - var(--elo-guard-clock-column-width) - var(--elo-guard-clock-column-width) - 64px), calc(100vh - 112px));
+                background: #302E2B !important;
                 overflow: hidden !important;
             }
 
@@ -583,6 +583,42 @@ document.addEventListener('DOMContentLoaded', () => {
                 background: #81b64c !important;
             }
 
+            body.elo-guard-enhanced-focus #elo-guard-enhanced-focus-flip {
+                position: fixed !important;
+                left: calc((100vw + var(--elo-guard-board-size)) / 2 + 12px) !important;
+                top: calc((100vh - var(--elo-guard-board-size)) / 2) !important;
+                right: auto !important;
+                z-index: 2147483647 !important;
+                display: inline-flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                min-width: 58px !important;
+                min-height: 34px !important;
+                padding: 0 12px !important;
+                border: 1px solid rgba(255, 255, 255, 0.18) !important;
+                border-radius: 999px !important;
+                background: rgba(38, 37, 34, 0.92) !important;
+                color: #f5f5f5 !important;
+                font: 700 13px/1 Arial, sans-serif !important;
+                letter-spacing: 0 !important;
+                box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28) !important;
+                cursor: pointer !important;
+                pointer-events: auto !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                user-select: none !important;
+            }
+
+            #elo-guard-enhanced-focus-flip[hidden] {
+                display: none !important;
+            }
+
+            #elo-guard-enhanced-focus-toggle:focus-visible,
+            #elo-guard-enhanced-focus-flip:focus-visible {
+                outline: 2px solid #81b64c !important;
+                outline-offset: 2px !important;
+            }
+
             body.elo-guard-enhanced-focus header,
             body.elo-guard-enhanced-focus .site-header,
             body.elo-guard-enhanced-focus .navigation-component,
@@ -614,8 +650,6 @@ document.addEventListener('DOMContentLoaded', () => {
             body.elo-guard-enhanced-focus [class*="-ad"],
             body.elo-guard-enhanced-focus [id*="ad-"],
             body.elo-guard-enhanced-focus [id*="-ad"],
-            body.elo-guard-enhanced-focus wc-captured-pieces,
-            body.elo-guard-enhanced-focus [class*="captured-pieces"],
             body.elo-guard-enhanced-focus [class*="coordinate"] {
                 display: none !important;
             }
@@ -638,15 +672,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 justify-items: center !important;
                 gap: 8px !important;
                 z-index: 2147483000 !important;
-                background: #262522 !important;
+                background: #302E2B !important;
             }
 
             body.elo-guard-enhanced-focus #board-layout-player-top,
             body.elo-guard-enhanced-focus .board-layout-player-top,
             body.elo-guard-enhanced-focus #board-layout-player-bottom,
             body.elo-guard-enhanced-focus .board-layout-player-bottom {
-                width: var(--elo-guard-board-size) !important;
-                max-width: calc(100vw - 48px) !important;
+                width: var(--elo-guard-clock-column-width) !important;
+                max-width: var(--elo-guard-clock-column-width) !important;
                 min-height: 32px !important;
                 height: auto !important;
                 margin: 0 !important;
@@ -656,10 +690,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 transform: none !important;
                 display: flex !important;
                 align-items: center !important;
-                justify-content: flex-end !important;
+                justify-content: center !important;
                 visibility: visible !important;
                 opacity: 1 !important;
-                z-index: 2147483100 !important;
+                z-index: 2147483602 !important;
+                background: transparent !important;
+                border: 0 !important;
+                box-shadow: none !important;
+                overflow: visible !important;
+                pointer-events: none !important;
             }
 
             body.elo-guard-enhanced-focus #board-layout-player-top,
@@ -705,13 +744,54 @@ document.addEventListener('DOMContentLoaded', () => {
                 overflow: hidden !important;
             }
 
+            body.elo-guard-enhanced-focus #board-layout-player-top .player-avatar,
+            body.elo-guard-enhanced-focus .board-layout-player-top .player-avatar,
+            body.elo-guard-enhanced-focus #board-layout-player-top .player-avatar-component,
+            body.elo-guard-enhanced-focus .board-layout-player-top .player-avatar-component,
+            body.elo-guard-enhanced-focus #board-layout-player-top .cc-avatar-component,
+            body.elo-guard-enhanced-focus .board-layout-player-top .cc-avatar-component,
+            body.elo-guard-enhanced-focus #board-layout-player-top .cc-avatar-img,
+            body.elo-guard-enhanced-focus .board-layout-player-top .cc-avatar-img,
+            body.elo-guard-enhanced-focus #board-layout-player-top [data-cy*="avatar"],
+            body.elo-guard-enhanced-focus .board-layout-player-top [data-cy*="avatar"],
+            body.elo-guard-enhanced-focus #board-layout-player-top [class*="avatar"],
+            body.elo-guard-enhanced-focus .board-layout-player-top [class*="avatar"],
+            body.elo-guard-enhanced-focus #board-layout-player-top img,
+            body.elo-guard-enhanced-focus .board-layout-player-top img,
+            body.elo-guard-enhanced-focus #board-layout-player-bottom .player-avatar,
+            body.elo-guard-enhanced-focus .board-layout-player-bottom .player-avatar,
+            body.elo-guard-enhanced-focus #board-layout-player-bottom .player-avatar-component,
+            body.elo-guard-enhanced-focus .board-layout-player-bottom .player-avatar-component,
+            body.elo-guard-enhanced-focus #board-layout-player-bottom .cc-avatar-component,
+            body.elo-guard-enhanced-focus .board-layout-player-bottom .cc-avatar-component,
+            body.elo-guard-enhanced-focus #board-layout-player-bottom .cc-avatar-img,
+            body.elo-guard-enhanced-focus .board-layout-player-bottom .cc-avatar-img,
+            body.elo-guard-enhanced-focus #board-layout-player-bottom [data-cy*="avatar"],
+            body.elo-guard-enhanced-focus .board-layout-player-bottom [data-cy*="avatar"],
+            body.elo-guard-enhanced-focus #board-layout-player-bottom [class*="avatar"],
+            body.elo-guard-enhanced-focus .board-layout-player-bottom [class*="avatar"],
+            body.elo-guard-enhanced-focus #board-layout-player-top [class*="profile"],
+            body.elo-guard-enhanced-focus .board-layout-player-top [class*="profile"],
+            body.elo-guard-enhanced-focus #board-layout-player-top [class*="user-image"],
+            body.elo-guard-enhanced-focus .board-layout-player-top [class*="user-image"],
+            body.elo-guard-enhanced-focus #board-layout-player-bottom [class*="profile"],
+            body.elo-guard-enhanced-focus .board-layout-player-bottom [class*="profile"],
+            body.elo-guard-enhanced-focus #board-layout-player-bottom [class*="user-image"],
+            body.elo-guard-enhanced-focus .board-layout-player-bottom [class*="user-image"],
+            body.elo-guard-enhanced-focus #board-layout-player-bottom img,
+            body.elo-guard-enhanced-focus .board-layout-player-bottom img {
+                display: none !important;
+                visibility: hidden !important;
+                opacity: 0 !important;
+            }
+
             body.elo-guard-enhanced-focus .clock-component,
-            body.elo-guard-enhanced-focus [class*="clock"],
+            body.elo-guard-enhanced-focus [class*="clock-component"],
             body.elo-guard-enhanced-focus [data-cy*="clock"] {
-                display: flex !important;
-                visibility: visible !important;
-                opacity: 1 !important;
+                visibility: hidden !important;
+                opacity: 0 !important;
                 z-index: 2147483200 !important;
+                pointer-events: none !important;
             }
 
             body.elo-guard-enhanced-focus #board-layout-chessboard,
@@ -732,22 +812,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-clock-top,
             body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-clock-bottom {
-                position: fixed !important;
-                left: max(16px, calc((100vw - var(--elo-guard-board-size)) / 2 - var(--elo-guard-clock-column-width) - 12px)) !important;
-                right: auto !important;
-                width: var(--elo-guard-clock-column-width) !important;
-                min-width: 144px !important;
-                min-height: 52px !important;
-                box-sizing: border-box !important;
-                align-items: center !important;
-                justify-content: center !important;
-                transform: none !important;
-                visibility: visible !important;
-                opacity: 1 !important;
-                display: flex !important;
-                outline: 2px solid rgba(255, 255, 255, 0.42) !important;
-                box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.72), 0 10px 24px rgba(0, 0, 0, 0.42) !important;
-                z-index: 2147483602 !important;
+                display: none !important;
+                visibility: hidden !important;
+                opacity: 0 !important;
             }
 
             body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-clock-top {
@@ -763,8 +830,9 @@ document.addEventListener('DOMContentLoaded', () => {
             body.elo-guard-enhanced-focus #board-layout-player-top,
             body.elo-guard-enhanced-focus .board-layout-player-top {
                 position: fixed !important;
-                left: calc((100vw - var(--elo-guard-board-size)) / 2) !important;
-                top: max(16px, calc((100vh - var(--elo-guard-board-size)) / 2 - 48px)) !important;
+                left: calc((100vw - var(--elo-guard-board-size)) / 2 - var(--elo-guard-clock-column-width) - 12px) !important;
+                top: calc((100vh - var(--elo-guard-board-size)) / 2) !important;
+                width: var(--elo-guard-clock-column-width) !important;
                 bottom: auto !important;
                 transform: none !important;
             }
@@ -772,10 +840,15 @@ document.addEventListener('DOMContentLoaded', () => {
             body.elo-guard-enhanced-focus #board-layout-player-bottom,
             body.elo-guard-enhanced-focus .board-layout-player-bottom {
                 position: fixed !important;
-                left: calc((100vw - var(--elo-guard-board-size)) / 2) !important;
+                left: calc((100vw - var(--elo-guard-board-size)) / 2 - var(--elo-guard-clock-column-width) - 12px) !important;
+                width: var(--elo-guard-clock-column-width) !important;
                 top: auto !important;
-                bottom: max(16px, calc((100vh - var(--elo-guard-board-size)) / 2 - 48px)) !important;
+                bottom: calc((100vh - var(--elo-guard-board-size)) / 2) !important;
                 transform: none !important;
+                border: 0 !important;
+                background: transparent !important;
+                box-shadow: none !important;
+                overflow: visible !important;
             }
 
             body.elo-guard-enhanced-focus.elo-guard-enhanced-focus-ready > *:not(#elo-guard-enhanced-focus-stage):not(script):not(style):not(link) {
@@ -798,30 +871,207 @@ document.addEventListener('DOMContentLoaded', () => {
                 align-items: center !important;
                 column-gap: 12px !important;
                 row-gap: 0 !important;
-                background: #262522 !important;
+                background: #302E2B !important;
                 visibility: visible !important;
                 pointer-events: none !important;
             }
 
             body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-top-slot,
             body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-bottom-slot {
-                grid-column: 1 !important;
-                grid-row: 1 !important;
+                position: fixed !important;
+                left: calc((100vw - var(--elo-guard-board-size)) / 2 - var(--elo-guard-clock-column-width) - 12px) !important;
                 width: var(--elo-guard-clock-column-width) !important;
-                min-height: 48px !important;
-                display: none !important;
+                min-width: var(--elo-guard-clock-column-width) !important;
+                max-width: var(--elo-guard-clock-column-width) !important;
+                height: 56px !important;
+                min-height: 56px !important;
+                max-height: 56px !important;
+                display: flex !important;
                 align-items: center !important;
-                justify-content: flex-end !important;
+                justify-content: center !important;
                 visibility: visible !important;
+                opacity: 1 !important;
                 pointer-events: none !important;
+                z-index: 2147483603 !important;
             }
 
             body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-top-slot {
-                align-self: start !important;
+                top: calc((100vh - var(--elo-guard-board-size)) / 2) !important;
+                bottom: auto !important;
             }
 
             body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-bottom-slot {
-                align-self: end !important;
+                top: auto !important;
+                bottom: calc((100vh - var(--elo-guard-board-size)) / 2) !important;
+            }
+
+            body.elo-guard-enhanced-focus .elo-guard-focus-timebox {
+                width: var(--elo-guard-clock-column-width) !important;
+                min-width: var(--elo-guard-clock-column-width) !important;
+                max-width: var(--elo-guard-clock-column-width) !important;
+                height: 56px !important;
+                min-height: 56px !important;
+                max-height: 56px !important;
+                box-sizing: border-box !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: space-between !important;
+                gap: 12px !important;
+                padding: 0 16px !important;
+                border: 2px solid rgba(255, 255, 255, 0.64) !important;
+                border-radius: 6px !important;
+                background: #262522 !important;
+                color: #f7f7f7 !important;
+                box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.88), 0 8px 18px rgba(0, 0, 0, 0.34) !important;
+                font-family: Arial, sans-serif !important;
+                font-size: 30px !important;
+                font-weight: 700 !important;
+                line-height: 1 !important;
+                letter-spacing: 0 !important;
+                font-variant-numeric: tabular-nums !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                pointer-events: none !important;
+                overflow: hidden !important;
+                transition: none !important;
+                animation: none !important;
+            }
+
+            body.elo-guard-enhanced-focus .elo-guard-focus-timebox[data-active="true"] {
+                background: #f7f7f7 !important;
+                color: #262522 !important;
+                border-color: #ffffff !important;
+                box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.88), 0 8px 18px rgba(0, 0, 0, 0.36) !important;
+            }
+
+            body.elo-guard-enhanced-focus .elo-guard-focus-timebox-icon {
+                position: relative !important;
+                flex: 0 0 22px !important;
+                width: 22px !important;
+                height: 22px !important;
+                box-sizing: border-box !important;
+                border: 3px solid currentColor !important;
+                border-radius: 999px !important;
+                opacity: 0.96 !important;
+            }
+
+            body.elo-guard-enhanced-focus .elo-guard-focus-timebox-icon::before {
+                content: "" !important;
+                position: absolute !important;
+                left: 8px !important;
+                top: 4px !important;
+                width: 3px !important;
+                height: 8px !important;
+                background: currentColor !important;
+                border-radius: 999px !important;
+            }
+
+            body.elo-guard-enhanced-focus .elo-guard-focus-timebox-icon::after {
+                content: "" !important;
+                position: absolute !important;
+                left: 9px !important;
+                top: 9px !important;
+                width: 7px !important;
+                height: 3px !important;
+                background: currentColor !important;
+                border-radius: 999px !important;
+            }
+
+            body.elo-guard-enhanced-focus .elo-guard-focus-timebox-text {
+                display: block !important;
+                flex: 1 1 auto !important;
+                min-width: 0 !important;
+                text-align: right !important;
+                white-space: nowrap !important;
+                overflow: hidden !important;
+                text-overflow: clip !important;
+            }
+
+            body.elo-guard-enhanced-focus .elo-guard-focus-clock-mirror {
+                width: var(--elo-guard-clock-column-width) !important;
+                min-width: var(--elo-guard-clock-column-width) !important;
+                max-width: var(--elo-guard-clock-column-width) !important;
+                height: 56px !important;
+                min-height: 56px !important;
+                max-height: 56px !important;
+                box-sizing: border-box !important;
+                display: flex !important;
+                align-items: stretch !important;
+                justify-content: stretch !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                overflow: hidden !important;
+                pointer-events: none !important;
+            }
+
+            body.elo-guard-enhanced-focus .elo-guard-focus-clock-mirror > * {
+                position: relative !important;
+                inset: auto !important;
+                transform: none !important;
+                display: flex !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                width: 100% !important;
+                min-width: 100% !important;
+                max-width: 100% !important;
+                height: 56px !important;
+                min-height: 56px !important;
+                max-height: 56px !important;
+                margin: 0 !important;
+                box-sizing: border-box !important;
+            }
+
+            body.elo-guard-enhanced-focus #elo-guard-enhanced-focus-stage .elo-guard-focus-clock-mirror .clock-component,
+            body.elo-guard-enhanced-focus #elo-guard-enhanced-focus-stage .elo-guard-focus-clock-mirror [class*="clock-component"],
+            body.elo-guard-enhanced-focus #elo-guard-enhanced-focus-stage .elo-guard-focus-clock-mirror [data-cy*="clock"] {
+                visibility: visible !important;
+                opacity: 1 !important;
+                pointer-events: none !important;
+            }
+
+            body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-material-slot {
+                position: fixed !important;
+                left: 50% !important;
+                width: var(--elo-guard-board-size) !important;
+                min-height: 22px !important;
+                transform: translateX(-50%) !important;
+                display: flex !important;
+                align-items: flex-start !important;
+                justify-content: flex-start !important;
+                gap: 0 !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                pointer-events: none !important;
+                z-index: 2147483602 !important;
+            }
+
+            body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-material-slot[hidden] {
+                display: none !important;
+            }
+
+            body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-material-top-slot {
+                top: calc((100vh - var(--elo-guard-board-size)) / 2 - 30px) !important;
+            }
+
+            body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-material-bottom-slot {
+                top: calc((100vh + var(--elo-guard-board-size)) / 2 + 8px) !important;
+            }
+
+            body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-material {
+                display: inline-flex !important;
+                align-items: center !important;
+                justify-content: flex-start !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                width: auto !important;
+                min-width: 0 !important;
+                max-width: none !important;
+                height: 22px !important;
+                min-height: 22px !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                overflow: visible !important;
+                letter-spacing: 0 !important;
             }
 
             body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-board-slot {
@@ -852,29 +1102,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 visibility: visible !important;
             }
 
-            body.elo-guard-enhanced-focus #elo-guard-enhanced-focus-stage .elo-guard-enhanced-focus-clock-top,
-            body.elo-guard-enhanced-focus #elo-guard-enhanced-focus-stage .elo-guard-enhanced-focus-clock-bottom {
-                position: relative !important;
-                inset: auto !important;
-                left: auto !important;
-                top: auto !important;
-                right: auto !important;
-                bottom: auto !important;
-                transform: none !important;
-                display: flex !important;
-                visibility: visible !important;
-                opacity: 1 !important;
-                margin: 0 !important;
-                min-width: 144px !important;
-                min-height: 52px !important;
-                padding: 0 14px !important;
-                align-items: center !important;
-                justify-content: center !important;
-                border: 2px solid rgba(255, 255, 255, 0.42) !important;
-                border-radius: 6px !important;
-                box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.72), 0 10px 24px rgba(0, 0, 0, 0.42) !important;
-                z-index: 2147483601 !important;
+            body.elo-guard-enhanced-focus.elo-guard-enhanced-focus-visual-flipped #elo-guard-enhanced-focus-stage .elo-guard-enhanced-focus-board {
+                rotate: 180deg !important;
             }
+
+            body.elo-guard-enhanced-focus.elo-guard-enhanced-focus-visual-flipped #elo-guard-enhanced-focus-stage .elo-guard-enhanced-focus-board piece,
+            body.elo-guard-enhanced-focus.elo-guard-enhanced-focus-visual-flipped #elo-guard-enhanced-focus-stage .elo-guard-enhanced-focus-board .piece,
+            body.elo-guard-enhanced-focus.elo-guard-enhanced-focus-visual-flipped #elo-guard-enhanced-focus-stage .elo-guard-enhanced-focus-board [class*="piece"] {
+                rotate: 180deg !important;
+            }
+
         `;
 
         document.body.classList.toggle('elo-guard-enhanced-focus', Boolean(enhancedFocusEnabled));

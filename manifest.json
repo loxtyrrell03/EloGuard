@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "EloGuard: Chess Tilt Protection",
-  "version": "1.6.5",
+  "version": "1.6.14",
   "description": "Prevents rage-queuing by locking the Play button when you hit your stop-loss.",
   "permissions": ["storage", "activeTab", "scripting"],
   "host_permissions": ["*://*.chess.com/*"],
