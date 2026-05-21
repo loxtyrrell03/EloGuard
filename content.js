@@ -1,5 +1,5 @@
 (() => {
-    const CONTENT_VERSION = '1.6.19-hot-form-recommendation-cap';
+    const CONTENT_VERSION = '1.6.24-full-metric-hover';
     if (window.__ELOGUARD_CONTENT_VERSION__ === CONTENT_VERSION) {
         window.dispatchEvent(new CustomEvent('eloGuard:reloadSettings'));
         return;
@@ -79,6 +79,7 @@
     const MATCHUP_FEEDBACK_RECENT_GAME_WINDOW_SECONDS = 45 * 60;
     const LOCKOUT_END_KEY = 'eloGuardLockoutEndTime';
     const LEGITIMACY_BADGE_ID = 'elo-guard-legitimacy-badge';
+    const LEGITIMACY_TOOLTIP_ID = 'elo-guard-legitimacy-tooltip';
     const LEGITIMACY_CACHE_TTL_MS = 30 * 60 * 1000;
     const LEGITIMACY_FETCH_TIMEOUT_MS = 12000;
     const LEGITIMACY_MAX_ARCHIVES = 3;
@@ -2717,6 +2718,7 @@
                 matchupText.className = 'elo-guard-matchup-text';
                 badge.appendChild(matchupText);
             }
+            ensureOpponentLegitimacyTooltip(badge);
             return badge;
         }
 
@@ -2724,6 +2726,7 @@
         badge.id = LEGITIMACY_BADGE_ID;
         badge.setAttribute('role', 'status');
         badge.setAttribute('aria-live', 'polite');
+        badge.tabIndex = 0;
 
         const dot = document.createElement('span');
         dot.className = 'elo-guard-legitimacy-dot';
@@ -2735,8 +2738,30 @@
         matchupText.className = 'elo-guard-matchup-text';
 
         badge.append(dot, text, matchupText);
+        ensureOpponentLegitimacyTooltip(badge);
         document.body.appendChild(badge);
         return badge;
+    }
+
+    function ensureOpponentLegitimacyTooltip(badge) {
+        let tooltip = badge.querySelector('.elo-guard-legitimacy-tooltip');
+        if (!tooltip) {
+            tooltip = document.createElement('pre');
+            tooltip.id = LEGITIMACY_TOOLTIP_ID;
+            tooltip.className = 'elo-guard-legitimacy-tooltip';
+            tooltip.setAttribute('role', 'tooltip');
+            badge.appendChild(tooltip);
+        }
+
+        badge.setAttribute('aria-describedby', LEGITIMACY_TOOLTIP_ID);
+        if (!badge.hasAttribute('tabindex')) badge.tabIndex = 0;
+        return tooltip;
+    }
+
+    function setOpponentLegitimacyTooltip(badge, text) {
+        const tooltip = ensureOpponentLegitimacyTooltip(badge);
+        tooltip.textContent = text || '';
+        badge.removeAttribute('title');
     }
 
     function hideOpponentLegitimacyBadge() {
@@ -2750,7 +2775,7 @@
         badge.style.setProperty('--elo-guard-matchup-color', '#9b9b9b');
         badge.querySelector('.elo-guard-legitimacy-text').textContent = 'Risk ...';
         badge.querySelector('.elo-guard-matchup-text').textContent = '';
-        badge.title = `Checking public Chess.com account data for ${username}...`;
+        setOpponentLegitimacyTooltip(badge, `Checking public Chess.com account data for ${username}...`);
         badge.setAttribute('aria-label', `Checking cheat risk estimate for ${username}`);
     }
 
@@ -2760,7 +2785,7 @@
         badge.style.setProperty('--elo-guard-matchup-color', '#9b9b9b');
         badge.querySelector('.elo-guard-legitimacy-text').textContent = 'No data';
         badge.querySelector('.elo-guard-matchup-text').textContent = '';
-        badge.title = `Could not load enough public data for ${username}.`;
+        setOpponentLegitimacyTooltip(badge, `Could not load enough public data for ${username}.`);
         badge.setAttribute('aria-label', `Cheat risk estimate unavailable for ${username}`);
     }
 
@@ -2774,7 +2799,7 @@
         badge.style.setProperty('--elo-guard-matchup-color', result.matchup.color);
         badge.querySelector('.elo-guard-legitimacy-text').textContent = `${result.verdict} ${result.score}/100`;
         badge.querySelector('.elo-guard-matchup-text').textContent = result.matchup.displayText;
-        badge.title = result.title;
+        setOpponentLegitimacyTooltip(badge, result.title);
         badge.setAttribute(
             'aria-label',
             `EloGuard cheat risk estimate for ${result.username}: ${result.verdict}, ${result.score} out of 100. Matchup recommendation: ${result.matchup.displayText}`
@@ -2808,6 +2833,20 @@
 
         badge.style.left = `${Math.round(left)}px`;
         badge.style.top = `${Math.round(top)}px`;
+
+        const tooltipWidth = Math.min(560, Math.max(260, window.innerWidth - 16));
+        const tooltipLeft = clamp(left, 8, Math.max(8, window.innerWidth - tooltipWidth - 8));
+        let tooltipTop = top + badgeHeight + 8;
+        let tooltipMaxHeight = window.innerHeight - tooltipTop - 8;
+        if (tooltipMaxHeight < 180) {
+            tooltipMaxHeight = Math.min(560, Math.max(180, top - 16));
+            tooltipTop = Math.max(8, top - tooltipMaxHeight - 8);
+        }
+
+        badge.style.setProperty('--elo-guard-tooltip-left', `${Math.round(tooltipLeft)}px`);
+        badge.style.setProperty('--elo-guard-tooltip-top', `${Math.round(tooltipTop)}px`);
+        badge.style.setProperty('--elo-guard-tooltip-width', `${Math.round(tooltipWidth)}px`);
+        badge.style.setProperty('--elo-guard-tooltip-max-height', `${Math.round(Math.max(160, tooltipMaxHeight))}px`);
     }
 
     function findOpponentAvatarAnchor(root) {
@@ -4832,6 +4871,18 @@
         return [
             `EloGuard cheat-risk estimate for ${data.username}: ${data.score}/100`,
             `Matchup recommendation: ${data.matchup.verdict} (${data.matchup.score}/100)`,
+            `Account age: ${ageText} (+${Math.round(data.accountAge.risk)})`,
+            `Rated ${data.mode} history: ${data.volume.label}; ${totalGamesText} rated games; current rating: ${ratingText} (${volumeImpactText})`,
+            `All-time best ${data.mode} rating: ${peakText}`,
+            `Smurf signal: ${data.smurf.label} (+${Math.round(data.smurf.risk)})`,
+            `Engine accuracy: ${accuracyText} (+${Math.round(data.accuracy.risk)})`,
+            `Recent accuracy: ${recentAccuracyText}`,
+            `Accuracy hot window: ${formText}`,
+            `Recent win rate: ${winRateText} in ${data.winRate.games} ${sampleType} ${data.mode} game${data.winRate.games === 1 ? '' : 's'} (+${Math.round(data.winRate.risk)})`,
+            `Current streak: ${data.winRate.streak} win${data.winRate.streak === 1 ? '' : 's'}`,
+            `30-day performance rating: ${performanceText} (+${Math.round(data.performance.risk)})`,
+            `Rating trajectory: ${trajectoryText} (+${Math.round(data.trajectory.risk)})`,
+            `Rating surge: ${surgeText} (+${Math.round(data.surge.risk)})`,
             `Matchup activity: ${matchupActivityText}`,
             `Matchup form: ${matchupFormText}`,
             `Recent-form recommendation cap: ${matchupFormCapText}`,
@@ -4845,19 +4896,7 @@
             `Matchup safety: ${data.matchup.riskPenalty.label} (${formatSignedNumber(data.matchup.riskPenalty.points)})`,
             `Primary concern: ${data.primaryConcern}`,
             `Confidence: ${data.confidence}`,
-            `Accuracy hot window: ${formText}`,
-            `Account age: ${ageText} (+${Math.round(data.accountAge.risk)})`,
-            `Smurf signal: ${data.smurf.label} (+${Math.round(data.smurf.risk)})`,
             `Visible score calibration: mild standalone risk is compressed; strong smurf/performance/accuracy combinations can set minimum score floors`,
-            `Recent win rate: ${winRateText} in ${data.winRate.games} ${sampleType} ${data.mode} game${data.winRate.games === 1 ? '' : 's'} (+${Math.round(data.winRate.risk)})`,
-            `Current streak: ${data.winRate.streak} win${data.winRate.streak === 1 ? '' : 's'}`,
-            `Engine accuracy: ${accuracyText} (+${Math.round(data.accuracy.risk)})`,
-            `Recent accuracy: ${recentAccuracyText}`,
-            `30-day performance rating: ${performanceText} (+${Math.round(data.performance.risk)})`,
-            `All-time best ${data.mode} rating: ${peakText}`,
-            `Rating trajectory: ${trajectoryText} (+${Math.round(data.trajectory.risk)})`,
-            `Rating surge: ${surgeText} (+${Math.round(data.surge.risk)})`,
-            `Rated ${data.mode} history: ${data.volume.label}; ${totalGamesText} rated games; current rating: ${ratingText} (${volumeImpactText})`,
             'Heuristic only; report through Chess.com if you have serious concerns.'
         ].join('\n');
     }
