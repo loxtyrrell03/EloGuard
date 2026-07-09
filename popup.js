@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const mainView = document.getElementById('mainView');
     const settingsView = document.getElementById('settingsView');
     const settingsBtn = document.getElementById('settingsBtn');
+    const statsBtn = document.getElementById('statsBtn');
     const backBtn = document.getElementById('backBtn');
     const saveBtn = document.getElementById('saveSettingsBtn');
     const activateBtn = document.getElementById('activateBtn');
@@ -10,6 +11,30 @@ document.addEventListener('DOMContentLoaded', () => {
     const anonymizeOpponentToggle = document.getElementById('anonymizeOpponent');
     const anonymizeSelfToggle = document.getElementById('anonymizeSelf');
     const enhancedFocusToggle = document.getElementById('enhancedFocusMode');
+    const showRiskProfilePillToggle = document.getElementById('showRiskProfilePill');
+    const upgradeBtn = document.getElementById('upgradeBtn');
+    const refreshProBtn = document.getElementById('refreshProBtn');
+    const proSection = document.getElementById('proSection');
+    const proSectionTitle = document.getElementById('proSectionTitle');
+    const proUsageHint = document.getElementById('proUsageHint');
+    const billingPlanLabel = document.getElementById('billingPlanLabel');
+    const billingStatusLabel = document.getElementById('billingStatusLabel');
+    const billingManageBtn = document.getElementById('billingManageBtn');
+    const billingCancelBtn = document.getElementById('billingCancelBtn');
+    const billingRefreshBtn = document.getElementById('billingRefreshBtn');
+    const billingMessage = document.getElementById('billingMessage');
+    const proFeatureBtns = document.querySelectorAll('.pro-feature');
+    const SMART_BRACKET_FEATURE = 'smartBracket';
+    const PRO_FEATURE_LABELS = {
+        riskProfile: { free: 'Cheat risk detection', pro: 'Unlimited cheat risk detection' },
+        gameReview: { free: 'Game review', pro: 'Full game reviews' },
+        smartBracket: { free: 'Smart bracket auto-set', pro: 'Smart bracket auto-set' }
+    };
+    const devProRow = document.getElementById('devProRow');
+    const devProToggle = document.getElementById('devProToggle');
+    const DEV_PRO_STORAGE_KEY = 'eloGuardDevPro';
+    const DEV_PRO_VISIBILITY_KEY = 'eloGuardShowDevProToggle';
+    const ENABLE_DEV_PRO_TESTER = false;
     
     // Cooldown UI
     const cooldownToggle = document.getElementById('cooldownActive');
@@ -49,6 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const lockoutDurationInput = document.getElementById('lockoutDuration');
     const applySmartBtn = document.getElementById('applySmartBtn');
     const smartRangeInput = document.getElementById('smartRange');
+    const smartBracketGroup = document.querySelector('.smart-bracket-group');
 
     // Stat Boxes
     const statBoxes = document.querySelectorAll('.stat-box');
@@ -63,6 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentFetchedRating = null; 
     let isRatingHidden = false;
     let activeMode = "blitz"; // Default
+    let currentEntitlement = null;
 
     // 1. LOAD SAVED STATE
     chrome.storage.sync.get(null, (data) => {
@@ -73,6 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (data.anonymizeOpponent) anonymizeOpponentToggle.checked = data.anonymizeOpponent;
         if (data.anonymizeSelf) anonymizeSelfToggle.checked = data.anonymizeSelf;
         if (data.enhancedFocusMode) enhancedFocusToggle.checked = data.enhancedFocusMode;
+        showRiskProfilePillToggle.checked = data.showRiskProfilePill !== false;
         if (data.guardActive) setGuardActiveUI(true);
         if (data.gameMode) activeMode = data.gameMode;
         
@@ -101,6 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Set Initial Mode UI
         gameModeSelect.value = activeMode;
         updateModeUI(activeMode);
+        refreshEntitlementUi(false);
         refreshActiveChessTab();
         
         if (data.username) checkConnection();
@@ -268,6 +297,81 @@ document.addEventListener('DOMContentLoaded', () => {
         chrome.storage.sync.set({ enhancedFocusMode: enhancedFocusToggle.checked }, refreshActiveChessTab);
     });
 
+    showRiskProfilePillToggle.addEventListener('change', () => {
+        chrome.storage.sync.set({ showRiskProfilePill: showRiskProfilePillToggle.checked }, refreshActiveChessTab);
+    });
+
+    upgradeBtn?.addEventListener('click', async () => {
+        await openBillingForFeature('popup');
+    });
+
+    refreshProBtn?.addEventListener('click', () => {
+        refreshEntitlementUi(true);
+    });
+
+    billingRefreshBtn?.addEventListener('click', () => {
+        setBillingMessage('');
+        refreshEntitlementUi(true);
+    });
+
+    billingManageBtn?.addEventListener('click', async () => {
+        setBillingMessage('');
+        await openBillingForFeature('settings');
+    });
+
+    billingCancelBtn?.addEventListener('click', async () => {
+        const api = window.EloGuardEntitlements;
+        if (!api || !currentEntitlement) return;
+        if (currentEntitlement.status === 'lifetime') {
+            setBillingMessage('Lifetime access has no renewal to cancel.');
+            return;
+        }
+        if (currentEntitlement.cancelAtPeriodEnd) {
+            setBillingMessage('Renewal is already cancelled.');
+            return;
+        }
+
+        const dateText = currentEntitlement.currentPeriodEnd
+            ? ` You will keep Pro until ${new Date(currentEntitlement.currentPeriodEnd).toLocaleDateString()}.`
+            : '';
+        const ok = window.confirm(`Cancel EloGuard Pro renewal?${dateText}`);
+        if (!ok) return;
+
+        billingCancelBtn.disabled = true;
+        billingCancelBtn.textContent = 'Cancelling...';
+        setBillingMessage('');
+        try {
+            const result = await api.cancelRenewal();
+            currentEntitlement = result.entitlement;
+            applyEntitlementState(api.isProEntitlement(currentEntitlement), billingHintForEntitlement(currentEntitlement));
+            setBillingMessage(result.message || 'Renewal cancelled. You keep Pro until the period ends.');
+            await refreshEntitlementUi(true);
+        } catch (e) {
+            setBillingMessage(e instanceof Error ? e.message : 'Could not cancel renewal. Try Manage subscription.', true);
+            updateBillingCard(currentEntitlement);
+        }
+    });
+
+    if (ENABLE_DEV_PRO_TESTER && devProToggle) {
+        chrome.storage.local.get([DEV_PRO_STORAGE_KEY, DEV_PRO_VISIBILITY_KEY], (data) => {
+            const stored = data ? data[DEV_PRO_STORAGE_KEY] : undefined;
+            const showDevToggle = data && (data[DEV_PRO_VISIBILITY_KEY] === true || stored !== undefined);
+            devProToggle.checked = stored === true;
+            if (showDevToggle) devProRow?.classList.remove('hidden');
+        });
+        devProToggle.addEventListener('change', async () => {
+            const api = window.EloGuardEntitlements;
+            if (api && typeof api.setDevPro === 'function') {
+                await api.setDevPro(devProToggle.checked);
+            }
+            await refreshEntitlementUi(false);
+            refreshActiveChessTab();
+        });
+    }
+
+    // Pro feature rows are a display-only showcase (no per-row links);
+    // the upgrade path is the header button.
+
     // 5. VISIBILITY
     ratingVisBtn.addEventListener('click', () => {
         isRatingHidden = !isRatingHidden;
@@ -288,7 +392,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // 6. SMART BRACKET APPLY BTN
-    applySmartBtn.addEventListener('click', () => {
+    applySmartBtn.addEventListener('click', async () => {
+        if (!isProActive()) {
+            await openBillingForFeature(SMART_BRACKET_FEATURE);
+            setSmartBracketUi(false);
+            return;
+        }
+
         const range = parseInt(smartRangeInput.value);
         if (!currentFetchedRating || isNaN(currentFetchedRating)) {
             applySmartBtn.innerText = "❌ No Rating";
@@ -318,8 +428,75 @@ document.addEventListener('DOMContentLoaded', () => {
     settingsBtn.addEventListener('click', () => {
         mainView.classList.add('hidden');
         settingsView.classList.remove('hidden');
-        fetchAllStats(); 
+        fetchAllStats();
     });
+
+    // My Stats opens the in-page Strength Profile overlay (all the review data
+    // lives in the content script). Reach into the active chess.com tab, make
+    // sure content.js is loaded, trigger the stats view, then close the popup
+    // so the overlay is visible.
+    const STATS_BTN_LABEL = '📊';
+    statsBtn?.addEventListener('click', () => {
+        if (!chrome.tabs || !chrome.scripting) return;
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            const tab = tabs && tabs[0];
+            if (!tab?.id || !/^https?:\/\/([^/]+\.)?chess\.com\//i.test(tab.url || '')) {
+                flashStatsUnavailable();
+                return;
+            }
+            chrome.scripting.insertCSS({
+                target: { tabId: tab.id },
+                files: ['styles.css']
+            }, () => {
+                if (chrome.runtime.lastError) {
+                    console.warn('EloGuard stats CSS failed:', chrome.runtime.lastError.message);
+                }
+            });
+            chrome.scripting.executeScript({
+                target: { tabId: tab.id },
+                files: ['lib/chess.js', 'lib/book.js', 'lib/review-core.js', 'lib/entitlements.js', 'content.js']
+            }, () => {
+                if (chrome.runtime.lastError) {
+                    console.warn('EloGuard stats inject failed:', chrome.runtime.lastError.message);
+                    return;
+                }
+                chrome.scripting.executeScript({
+                    target: { tabId: tab.id },
+                    func: () => {
+                        if (typeof window.__eloGuardOpenStats === 'function') {
+                            window.__eloGuardOpenStats();
+                            return true;
+                        }
+                        return false;
+                    }
+                }, (results) => {
+                    if (chrome.runtime.lastError) {
+                        console.warn('EloGuard stats open failed:', chrome.runtime.lastError.message);
+                        flashStatsUnavailable('Reload the chess.com page, then try again');
+                        return;
+                    }
+                    const opened = Array.isArray(results) && results[0] && results[0].result;
+                    if (opened) {
+                        window.close();
+                    } else {
+                        // content.js loaded but the hook wasn't ready (rare) — a
+                        // page reload guarantees the current content script.
+                        flashStatsUnavailable('Reload the chess.com page, then try again');
+                    }
+                });
+            });
+        });
+    });
+
+    function flashStatsUnavailable(msg) {
+        if (!statsBtn) return;
+        statsBtn.textContent = '⚠';
+        statsBtn.title = msg || 'Open a chess.com tab to view your stats';
+        setTimeout(() => {
+            statsBtn.textContent = STATS_BTN_LABEL;
+            statsBtn.title = 'My Stats — Strength Profile';
+        }, 2200);
+    }
 
     backBtn.addEventListener('click', () => {
         settingsView.classList.add('hidden');
@@ -433,6 +610,200 @@ document.addEventListener('DOMContentLoaded', () => {
         checkConnection();
     }
 
+    // Reflect Pro/free status across the header button and the locked feature
+    // list: subscribed unlocks every row (🔒 → ✓), free keeps them locked with
+    // the upgrade path.
+    function leftLabel(access) {
+        if (!access || access.isPro || !Number.isFinite(access.remaining)) return '';
+        return ` (${Math.max(0, access.remaining)} left)`;
+    }
+
+    function setProFeatureLabels(isPro, usage = {}) {
+        proFeatureBtns.forEach((btn) => {
+            const feature = btn.getAttribute('data-feature');
+            const label = btn.querySelector('.pro-feature-label');
+            const labels = PRO_FEATURE_LABELS[feature];
+            if (!label || !labels) return;
+
+            if (isPro) {
+                label.textContent = labels.pro;
+            } else if (feature === SMART_BRACKET_FEATURE) {
+                label.textContent = `${labels.free} (Pro)`;
+            } else {
+                label.textContent = `${labels.free}${leftLabel(usage[feature])}`;
+            }
+        });
+    }
+
+    function applyEntitlementState(isPro, hintText, usage = {}) {
+        if (upgradeBtn) {
+            upgradeBtn.innerText = isPro ? 'PRO' : 'Upgrade';
+            upgradeBtn.classList.toggle('pro', isPro);
+            upgradeBtn.title = isPro ? 'Manage your subscription' : 'Upgrade to EloGuard Pro';
+        }
+        if (proSection) proSection.classList.toggle('is-pro', isPro);
+        if (proSectionTitle) proSectionTitle.textContent = isPro ? 'Pro active' : 'Pro features';
+        proFeatureBtns.forEach((btn) => {
+            const lock = btn.querySelector('.pro-feature-lock');
+            if (lock) lock.textContent = isPro ? '✓' : '🔒';
+        });
+        setProFeatureLabels(isPro, usage);
+        if (proUsageHint) proUsageHint.textContent = hintText;
+        setSmartBracketUi(isPro);
+        updateBillingCard(currentEntitlement);
+    }
+
+    function isProActive() {
+        const api = window.EloGuardEntitlements;
+        return !!(api && api.isProEntitlement(currentEntitlement));
+    }
+
+    async function openBillingForFeature(featureKey) {
+        const api = window.EloGuardEntitlements;
+        if (!api) return;
+        await api.openBilling(isProActive() ? 'portal' : 'checkout', { feature: featureKey });
+    }
+
+    function formatBillingDate(value) {
+        if (!value) return '';
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return '';
+        return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    function billingHintForEntitlement(entitlement) {
+        if (!entitlement) return 'Free tier active.';
+        if (entitlement.status === 'lifetime') return 'Lifetime access. No recurring subscription.';
+        if (entitlement.cancelAtPeriodEnd) {
+            return `Renewal cancelled. Pro ends ${formatBillingDate(entitlement.cancelAt || entitlement.currentPeriodEnd) || 'at the end of the paid period'}.`;
+        }
+        if (entitlement.status === 'past_due') return 'Payment failed. Update your card to keep Pro active.';
+        if (isProActive()) {
+            return entitlement.currentPeriodEnd
+                ? `Renews ${formatBillingDate(entitlement.currentPeriodEnd)}.`
+                : 'Pro subscription active.';
+        }
+        return 'Free tier active. Upgrade for unlimited reviews and cheat-risk checks.';
+    }
+
+    function setBillingMessage(message, isError = false) {
+        if (!billingMessage) return;
+        billingMessage.textContent = message || '';
+        billingMessage.classList.toggle('error', Boolean(isError));
+    }
+
+    function updateBillingCard(entitlement) {
+        const api = window.EloGuardEntitlements;
+        const isPro = !!(api && api.isProEntitlement(entitlement));
+        const isLifetime = entitlement?.status === 'lifetime';
+        const isScheduledCancel = entitlement?.cancelAtPeriodEnd === true;
+
+        if (billingPlanLabel) {
+            billingPlanLabel.textContent = isLifetime
+                ? 'EloGuard Pro Lifetime'
+                : isPro
+                    ? 'EloGuard Pro Monthly'
+                    : 'Free plan';
+        }
+        if (billingStatusLabel) billingStatusLabel.textContent = billingHintForEntitlement(entitlement);
+
+        if (billingManageBtn) {
+            billingManageBtn.textContent = isPro ? 'Manage subscription' : 'Upgrade to Pro';
+            billingManageBtn.classList.toggle('is-upgrade', !isPro);
+        }
+        if (billingCancelBtn) {
+            billingCancelBtn.disabled = !isPro || isLifetime || isScheduledCancel;
+            billingCancelBtn.textContent = isScheduledCancel
+                ? 'Renewal cancelled'
+                : isLifetime
+                    ? 'No renewal'
+                    : 'Cancel renewal';
+            billingCancelBtn.title = !isPro
+                ? 'No subscription to cancel'
+                : isLifetime
+                    ? 'Lifetime access has no renewal'
+                    : isScheduledCancel
+                        ? 'Renewal is already cancelled'
+                        : 'Cancel monthly renewal at the end of your current paid period';
+        }
+    }
+
+    function setSmartBracketUi(isPro) {
+        if (smartBracketGroup) smartBracketGroup.classList.toggle('is-pro-locked', !isPro);
+        if (smartRangeInput) {
+            smartRangeInput.disabled = !isPro;
+            smartRangeInput.title = isPro ? '' : 'Upgrade to EloGuard Pro to use Smart Bracket auto-set';
+        }
+        if (applySmartBtn) {
+            applySmartBtn.innerText = isPro ? 'Apply' : 'Pro';
+            applySmartBtn.title = isPro ? '' : 'Upgrade to EloGuard Pro';
+        }
+    }
+
+    async function refreshEntitlementUi(syncRemote) {
+        const api = window.EloGuardEntitlements;
+        if (!api || !upgradeBtn) return;
+
+        try {
+            if (syncRemote && refreshProBtn) {
+                refreshProBtn.classList.add('spinning');
+                refreshProBtn.disabled = true;
+            }
+            if (syncRemote && billingRefreshBtn) {
+                billingRefreshBtn.classList.add('spinning');
+                billingRefreshBtn.disabled = true;
+            }
+
+            let entitlement = await api.getEntitlement();
+            if (syncRemote && entitlement.source !== 'dev') entitlement = await api.refreshEntitlement();
+            currentEntitlement = entitlement;
+
+            const isPro = api.isProEntitlement(entitlement);
+            if (isPro) {
+                const until = entitlement.status === 'past_due'
+                    ? 'Payment failed — update your card to keep Pro'
+                    : (entitlement.currentPeriodEnd
+                        ? `Unlimited · renews ${new Date(entitlement.currentPeriodEnd).toLocaleDateString()}`
+                        : 'Unlimited access');
+                applyEntitlementState(true, until);
+            } else {
+                const [risk, matchup, review] = await Promise.all([
+                    api.getFeatureAccess('riskProfile'),
+                    api.getFeatureAccess('matchup'),
+                    api.getFeatureAccess('gameReview')
+                ]);
+                applyEntitlementState(false,
+                    `Free today: ${risk.remaining}/${risk.limit} risk | ${matchup.remaining}/${matchup.limit} matchup | ${review.remaining}/${review.limit} review`,
+                    { riskProfile: risk, matchup, gameReview: review });
+            }
+
+            if (refreshProBtn) {
+                refreshProBtn.classList.remove('spinning');
+                refreshProBtn.disabled = false;
+            }
+            if (billingRefreshBtn) {
+                billingRefreshBtn.classList.remove('spinning');
+                billingRefreshBtn.disabled = false;
+            }
+            refreshActiveChessTab();
+        } catch (e) {
+            const entitlement = await api.getEntitlement();
+            currentEntitlement = entitlement;
+            const isPro = api.isProEntitlement(entitlement);
+            applyEntitlementState(isPro, isPro
+                ? 'Unlimited access'
+                : (syncRemote ? 'Could not reach billing — try again' : 'Upgrade for unlimited access'));
+            if (refreshProBtn) {
+                refreshProBtn.classList.remove('spinning');
+                refreshProBtn.disabled = false;
+            }
+            if (billingRefreshBtn) {
+                billingRefreshBtn.classList.remove('spinning');
+                billingRefreshBtn.disabled = false;
+            }
+        }
+    }
+
     function refreshActiveChessTab() {
         if (!chrome.tabs || !chrome.scripting) return;
 
@@ -452,16 +823,24 @@ document.addEventListener('DOMContentLoaded', () => {
             chrome.scripting.executeScript({
                 target: { tabId: tab.id },
                 func: applyDirectOpponentAnonymizer,
-                args: [anonymizeOpponentToggle.checked, anonymizeSelfToggle.checked, enhancedFocusToggle.checked]
+                args: [
+                    anonymizeOpponentToggle.checked,
+                    anonymizeSelfToggle.checked,
+                    enhancedFocusToggle.checked,
+                    showRiskProfilePillToggle.checked
+                ]
             }, () => {
                 if (chrome.runtime.lastError) {
                     console.warn('EloGuard direct anonymizer failed:', chrome.runtime.lastError.message);
                 }
             });
 
+            // Re-inject the entitlements library before content.js so an
+            // already-open tab picks up the current Pro/free logic without a
+            // full page reload.
             chrome.scripting.executeScript({
                 target: { tabId: tab.id },
-                files: ['content.js']
+                files: ['lib/entitlements.js', 'content.js']
             }, () => {
                 if (chrome.runtime.lastError) {
                     console.warn('EloGuard content refresh failed:', chrome.runtime.lastError.message);
@@ -470,7 +849,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function applyDirectOpponentAnonymizer(opponentEnabled, selfEnabled, enhancedFocusEnabled) {
+    function applyDirectOpponentAnonymizer(opponentEnabled, selfEnabled, enhancedFocusEnabled, showRiskProfilePillEnabled) {
         const styleId = 'elo-guard-direct-anonymizer-style';
         let style = document.getElementById(styleId);
 
@@ -481,6 +860,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         style.textContent = `
+            body.elo-guard-hide-risk-profile-pill #elo-guard-legitimacy-badge {
+                display: none !important;
+            }
+
             .elo-shield-anon-opponent #board-layout-player-top .player-playerContent,
             .elo-shield-anon-opponent .board-layout-player-top .player-playerContent,
             .elo-shield-anon-opponent [class*="player-top"] .player-playerContent,
@@ -542,6 +925,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             body.elo-guard-enhanced-focus {
                 --elo-guard-clock-column-width: 190px;
+                --elo-guard-material-row-height: 24px;
+                --elo-guard-material-gap: 8px;
+                --elo-guard-material-edge-gap: 8px;
                 --elo-guard-board-size: min(calc(100vw - var(--elo-guard-clock-column-width) - var(--elo-guard-clock-column-width) - 64px), calc(100vh - 112px));
                 background: #302E2B !important;
                 overflow: hidden !important;
@@ -1033,7 +1419,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 position: fixed !important;
                 left: 50% !important;
                 width: var(--elo-guard-board-size) !important;
-                min-height: 22px !important;
+                min-height: var(--elo-guard-material-row-height) !important;
+                height: auto !important;
+                max-height: none !important;
                 transform: translateX(-50%) !important;
                 display: flex !important;
                 align-items: flex-start !important;
@@ -1041,8 +1429,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 gap: 0 !important;
                 visibility: visible !important;
                 opacity: 1 !important;
+                overflow: visible !important;
+                contain: none !important;
                 pointer-events: none !important;
-                z-index: 2147483602 !important;
+                z-index: 2147483646 !important;
             }
 
             body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-material-slot[hidden] {
@@ -1050,11 +1440,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-material-top-slot {
-                top: calc((100vh - var(--elo-guard-board-size)) / 2 - 30px) !important;
+                top: max(var(--elo-guard-material-edge-gap), calc((100vh - var(--elo-guard-board-size)) / 2 - var(--elo-guard-material-row-height) - var(--elo-guard-material-gap))) !important;
             }
 
             body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-material-bottom-slot {
-                top: calc((100vh + var(--elo-guard-board-size)) / 2 + 8px) !important;
+                top: auto !important;
+                bottom: max(var(--elo-guard-material-edge-gap), calc((100vh - var(--elo-guard-board-size)) / 2 - var(--elo-guard-material-row-height) - var(--elo-guard-material-gap))) !important;
             }
 
             body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-material {
@@ -1066,12 +1457,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 width: auto !important;
                 min-width: 0 !important;
                 max-width: none !important;
-                height: 22px !important;
-                min-height: 22px !important;
+                height: auto !important;
+                min-height: var(--elo-guard-material-row-height) !important;
+                max-height: none !important;
                 margin: 0 !important;
                 padding: 0 !important;
                 overflow: visible !important;
+                contain: none !important;
+                white-space: nowrap !important;
+                flex-wrap: nowrap !important;
                 letter-spacing: 0 !important;
+            }
+
+            body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-material *,
+            body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-material::before,
+            body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-material::after {
+                visibility: visible !important;
+                opacity: 1 !important;
+                overflow: visible !important;
+                max-width: none !important;
+                max-height: none !important;
+                clip: auto !important;
+                clip-path: none !important;
+                mask-image: none !important;
+                -webkit-mask-image: none !important;
             }
 
             body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-board-slot {
@@ -1117,5 +1526,9 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.classList.toggle('elo-guard-enhanced-focus', Boolean(enhancedFocusEnabled));
         document.body.classList.toggle('elo-shield-anon-opponent', Boolean(opponentEnabled || enhancedFocusEnabled));
         document.body.classList.toggle('elo-shield-anon-self', Boolean(selfEnabled || enhancedFocusEnabled));
+        document.body.classList.toggle('elo-guard-hide-risk-profile-pill', !showRiskProfilePillEnabled);
+
+        const riskProfilePill = document.getElementById('elo-guard-legitimacy-badge');
+        if (riskProfilePill && !showRiskProfilePillEnabled) riskProfilePill.hidden = true;
     }
 });

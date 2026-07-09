@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Build artifacts / packaged extension
+dist/
+
+# Secrets & local env
+.env
+.env.*
+!.env.example
+.dev.vars
+*.local
+
+# Cloudflare Wrangler state
+.wrangler/
+
+# Local editor / tooling config
+.claude/
+.mcp.json
+
+# Audio samples (not part of the shipped extension)
+*.mp3
+*.webm
+audio_assets/
+
+# Logs & OS cruft
+*.log
+.DS_Store
+Thumbs.db

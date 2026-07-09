@@ -1,5 +1,5 @@
 (() => {
-    const CONTENT_VERSION = '1.6.24-full-metric-hover';
+    const CONTENT_VERSION = '2.1.5-pro';
     if (window.__ELOGUARD_CONTENT_VERSION__ === CONTENT_VERSION) {
         window.dispatchEvent(new CustomEvent('eloGuard:reloadSettings'));
         return;
@@ -23,6 +23,7 @@
     let ANONYMIZE_OPPONENT = false;
     let ANONYMIZE_SELF = false;
     let ENHANCED_FOCUS_MODE = false;
+    let SHOW_RISK_PROFILE_PILL = true;
     let LAST_ANONYMIZE_USERNAME = "";
     let LAST_RAW_DOCUMENT_TITLE = "";
     const ANONYMIZE_STYLE_ID = 'elo-guard-anonymize-opponent-style';
@@ -59,6 +60,27 @@
         lastBoardFlipAt: 0
     };
 
+    // Enhanced-focus toggle button: top-right by default, user-positioned after drag.
+    // ENHANCED_FOCUS_TOGGLE_POS is null while using the stylesheet default, and becomes
+    // { left, top } (viewport px) once the user drags it.
+    const ENHANCED_FOCUS_TOGGLE_LABEL_CLASS = 'elo-guard-focus-toggle-label';
+    const ENHANCED_FOCUS_TOGGLE_MIN_CLASS = 'elo-guard-focus-toggle-min';
+    const ENHANCED_FOCUS_TOGGLE_MINIMIZED_CLASS = 'elo-guard-focus-toggle-minimized';
+    const ENHANCED_FOCUS_TOGGLE_DRAGGING_CLASS = 'elo-guard-focus-toggle-dragging';
+    const ENHANCED_FOCUS_TOGGLE_EDGE_MARGIN = 6;
+    let ENHANCED_FOCUS_TOGGLE_POS = null;
+    let ENHANCED_FOCUS_TOGGLE_MINIMIZED = false;
+    const ENHANCED_FOCUS_TOGGLE_DRAG = {
+        active: false,
+        moved: false,
+        pressedMinimize: false,
+        startX: 0,
+        startY: 0,
+        originLeft: 0,
+        originTop: 0,
+        pointerId: null
+    };
+
     let consecutiveLosses = 0;
     let lockoutTimerId = null;
     let lockoutEndTime = 0;
@@ -71,6 +93,8 @@
     let cooldownEndTime = 0;
     const INSTANCE_ID_KEY = 'eloGuardInstanceId';
     const SESSION_COOLDOWN_END_KEY = 'eloGuardCooldownEndTime';
+    const SESSION_ACTIVE_GAME_SEEN_KEY = 'eloGuardActiveGameSeenAt';
+    const ACTIVE_GAME_SEEN_WINDOW_MS = 2 * 60 * 60 * 1000;
     let ELOGUARD_INSTANCE_ID = null;
     const LOSS_STREAK_KEY_PREFIX = 'eloGuardLossStreak';
     const LAST_RATING_KEY_PREFIX = 'eloGuardLastRating';
@@ -93,6 +117,9 @@
     let LEGITIMACY_PENDING_USERNAME = "";
     let LEGITIMACY_REQUEST_ID = 0;
     let LEGITIMACY_LAST_RESULT = null;
+    const LEGITIMACY_GRANTED_KEYS = new Set();
+    const PRO_FEATURE_RISK_PROFILE = 'riskProfile';
+    const PRO_FEATURE_GAME_REVIEW = 'gameReview';
 
     // --- INITIALIZATION ---
     try {
@@ -111,9 +138,36 @@
     // This allows us to toggle visibility instantly without deleting text
     const style = document.createElement('style');
     style.innerHTML = `
-        .elo-shield-zen .elo-guard-zen-hidden { display: none !important; }
-        .elo-shield-zen [class*="rating"][class*="analysis"] { display: none !important; }
-        .elo-shield-zen [class*="rating"][class*="review"] { display: none !important; }
+        .elo-shield-zen .elo-guard-zen-hidden,
+        .elo-shield-zen .elo-guard-zen-rating-text { display: none !important; }
+        /* Hide the rating numbers shown next to players on the board and in the
+           game review / analysis views (e.g. chess.com/game/live/...).
+           The old [class*="rating"][class*="analysis"] rules never matched: chess.com's
+           rating element (user-tagline-rating / cc-user-rating-*) contains "rating" but
+           not "analysis"/"review", so a single-element compound selector can't hit it.
+           Scope to chess.com's player + review containers so we only touch its ratings,
+           never EloGuard's own UI (which uses elo-guard-/egr- class names, no "rating"). */
+        .elo-shield-zen #board-layout-player-top [class*="rating"],
+        .elo-shield-zen #board-layout-player-bottom [class*="rating"],
+        .elo-shield-zen [class*="board-layout-player"] [class*="rating"],
+        .elo-shield-zen [class*="board-player"] [class*="rating"],
+        .elo-shield-zen [class*="player-top"] [class*="rating"],
+        .elo-shield-zen [class*="player-bottom"] [class*="rating"],
+        .elo-shield-zen [class*="user-tagline"] [class*="rating"],
+        .elo-shield-zen [class*="player-tagline"] [class*="rating"],
+        .elo-shield-zen [class*="review"] [class*="rating"],
+        .elo-shield-zen [class*="analysis"] [class*="rating"],
+        .elo-shield-zen [class*="game-review"] [class*="rating"],
+        .elo-shield-zen [class*="analysis-sidebar"] [class*="rating"],
+        .elo-shield-zen [data-cy*="review"] [class*="rating"],
+        .elo-shield-zen [data-cy*="analysis"] [class*="rating"],
+        .elo-shield-zen [class*="review"] [data-cy*="rating"],
+        .elo-shield-zen [class*="analysis"] [data-cy*="rating"],
+        .elo-shield-zen [class*="cc-user-rating"],
+        .elo-shield-zen #board-layout-player-top [data-cy*="rating"],
+        .elo-shield-zen #board-layout-player-bottom [data-cy*="rating"],
+        .elo-shield-zen #board-layout-player-top [data-test-element*="rating"],
+        .elo-shield-zen #board-layout-player-bottom [data-test-element*="rating"] { display: none !important; }
         .elo-shield-anon-opponent .elo-guard-opponent-name {
             color: transparent !important;
             font-size: 0 !important;
@@ -165,6 +219,9 @@
         }
         body.elo-guard-enhanced-focus {
             --elo-guard-clock-column-width: 190px;
+            --elo-guard-material-row-height: 24px;
+            --elo-guard-material-gap: 8px;
+            --elo-guard-material-edge-gap: 8px;
             --elo-guard-board-size: min(calc(100vw - var(--elo-guard-clock-column-width) - var(--elo-guard-clock-column-width) - 64px), calc(100vh - 112px));
             background: #302E2B !important;
             overflow: hidden !important;
@@ -234,6 +291,46 @@
         #elo-guard-enhanced-focus-flip:focus-visible {
             outline: 2px solid #81b64c !important;
             outline-offset: 2px !important;
+        }
+        #elo-guard-enhanced-focus-toggle .elo-guard-focus-toggle-label {
+            display: inline-block !important;
+            white-space: nowrap !important;
+        }
+        #elo-guard-enhanced-focus-toggle .elo-guard-focus-toggle-min {
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 16px !important;
+            height: 16px !important;
+            margin-right: -4px !important;
+            border-radius: 999px !important;
+            font: 700 15px/1 Arial, sans-serif !important;
+            color: rgba(245, 245, 245, 0.55) !important;
+            pointer-events: auto !important;
+        }
+        #elo-guard-enhanced-focus-toggle .elo-guard-focus-toggle-min:hover {
+            background: rgba(255, 255, 255, 0.14) !important;
+            color: #ffffff !important;
+        }
+        #elo-guard-enhanced-focus-toggle.elo-guard-focus-toggle-dragging {
+            cursor: grabbing !important;
+            user-select: none !important;
+            box-shadow: 0 10px 26px rgba(0, 0, 0, 0.42) !important;
+        }
+        #elo-guard-enhanced-focus-toggle.elo-guard-focus-toggle-minimized {
+            gap: 0 !important;
+            width: 30px !important;
+            min-width: 30px !important;
+            height: 30px !important;
+            min-height: 30px !important;
+            padding: 0 !important;
+        }
+        #elo-guard-enhanced-focus-toggle.elo-guard-focus-toggle-minimized .elo-guard-focus-toggle-label,
+        #elo-guard-enhanced-focus-toggle.elo-guard-focus-toggle-minimized .elo-guard-focus-toggle-min {
+            display: none !important;
+        }
+        body.elo-guard-enhanced-focus #elo-guard-enhanced-focus-toggle .elo-guard-focus-toggle-min {
+            display: none !important;
         }
         body.elo-guard-enhanced-focus header,
         body.elo-guard-enhanced-focus .site-header,
@@ -452,7 +549,7 @@
             box-shadow: none !important;
             overflow: visible !important;
         }
-        body.elo-guard-enhanced-focus.elo-guard-enhanced-focus-ready > *:not(#elo-guard-enhanced-focus-stage):not(script):not(style):not(link) {
+        body.elo-guard-enhanced-focus.elo-guard-enhanced-focus-ready > *:not(#elo-guard-enhanced-focus-stage):not(#elo-guard-enhanced-focus-toggle):not(script):not(style):not(link) {
             visibility: hidden !important;
             pointer-events: none !important;
         }
@@ -620,7 +717,9 @@
             position: fixed !important;
             left: 50% !important;
             width: var(--elo-guard-board-size) !important;
-            min-height: 22px !important;
+            min-height: var(--elo-guard-material-row-height) !important;
+            height: auto !important;
+            max-height: none !important;
             transform: translateX(-50%) !important;
             display: flex !important;
             align-items: flex-start !important;
@@ -628,17 +727,20 @@
             gap: 0 !important;
             visibility: visible !important;
             opacity: 1 !important;
+            overflow: visible !important;
+            contain: none !important;
             pointer-events: none !important;
-            z-index: 2147483602 !important;
+            z-index: 2147483646 !important;
         }
         body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-material-slot[hidden] {
             display: none !important;
         }
         body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-material-top-slot {
-            top: calc((100vh - var(--elo-guard-board-size)) / 2 - 30px) !important;
+            top: max(var(--elo-guard-material-edge-gap), calc((100vh - var(--elo-guard-board-size)) / 2 - var(--elo-guard-material-row-height) - var(--elo-guard-material-gap))) !important;
         }
         body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-material-bottom-slot {
-            top: calc((100vh + var(--elo-guard-board-size)) / 2 + 8px) !important;
+            top: auto !important;
+            bottom: max(var(--elo-guard-material-edge-gap), calc((100vh - var(--elo-guard-board-size)) / 2 - var(--elo-guard-material-row-height) - var(--elo-guard-material-gap))) !important;
         }
         body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-material {
             display: inline-flex !important;
@@ -649,12 +751,29 @@
             width: auto !important;
             min-width: 0 !important;
             max-width: none !important;
-            height: 22px !important;
-            min-height: 22px !important;
+            height: auto !important;
+            min-height: var(--elo-guard-material-row-height) !important;
+            max-height: none !important;
             margin: 0 !important;
             padding: 0 !important;
             overflow: visible !important;
+            contain: none !important;
+            white-space: nowrap !important;
+            flex-wrap: nowrap !important;
             letter-spacing: 0 !important;
+        }
+        body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-material *,
+        body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-material::before,
+        body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-material::after {
+            visibility: visible !important;
+            opacity: 1 !important;
+            overflow: visible !important;
+            max-width: none !important;
+            max-height: none !important;
+            clip: auto !important;
+            clip-path: none !important;
+            mask-image: none !important;
+            -webkit-mask-image: none !important;
         }
         body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-board-slot {
             grid-column: 1 !important;
@@ -707,6 +826,9 @@
             ANONYMIZE_OPPONENT = data.anonymizeOpponent || false;
             ANONYMIZE_SELF = data.anonymizeSelf || false;
             ENHANCED_FOCUS_MODE = data.enhancedFocusMode || false;
+            ENHANCED_FOCUS_TOGGLE_MINIMIZED = data.enhancedFocusButtonMinimized || false;
+            setEnhancedFocusToggleStoredPosition(data.enhancedFocusButtonLeft, data.enhancedFocusButtonTop);
+            SHOW_RISK_PROFILE_PILL = data.showRiskProfilePill !== false;
 
             const stopKey = `stopLoss_${GAME_MODE}`;
             const targetKey = `targetRating_${GAME_MODE}`;
@@ -719,6 +841,7 @@
             applyOpponentAnonymization();
             applySelfAnonymization();
             applyEnhancedFocusMode();
+            applyRiskProfilePillVisibility();
             ensureEnhancedFocusToggle();
             processOpponentLegitimacyDetector();
 
@@ -757,7 +880,7 @@
     
     // Process chat constantly so we wrap text even if Zen Mode is off initially.
     // This ensures that if you turn Zen Mode ON later, the text is already wrapped and ready to hide.
-    setInterval(processChatForZen, 500);
+    setInterval(() => { processChatForZen(); hideBoardRatingsForZen(); }, 500);
     setInterval(processOpponentLegitimacyDetector, 2000);
     setInterval(positionOpponentLegitimacyBadge, 500);
     setInterval(() => {
@@ -772,6 +895,12 @@
     setInterval(() => {
         if (ENHANCED_FOCUS_MODE) syncEnhancedFocusCustomClocks();
     }, 250);
+
+    // Keep the focus toggle on-screen as the window resizes.
+    window.addEventListener('resize', () => {
+        const toggle = document.getElementById(ENHANCED_FOCUS_TOGGLE_ID);
+        if (toggle) positionEnhancedFocusToggle(toggle);
+    }, { passive: true });
 
     // --- LOGIC ---
 
@@ -936,10 +1065,19 @@
     async function checkForGameOver() {
         if (!GUARD_ACTIVE) return;
 
+        if (hasActiveGameControls()) {
+            rememberActiveGameSeen();
+        }
+
         const isGameOver = document.querySelector('[data-cy="game-over-modal-new-game-button"]')
             || document.querySelector('[data-cy="sidebar-rematch-button"]')
             || document.querySelector('[data-cy="sidebar-game-over-rematch-button"]')
             || document.querySelector('.game-over-controls');
+
+        if (isChessComReviewOrAnalysisRoute() && !activeGameWasSeenRecently()) {
+            gameOverDetected = false;
+            return;
+        }
 
         if (isGameOver) {
             if (!gameOverDetected) {
@@ -952,6 +1090,7 @@
                 const isAborted = document.querySelector('.header-title-component')?.innerText?.includes('Game Aborted');
 
                 if (isAborted) {
+                    clearActiveGameSeen();
                     console.log("🛡️ EloGuard: Game Aborted - skipping cooldown.");
                     return;
                 }
@@ -963,6 +1102,7 @@
                     if (COOLDOWN_ACTIVE && COOLDOWN_SECONDS > 0) {
                         startCooldown();
                     } else {
+                        clearActiveGameSeen();
                         unfreezeControls();
                     }
                 } else if (status === 'error') {
@@ -990,11 +1130,16 @@
             const previousRating = lastKnownRating;
             const ratingDiff = updateLossTracking(currentRating);
             if (preventUnlock) {
-                recordPostGameMatchupFeedback({
-                    previousRating,
-                    currentRating,
-                    ratingDiff
-                });
+                // MATCHUP ADVICE — DISABLED (chess.com TOS review pending). See the
+                // banner above getMatchupMetric() for the full explanation. This
+                // recorder only logged how the (now hidden) matchup recommendation
+                // played out, so it's turned off with the feature. Re-enable together
+                // with the matchup feature.
+                // recordPostGameMatchupFeedback({
+                //     previousRating,
+                //     currentRating,
+                //     ratingDiff
+                // });
             }
 
             if (STOP_LOSS_STREAK > 0 && consecutiveLosses >= STOP_LOSS_STREAK) {
@@ -1068,39 +1213,179 @@
         });
     }
 
+    function isChessComReviewOrAnalysisRoute() {
+        const path = String(location.pathname || '').toLowerCase();
+        const search = String(location.search || '').toLowerCase();
+        return path.includes('/analysis')
+            || /[?&](tab|view|mode)=(game-)?review\b/.test(search)
+            || /[?&](tab|view|mode)=analysis\b/.test(search);
+    }
+
+    function rememberActiveGameSeen() {
+        try { sessionStorage.setItem(SESSION_ACTIVE_GAME_SEEN_KEY, String(Date.now())); } catch (e) {}
+    }
+
+    function activeGameWasSeenRecently() {
+        try {
+            const seenAt = parseInt(sessionStorage.getItem(SESSION_ACTIVE_GAME_SEEN_KEY), 10);
+            return Number.isFinite(seenAt) && (Date.now() - seenAt) <= ACTIVE_GAME_SEEN_WINDOW_MS;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function clearActiveGameSeen() {
+        try { sessionStorage.removeItem(SESSION_ACTIVE_GAME_SEEN_KEY); } catch (e) {}
+    }
+
+    function getGameStartLockSelectors(lockType = "generic") {
+        const selectors = [
+            '[data-cy="new-game-index-play"]',
+            '[data-cy="game-over-modal-new-game-button"]',
+            '[data-cy*="new-game"]',
+            '[data-cy*="quick-play"]',
+            '[data-cy*="play-online"]',
+            'a[href*="/play/online"]',
+            'a[href*="/play/live"]',
+            '.cc-button-primary.cc-button-x-large',
+            'a.play-quick-links-link'
+        ];
+
+        if (lockType !== "cooldown") {
+            selectors.push(
+                '[data-cy="sidebar-rematch-button"]',
+                '[data-cy="sidebar-game-over-rematch-button"]',
+                '[data-cy="game-over-modal-rematch-button"]',
+                '[data-cy*="rematch"]'
+            );
+        }
+
+        return selectors;
+    }
+
+    function normalizeLockTarget(el) {
+        if (!el) return null;
+        let target = el;
+        const isActionTarget = (node) => {
+            if (!node) return false;
+            const tag = node.tagName;
+            return tag === "BUTTON"
+                || tag === "A"
+                || tag === "DIV"
+                || node.getAttribute?.('role') === 'button'
+                || node.classList?.contains('play-quick-links-link');
+        };
+
+        if (!isActionTarget(target)) {
+            target = target.closest?.('button,a,[role="button"],div') || target;
+        }
+
+        if (target.tagName !== "BUTTON"
+            && target.tagName !== "A"
+            && target.getAttribute?.('role') !== 'button'
+            && !target.classList?.contains('play-quick-links-link')) {
+            const innerBtn = target.querySelector?.('button,a,[role="button"]');
+            if (innerBtn) target = innerBtn;
+        }
+
+        return target;
+    }
+
+    function getLockControlDescriptor(el) {
+        if (!el) return '';
+        return [
+            el.getAttribute?.('data-cy'),
+            el.getAttribute?.('data-test-element'),
+            el.getAttribute?.('aria-label'),
+            el.getAttribute?.('title'),
+            el.className,
+            el.textContent
+        ].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+    }
+
+    function isRematchControl(el) {
+        const descriptor = getLockControlDescriptor(el);
+        const href = String(el?.getAttribute?.('href') || '');
+        return /\brematch\b/i.test(descriptor) || /rematch/i.test(href);
+    }
+
+    function isDisallowedGameStartTarget(el) {
+        const descriptor = getLockControlDescriptor(el);
+        const href = String(el?.getAttribute?.('href') || '').toLowerCase();
+        return /\b(computer|bot|friend|lesson|puzzle|analysis|analyze|review|lichess|report|share|profile|settings)\b/i.test(descriptor)
+            || href.includes('/play/computer')
+            || href.includes('/play/friend')
+            || href.includes('/analysis')
+            || href.includes('/lessons')
+            || href.includes('/puzzles');
+    }
+
+    function isNewOpponentGameControl(el) {
+        if (!el || isRematchControl(el) || isDisallowedGameStartTarget(el)) return false;
+
+        const descriptor = getLockControlDescriptor(el);
+        const href = String(el.getAttribute?.('href') || '').toLowerCase();
+
+        if (el.classList?.contains('play-quick-links-link')) return true;
+        if (/\/play\/(online|live)(?:[/?#]|$)/i.test(href)) return true;
+        if (/\b(new-game|newgame|quick-play|play-online|new-game-index-play|game-over-modal-new-game-button)\b/i.test(descriptor)) return true;
+        if (/\b(new game|play online|quick game|start game|find match)\b/i.test(descriptor)) return true;
+        if (/\bplay\s+\d+\s*(?:min|minute|m)\b/i.test(descriptor)) return true;
+        if (/^\s*play\s*$/i.test(el.textContent || '') && /cc-button-primary|play/i.test(descriptor)) return true;
+
+        return false;
+    }
+
+    function shouldLockGameStartControl(el, lockType = "generic") {
+        if (!el) return false;
+        if (isRematchControl(el)) return lockType !== "cooldown";
+        return isNewOpponentGameControl(el);
+    }
+
+    function restoreLockedControl(btn, fallbackText = "Play") {
+        if (!btn) return;
+        btn.classList.remove('elo-guard-locked');
+        btn.classList.remove('elo-guard-cooldown');
+        btn.removeAttribute('data-elo-guard-lock');
+
+        btn.style.pointerEvents = "";
+        btn.style.backgroundColor = "";
+        btn.style.color = "";
+        btn.style.borderColor = "";
+        btn.style.opacity = "";
+
+        const original = btn.getAttribute('data-original-html');
+        if (original) btn.innerHTML = original;
+        else if (fallbackText) btn.innerText = fallbackText;
+    }
+
+    function releaseCooldownRematchControls() {
+        document.querySelectorAll('[data-cy*="rematch"], [data-elo-guard-lock="cooldown"]').forEach(el => {
+            const btn = normalizeLockTarget(el);
+            if (!btn || !isRematchControl(btn)) return;
+            if (btn.getAttribute('data-elo-guard-lock') === "cooldown") {
+                restoreLockedControl(btn, "Rematch");
+            }
+            btn.style.pointerEvents = "";
+            btn.style.opacity = "";
+        });
+    }
+
     function lockButtonGeneric(title, sub, bgColor, lockType = "generic") {
         if (!GUARD_ACTIVE) return;
 
-        const selectors = [
-            '[data-cy="new-game-index-play"]',           
-            '[data-cy="game-over-modal-new-game-button"]', 
-            '[data-cy="sidebar-rematch-button"]',        
-            '[data-cy="sidebar-game-over-rematch-button"]',
-            '[data-cy="game-over-modal-rematch-button"]',
-            '.cc-button-primary.cc-button-x-large',
-            'a.play-quick-links-link' 
-        ];
+        const selectors = getGameStartLockSelectors(lockType);
 
         selectors.forEach(sel => {
             const els = document.querySelectorAll(sel);
-            els.forEach(btn => {
-                const text = (btn.innerText || "").toLowerCase();
-                const href = (btn.getAttribute('href') || "").toLowerCase();
-                
-                if (text.includes("computer") || text.includes("bot") || text.includes("friend")) return;
-                if (href.includes("/play/computer") || href.includes("/play/friend")) return;
+            els.forEach(el => {
+                const btn = normalizeLockTarget(el);
+                if (!shouldLockGameStartControl(btn, lockType)) return;
 
                 if (btn.classList.contains('play-quick-links-link')) {
                     if (btn.classList.contains('elo-guard-home-locked')) return;
                 }
 
-                if (btn.tagName !== "BUTTON" && btn.tagName !== "A" && btn.tagName !== "DIV") return;
-
-                if (btn.tagName !== "BUTTON" && !btn.classList.contains('play-quick-links-link')) {
-                     const innerBtn = btn.querySelector('button');
-                     if (innerBtn) btn = innerBtn;
-                }
-                
                 if (btn.getAttribute('data-elo-guard-lock') !== lockType || lockType === "cooldown") {
                     applyLockStyle(btn, title, sub, bgColor, lockType);
                 }
@@ -1110,7 +1395,10 @@
         const plusIcons = document.querySelectorAll('[data-glyph="mark-plus"]');
         plusIcons.forEach(icon => {
             const btn = icon.closest('button');
-            if (btn && (btn.getAttribute('data-elo-guard-lock') !== lockType || lockType === "cooldown")) {
+            if (btn
+                && !isRematchControl(btn)
+                && !isDisallowedGameStartTarget(btn)
+                && (btn.getAttribute('data-elo-guard-lock') !== lockType || lockType === "cooldown")) {
                 applyLockStyle(btn, title, sub, bgColor, lockType);
             }
         });
@@ -1142,17 +1430,16 @@
     }
 
     function freezeControls() {
-        const selectors = [
-            '[data-cy="new-game-index-play"]',
-            '[data-cy="game-over-modal-new-game-button"]',
-            '[data-cy="sidebar-rematch-button"]'
-        ];
+        const selectors = getGameStartLockSelectors("cooldown");
         selectors.forEach(sel => {
-            document.querySelectorAll(sel).forEach(el => {
+            document.querySelectorAll(sel).forEach(candidate => {
+                const el = normalizeLockTarget(candidate);
+                if (!shouldLockGameStartControl(el, "cooldown")) return;
                 el.style.pointerEvents = "none";
                 el.style.opacity = "0.5";
             });
         });
+        releaseCooldownRematchControls();
     }
 
     function unfreezeControls() {
@@ -1164,19 +1451,7 @@
         const lockedBtns = document.querySelectorAll('.elo-guard-locked, [data-elo-guard-lock]');
         lockedBtns.forEach(btn => {
             if (btn.classList.contains('elo-guard-locked')) {
-                btn.classList.remove('elo-guard-locked');
-                btn.classList.remove('elo-guard-cooldown');
-                btn.removeAttribute('data-elo-guard-lock');
-                
-                btn.style.pointerEvents = "";
-                btn.style.backgroundColor = "";
-                btn.style.color = "";
-                btn.style.borderColor = "";
-                btn.style.opacity = "";
-
-                const original = btn.getAttribute('data-original-html');
-                if (original) btn.innerHTML = original;
-                else btn.innerText = "Play"; 
+                restoreLockedControl(btn);
             }
         });
         
@@ -1187,7 +1462,7 @@
              if (original) el.innerHTML = original;
         });
 
-        const frozen = document.querySelectorAll('[data-cy="new-game-index-play"]');
+        const frozen = document.querySelectorAll('[data-cy="new-game-index-play"], [data-cy="game-over-modal-new-game-button"], [data-cy*="rematch"], a.play-quick-links-link');
         frozen.forEach(el => {
             el.style.pointerEvents = "";
             el.style.opacity = "";
@@ -1201,17 +1476,22 @@
     function startCooldownWithDuration(seconds, existingEndTime) {
         if (activeLockState) return;
         if (isCooldownRunning) return;
-        if (!GUARD_ACTIVE || !COOLDOWN_ACTIVE || seconds <= 0) return;
+        if (!GUARD_ACTIVE || !COOLDOWN_ACTIVE) return;
 
         const now = Date.now();
         const effectiveEndTime = existingEndTime || cooldownEndTime || getSessionCooldownEndTime();
         
         if (effectiveEndTime && effectiveEndTime > now) cooldownEndTime = effectiveEndTime;
-        else cooldownEndTime = now + seconds * 1000;
+        else {
+            const duration = parseInt(seconds, 10) || 0;
+            if (duration <= 0) return;
+            cooldownEndTime = now + duration * 1000;
+        }
 
         isCooldownRunning = true;
         chrome.storage.local.set({ [COOLDOWN_STORAGE_KEY]: cooldownEndTime });
         setSessionCooldownEndTime(cooldownEndTime);
+        clearActiveGameSeen();
 
         const initialRemaining = Math.max(0, Math.ceil((cooldownEndTime - now) / 1000));
         applyCooldownLock(initialRemaining);
@@ -1232,11 +1512,13 @@
     }
 
     function applyCooldownLock(seconds) {
+        releaseCooldownRematchControls();
         lockButtonGeneric("🧊 COOL DOWN", `Analyze.<br>${seconds}s`, "#2196F3", "cooldown");
         const existing = document.querySelectorAll('[data-elo-guard-lock="cooldown"]');
         existing.forEach(btn => {
             applyLockStyle(btn, "🧊 COOL DOWN", `Analyze.<br>${seconds}s`, "#2196F3", "cooldown");
         });
+        releaseCooldownRematchControls();
     }
 
     function resumeCooldownFromStorage() {
@@ -1443,6 +1725,9 @@
         return diff;
     }
 
+    // MATCHUP ADVICE — DISABLED (see banner above getMatchupMetric): retained but no
+    // longer called (its call site in checkRating() is commented out), and it
+    // early-returns anyway because the result never carries `.matchup` now.
     async function recordPostGameMatchupFeedback(ratingInfo = {}, attempt = 0) {
         const feedbackKey = getMatchupFeedbackKey();
         if (!feedbackKey || !USERNAME || !LEGITIMACY_LAST_RESULT?.matchup) return;
@@ -1593,6 +1878,80 @@
                 msg.dataset.eloProcessed = "true";
             }
         });
+    }
+
+    // Tag the rating numbers next to both board players so Zen Mode can hide them.
+    // Reuses the same player-root getters as the game-review feature (getTopOpponentRoot /
+    // getBottomPlayerRoot resolve #board-layout-player-top/-bottom on live AND review pages),
+    // so it stays in sync with where ratings actually render. Non-destructive: we only add a
+    // class (never rewrite chess.com's live board HTML). The CSS above gates on .elo-shield-zen,
+    // so tagging while Zen is off is inert and makes toggling it on instant.
+    function hideBoardRatingsForZen() {
+        [getTopOpponentRoot(), getBottomPlayerRoot()].forEach(root => {
+            if (!root || !root.querySelectorAll) return;
+            root.querySelectorAll('[class*="rating"], [data-cy*="rating"], [data-test-element*="rating"]')
+                .forEach(el => el.classList.add('elo-guard-zen-hidden'));
+        });
+        tagPlainTextRatingsForZen();
+    }
+
+    function tagPlainTextRatingsForZen() {
+        const roots = [
+            getTopOpponentRoot(),
+            getBottomPlayerRoot(),
+            ...document.querySelectorAll([
+                '[class*="game-review"]',
+                '[data-cy*="game-review"]',
+                '[class*="analysis-sidebar"]',
+                '[class*="review"] [class*="player"]',
+                '[class*="review"] [class*="user"]',
+                '[class*="analysis"] [class*="player"]',
+                '[class*="analysis"] [class*="user"]'
+            ].join(','))
+        ].filter(Boolean);
+        [...new Set(roots)].forEach((root) => {
+            if (root.closest?.('#elo-guard-review-panel')) return;
+            root.querySelectorAll('span, div, strong, em, a, p').forEach((el) => {
+                if (el.closest('#elo-guard-review-panel, #elo-guard-legitimacy-badge')) return;
+                if (el.classList.contains('elo-guard-zen-hidden')) return;
+                if (el.querySelector('[class*="username"], [class*="user-name"], [data-cy*="username"], [data-cy*="user-name"]')) return;
+                const childElements = Array.from(el.children || [])
+                    .filter((child) => !child.classList?.contains('elo-guard-zen-hidden'));
+                if (childElements.length > 1) return;
+                const text = (el.textContent || '').replace(/\s+/g, ' ').trim();
+                if (isZenRatingText(text) && hasZenPlayerContext(el)) {
+                    el.classList.add('elo-guard-zen-rating-text');
+                }
+            });
+        });
+    }
+
+    function isZenRatingText(text) {
+        if (!text || text.length > 18) return false;
+        const normalized = text.replace(/[()]/g, '').replace(/[,\u00a0]/g, '').trim();
+        if (/^\d{3,4}$/.test(normalized)) {
+            const value = parseInt(normalized, 10);
+            return value >= 100 && value <= 3500;
+        }
+        return /^[+-]\d{1,3}$/.test(normalized);
+    }
+
+    function hasZenPlayerContext(el) {
+        let cur = el;
+        for (let i = 0; cur && i < 5; i++, cur = cur.parentElement) {
+            const descriptor = [
+                cur.id,
+                cur.className,
+                cur.getAttribute?.('data-cy'),
+                cur.getAttribute?.('data-test-element'),
+                cur.getAttribute?.('aria-label')
+            ].join(' ');
+            if (/elo-guard|egr-/i.test(descriptor)) return false;
+            if (/\b(board-layout-player|board-player|game-review|analysis-sidebar|post-game|player|user|tagline|profile|rating)\b/i.test(descriptor)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     // --- OPPONENT ANONYMIZER ---
@@ -2090,6 +2449,9 @@
 
             body.elo-guard-enhanced-focus {
                 --elo-guard-clock-column-width: 190px;
+                --elo-guard-material-row-height: 24px;
+                --elo-guard-material-gap: 8px;
+                --elo-guard-material-edge-gap: 8px;
                 --elo-guard-board-size: min(calc(100vw - var(--elo-guard-clock-column-width) - var(--elo-guard-clock-column-width) - 64px), calc(100vh - 112px));
                 background: #302E2B !important;
                 overflow: hidden !important;
@@ -2363,7 +2725,7 @@
                 overflow: visible !important;
             }
 
-            body.elo-guard-enhanced-focus.elo-guard-enhanced-focus-ready > *:not(#elo-guard-enhanced-focus-stage):not(script):not(style):not(link) {
+            body.elo-guard-enhanced-focus.elo-guard-enhanced-focus-ready > *:not(#elo-guard-enhanced-focus-stage):not(#elo-guard-enhanced-focus-toggle):not(script):not(style):not(link) {
                 visibility: hidden !important;
                 pointer-events: none !important;
             }
@@ -2545,7 +2907,9 @@
                 position: fixed !important;
                 left: 50% !important;
                 width: var(--elo-guard-board-size) !important;
-                min-height: 22px !important;
+                min-height: var(--elo-guard-material-row-height) !important;
+                height: auto !important;
+                max-height: none !important;
                 transform: translateX(-50%) !important;
                 display: flex !important;
                 align-items: flex-start !important;
@@ -2553,8 +2917,10 @@
                 gap: 0 !important;
                 visibility: visible !important;
                 opacity: 1 !important;
+                overflow: visible !important;
+                contain: none !important;
                 pointer-events: none !important;
-                z-index: 2147483602 !important;
+                z-index: 2147483646 !important;
             }
 
             body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-material-slot[hidden] {
@@ -2562,11 +2928,12 @@
             }
 
             body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-material-top-slot {
-                top: calc((100vh - var(--elo-guard-board-size)) / 2 - 30px) !important;
+                top: max(var(--elo-guard-material-edge-gap), calc((100vh - var(--elo-guard-board-size)) / 2 - var(--elo-guard-material-row-height) - var(--elo-guard-material-gap))) !important;
             }
 
             body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-material-bottom-slot {
-                top: calc((100vh + var(--elo-guard-board-size)) / 2 + 8px) !important;
+                top: auto !important;
+                bottom: max(var(--elo-guard-material-edge-gap), calc((100vh - var(--elo-guard-board-size)) / 2 - var(--elo-guard-material-row-height) - var(--elo-guard-material-gap))) !important;
             }
 
             body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-material {
@@ -2578,12 +2945,30 @@
                 width: auto !important;
                 min-width: 0 !important;
                 max-width: none !important;
-                height: 22px !important;
-                min-height: 22px !important;
+                height: auto !important;
+                min-height: var(--elo-guard-material-row-height) !important;
+                max-height: none !important;
                 margin: 0 !important;
                 padding: 0 !important;
                 overflow: visible !important;
+                contain: none !important;
+                white-space: nowrap !important;
+                flex-wrap: nowrap !important;
                 letter-spacing: 0 !important;
+            }
+
+            body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-material *,
+            body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-material::before,
+            body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-material::after {
+                visibility: visible !important;
+                opacity: 1 !important;
+                overflow: visible !important;
+                max-width: none !important;
+                max-height: none !important;
+                clip: auto !important;
+                clip-path: none !important;
+                mask-image: none !important;
+                -webkit-mask-image: none !important;
             }
 
             body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-board-slot {
@@ -2635,8 +3020,13 @@
         `;
     }
 
-    function processOpponentLegitimacyDetector() {
+    async function processOpponentLegitimacyDetector() {
         if (!document.body) return;
+
+        if (!SHOW_RISK_PROFILE_PILL) {
+            hideOpponentLegitimacyBadge();
+            return;
+        }
 
         const root = getTopOpponentRoot();
         const username = getCurrentOpponentUsername(root);
@@ -2655,11 +3045,39 @@
         const cacheKey = getLegitimacyCacheKey(normalizedUsername);
 
         const badge = ensureOpponentLegitimacyBadge();
+        badge.dataset.cacheKey = cacheKey;
         badge.hidden = false;
         positionOpponentLegitimacyBadge();
 
         const cached = LEGITIMACY_CACHE.get(cacheKey);
-        if (cached && Date.now() - cached.createdAt < LEGITIMACY_CACHE_TTL_MS) {
+        const hasFreshCachedResult = cached && Date.now() - cached.createdAt < LEGITIMACY_CACHE_TTL_MS;
+        if (hasFreshCachedResult && LEGITIMACY_GRANTED_KEYS.has(cacheKey)) {
+            renderOpponentLegitimacyResult(badge, cached.result);
+            return;
+        }
+
+        // Non-consuming gate. We only spend the free daily check once we have an
+        // actual result to show (see the .then below), so an opponent whose data
+        // fails to load — or one you never look at — never wastes the check, and
+        // an opponent already checked today stays viewable.
+        const access = await getPremiumFeatureAccess(PRO_FEATURE_RISK_PROFILE, cacheKey);
+        if (!isCurrentLegitimacyTarget(cacheKey, normalizedUsername)) return;
+        if (!access.allowed) {
+            if (hasFreshCachedResult && badge.dataset.state === 'ready' && badge.dataset.cacheKey === cacheKey) {
+                return;
+            }
+            if (access.unavailable) {
+                if (badge.dataset.state !== 'ready') renderOpponentLegitimacyLoading(badge, username);
+                positionOpponentLegitimacyBadge();
+                return;
+            }
+            renderOpponentLegitimacyPaywall(badge, username, access);
+            positionOpponentLegitimacyBadge();
+            return;
+        }
+
+        if (hasFreshCachedResult) {
+            LEGITIMACY_GRANTED_KEYS.add(cacheKey);
             renderOpponentLegitimacyResult(badge, cached.result);
             return;
         }
@@ -2675,22 +3093,50 @@
         const requestId = ++LEGITIMACY_REQUEST_ID;
 
         evaluateOpponentLegitimacy(username)
-            .then(result => {
+            .then(async result => {
                 LEGITIMACY_CACHE.set(cacheKey, {
                     createdAt: Date.now(),
                     result
                 });
 
                 if (requestId !== LEGITIMACY_REQUEST_ID) return;
+                if (!SHOW_RISK_PROFILE_PILL) {
+                    hideOpponentLegitimacyBadge();
+                    return;
+                }
                 const currentRoot = getTopOpponentRoot();
                 if (!currentRoot || normalizeIdentity(getCurrentOpponentUsername(currentRoot)) !== normalizedUsername) return;
 
+                // Spend the free daily check now that we have a result. Idempotent
+                // per opponent (cacheKey); a Pro user is never charged. If a race
+                // (e.g. two tabs) exhausted the limit meanwhile, show the paywall
+                // instead of a second free result.
+                const grant = await consumePremiumFeature(PRO_FEATURE_RISK_PROFILE, cacheKey);
                 const currentBadge = ensureOpponentLegitimacyBadge();
+                if (!grant.allowed) {
+                    if (currentBadge.dataset.state === 'ready' && currentBadge.dataset.cacheKey === cacheKey) {
+                        return;
+                    }
+                    if (grant.unavailable) {
+                        renderOpponentLegitimacyLoading(currentBadge, username);
+                        positionOpponentLegitimacyBadge();
+                        return;
+                    }
+                    renderOpponentLegitimacyPaywall(currentBadge, username, grant);
+                    positionOpponentLegitimacyBadge();
+                    return;
+                }
+                currentBadge.dataset.cacheKey = cacheKey;
+                LEGITIMACY_GRANTED_KEYS.add(cacheKey);
                 renderOpponentLegitimacyResult(currentBadge, result);
                 positionOpponentLegitimacyBadge();
             })
             .catch(() => {
                 if (requestId !== LEGITIMACY_REQUEST_ID) return;
+                if (!SHOW_RISK_PROFILE_PILL) {
+                    hideOpponentLegitimacyBadge();
+                    return;
+                }
                 const currentRoot = getTopOpponentRoot();
                 if (!currentRoot || normalizeIdentity(getCurrentOpponentUsername(currentRoot)) !== normalizedUsername) return;
                 const currentBadge = ensureOpponentLegitimacyBadge();
@@ -2710,14 +3156,23 @@
         return `${selfKey}:${modeKey}:${normalizedOpponentUsername}`;
     }
 
+    function isCurrentLegitimacyTarget(cacheKey, normalizedUsername) {
+        const currentRoot = getTopOpponentRoot();
+        if (!currentRoot) return false;
+        if (normalizeIdentity(getCurrentOpponentUsername(currentRoot)) !== normalizedUsername) return false;
+        return getLegitimacyCacheKey(normalizedUsername) === cacheKey;
+    }
+
     function ensureOpponentLegitimacyBadge() {
         let badge = document.getElementById(LEGITIMACY_BADGE_ID);
         if (badge) {
-            if (!badge.querySelector('.elo-guard-matchup-text')) {
-                const matchupText = document.createElement('span');
-                matchupText.className = 'elo-guard-matchup-text';
-                badge.appendChild(matchupText);
-            }
+            // MATCHUP ADVICE — DISABLED (see banner above getMatchupMetric): the
+            // matchup-text pill segment is no longer created. Re-enable by restoring this.
+            // if (!badge.querySelector('.elo-guard-matchup-text')) {
+            //     const matchupText = document.createElement('span');
+            //     matchupText.className = 'elo-guard-matchup-text';
+            //     badge.appendChild(matchupText);
+            // }
             ensureOpponentLegitimacyTooltip(badge);
             return badge;
         }
@@ -2734,10 +3189,12 @@
         const text = document.createElement('span');
         text.className = 'elo-guard-legitimacy-text';
 
-        const matchupText = document.createElement('span');
-        matchupText.className = 'elo-guard-matchup-text';
+        // MATCHUP ADVICE — DISABLED (see banner above getMatchupMetric): matchup-text
+        // pill segment removed; badge now shows only dot + cheat-risk text.
+        // const matchupText = document.createElement('span');
+        // matchupText.className = 'elo-guard-matchup-text';
 
-        badge.append(dot, text, matchupText);
+        badge.append(dot, text);
         ensureOpponentLegitimacyTooltip(badge);
         document.body.appendChild(badge);
         return badge;
@@ -2770,40 +3227,71 @@
     }
 
     function renderOpponentLegitimacyLoading(badge, username) {
+        clearOpponentLegitimacyPaywall(badge);
         badge.dataset.state = 'loading';
         badge.style.setProperty('--elo-guard-legitimacy-color', '#9b9b9b');
-        badge.style.setProperty('--elo-guard-matchup-color', '#9b9b9b');
+        // MATCHUP ADVICE — DISABLED (see banner above getMatchupMetric): no matchup pill segment.
+        // badge.style.setProperty('--elo-guard-matchup-color', '#9b9b9b');
         badge.querySelector('.elo-guard-legitimacy-text').textContent = 'Risk ...';
-        badge.querySelector('.elo-guard-matchup-text').textContent = '';
+        // badge.querySelector('.elo-guard-matchup-text').textContent = '';
         setOpponentLegitimacyTooltip(badge, `Checking public Chess.com account data for ${username}...`);
         badge.setAttribute('aria-label', `Checking cheat risk estimate for ${username}`);
     }
 
     function renderOpponentLegitimacyError(badge, username) {
+        clearOpponentLegitimacyPaywall(badge);
         badge.dataset.state = 'error';
         badge.style.setProperty('--elo-guard-legitimacy-color', '#9b9b9b');
-        badge.style.setProperty('--elo-guard-matchup-color', '#9b9b9b');
+        // MATCHUP ADVICE — DISABLED (see banner above getMatchupMetric): no matchup pill segment.
+        // badge.style.setProperty('--elo-guard-matchup-color', '#9b9b9b');
         badge.querySelector('.elo-guard-legitimacy-text').textContent = 'No data';
-        badge.querySelector('.elo-guard-matchup-text').textContent = '';
+        // badge.querySelector('.elo-guard-matchup-text').textContent = '';
         setOpponentLegitimacyTooltip(badge, `Could not load enough public data for ${username}.`);
         badge.setAttribute('aria-label', `Cheat risk estimate unavailable for ${username}`);
     }
 
     function renderOpponentLegitimacyResult(badge, result) {
+        clearOpponentLegitimacyPaywall(badge);
         badge.dataset.state = 'ready';
         LEGITIMACY_LAST_RESULT = {
             ...result,
             capturedAt: Date.now()
         };
         badge.style.setProperty('--elo-guard-legitimacy-color', result.color);
-        badge.style.setProperty('--elo-guard-matchup-color', result.matchup.color);
+        // MATCHUP ADVICE — DISABLED (see banner above getMatchupMetric): the matchup
+        // pill segment (colour + verdict text) and its aria-label clause are dropped.
+        // badge.style.setProperty('--elo-guard-matchup-color', result.matchup.color);
         badge.querySelector('.elo-guard-legitimacy-text').textContent = `${result.verdict} ${result.score}/100`;
-        badge.querySelector('.elo-guard-matchup-text').textContent = result.matchup.displayText;
+        // badge.querySelector('.elo-guard-matchup-text').textContent = result.matchup.displayText;
         setOpponentLegitimacyTooltip(badge, result.title);
         badge.setAttribute(
             'aria-label',
-            `EloGuard cheat risk estimate for ${result.username}: ${result.verdict}, ${result.score} out of 100. Matchup recommendation: ${result.matchup.displayText}`
+            `EloGuard cheat risk estimate for ${result.username}: ${result.verdict}, ${result.score} out of 100.`
         );
+    }
+
+    function renderOpponentLegitimacyPaywall(badge, username, access) {
+        badge.dataset.state = 'pro-lock';
+        badge.style.setProperty('--elo-guard-legitimacy-color', '#d6a13d');
+        // MATCHUP ADVICE — DISABLED (see banner above getMatchupMetric): no matchup pill segment.
+        // badge.style.setProperty('--elo-guard-matchup-color', '#d6a13d');
+        badge.querySelector('.elo-guard-legitimacy-text').textContent = 'Upgrade';
+        // badge.querySelector('.elo-guard-matchup-text').textContent = 'Upgrade';
+        const limit = access?.limit || 1;
+        setOpponentLegitimacyTooltip(
+            badge,
+            // MATCHUP ADVICE — DISABLED: reworded to drop "matchup"; this is now purely cheat risk detection.
+            `Free includes ${limit} cheat risk detection check per day. Upgrade to EloGuard Pro for unlimited cheat-risk estimates and game reviews.`
+        );
+        badge.setAttribute('aria-label', `EloGuard Pro required for more risk profile checks for ${username}`);
+        badge.onclick = () => openPremiumUpgrade(PRO_FEATURE_RISK_PROFILE);
+        badge.style.cursor = 'pointer';
+    }
+
+    function clearOpponentLegitimacyPaywall(badge) {
+        if (!badge) return;
+        badge.onclick = null;
+        badge.style.cursor = '';
     }
 
     function positionOpponentLegitimacyBadge() {
@@ -2811,6 +3299,19 @@
         if (!badge || badge.hidden) return;
 
         const root = getTopOpponentRoot();
+        const usernameEl = getTopOpponentUsernameElement();
+        if (usernameEl && (!root || root.contains(usernameEl))) {
+            attachOpponentLegitimacyBadgeInline(badge, usernameEl);
+            const badgeRect = getUsableRect(badge);
+            if (!badgeRect) {
+                badge.hidden = true;
+                return;
+            }
+            positionOpponentLegitimacyTooltip(badge, badgeRect);
+            return;
+        }
+
+        attachOpponentLegitimacyBadgeFixed(badge);
         const anchor = findOpponentAvatarAnchor(root) || root;
         const rect = getUsableRect(anchor);
         if (!rect) {
@@ -2821,19 +3322,39 @@
         const badgeRect = badge.getBoundingClientRect();
         const badgeWidth = badgeRect.width || 72;
         const badgeHeight = badgeRect.height || 22;
-        let left = rect.right + 6;
+        let left = rect.right + 8;
         let top = rect.top + ((rect.height - badgeHeight) / 2);
-
-        if (left + badgeWidth > window.innerWidth - 8) {
-            left = rect.left - badgeWidth - 6;
-        }
 
         left = clamp(left, 6, Math.max(6, window.innerWidth - badgeWidth - 6));
         top = clamp(top, 6, Math.max(6, window.innerHeight - badgeHeight - 6));
 
         badge.style.left = `${Math.round(left)}px`;
         badge.style.top = `${Math.round(top)}px`;
+        positionOpponentLegitimacyTooltip(badge, { left, top, width: badgeWidth, height: badgeHeight });
+    }
 
+    function attachOpponentLegitimacyBadgeInline(badge, usernameEl) {
+        if (badge.parentElement !== usernameEl.parentElement || badge.previousElementSibling !== usernameEl) {
+            usernameEl.insertAdjacentElement('afterend', badge);
+        }
+
+        badge.classList.add('elo-guard-legitimacy-inline');
+        badge.style.removeProperty('left');
+        badge.style.removeProperty('top');
+    }
+
+    function attachOpponentLegitimacyBadgeFixed(badge) {
+        if (badge.parentElement !== document.body) {
+            document.body.appendChild(badge);
+        }
+
+        badge.classList.remove('elo-guard-legitimacy-inline');
+    }
+
+    function positionOpponentLegitimacyTooltip(badge, badgeRect) {
+        const left = badgeRect.left;
+        const top = badgeRect.top;
+        const badgeHeight = badgeRect.height || 22;
         const tooltipWidth = Math.min(560, Math.max(260, window.innerWidth - 16));
         const tooltipLeft = clamp(left, 8, Math.max(8, window.innerWidth - tooltipWidth - 8));
         let tooltipTop = top + badgeHeight + 8;
@@ -3010,25 +3531,33 @@
         const color = getLegitimacyColor(score);
         const primaryConcern = getPrimaryLegitimacyConcern(accountAge, winRate, accuracy, performance, surge, trajectory, smurf);
         const confidence = getLegitimacyConfidence(accountAge, samples, accuracy, trajectory, performance, peak);
-        const matchup = getMatchupMetric(samples, matchupPerformance, score, primaryConcern, selfRating, currentRating, selfContext, {
-            accountAge,
-            winRate,
-            accuracy,
-            performance,
-            peak,
-            surge,
-            volume,
-            trajectory,
-            smurf,
-            totalGames
-        });
+        // ===== MATCHUP ADVICE — DISABLED (chess.com TOS review pending) =====
+        // The opponent Play / Avoid recommendation is commented out (not deleted). See
+        // the full explanation + re-enable checklist in the banner above
+        // getMatchupMetric(). With this call commented out, the returned result has no
+        // `.matchup`, and every consumer below is commented/guarded to match.
+        // NOTE: matchupPerformance / selfContext (computed above) are now only used by
+        // this disabled feature; they're left in place so re-enabling is a clean uncomment.
+        // const matchup = getMatchupMetric(samples, matchupPerformance, score, primaryConcern, selfRating, currentRating, selfContext, {
+        //     accountAge,
+        //     winRate,
+        //     accuracy,
+        //     performance,
+        //     peak,
+        //     surge,
+        //     volume,
+        //     trajectory,
+        //     smurf,
+        //     totalGames
+        // });
 
         return {
             username: resolvedUsername,
             score,
             color,
             verdict: getVisibleLegitimacyVerdict(score, primaryConcern, smurf, accuracy),
-            matchup,
+            // MATCHUP ADVICE — DISABLED (see banner above getMatchupMetric): omitted from result.
+            // matchup,
             title: buildLegitimacyTitle({
                 username: resolvedUsername,
                 score,
@@ -3042,7 +3571,8 @@
                 volume,
                 trajectory,
                 smurf,
-                matchup,
+                // MATCHUP ADVICE — DISABLED (see banner above getMatchupMetric):
+                // matchup,
                 primaryConcern,
                 totalGames,
                 currentRating,
@@ -3650,6 +4180,36 @@
         };
     }
 
+    /* ===========================================================================
+       MATCHUP ADVICE — DISABLED (2026-07-08, chess.com TOS review pending)
+       ---------------------------------------------------------------------------
+       WHAT THIS IS: the "matchup advice" feature — the opponent
+       Play / Playable / Lean-avoid / Avoid recommendation, plus its win-odds,
+       rating-EV, form and pool-trap math. It used to render as a second segment on
+       the risk pill and as a block of lines in the pill's hover report.
+
+       WHY IT'S OFF: we're not yet sure whether surfacing "should I play this
+       opponent" advice violates the Chess.com Terms of Service. Until that's
+       confirmed we ship ONLY the cheat / smurf risk detection, which is unaffected.
+
+       WHAT CHANGED: the code is COMMENTED OUT, not deleted. The helper functions
+       below (getMatchupMetric and the other getMatchup* / odds / pool-trap helpers)
+       are left intact but nothing calls them — the call site in
+       calculateOpponentLegitimacy() is commented out, so the result has no
+       `.matchup` and every consumer is commented/guarded to match.
+
+       TO RE-ENABLE: search this file (plus popup.html / styles.css / billing-server)
+       for "MATCHUP ADVICE" and reverse each marked block:
+         1. calculateOpponentLegitimacy(): the getMatchupMetric() call, the `matchup`
+            result field, and the `matchup` arg passed to buildLegitimacyTitle().
+         2. ensureOpponentLegitimacyBadge(): the .elo-guard-matchup-text span.
+         3. renderOpponentLegitimacy{Result,Loading,Error,Paywall}(): the matchup
+            pill text / colour lines.
+         4. buildLegitimacyTitle(): the matchup const block + the matchup array lines.
+         5. checkRating(): the recordPostGameMatchupFeedback() call site.
+         6. popup.html Pro row, styles.css .elo-guard-matchup-text, and the marketing
+            copy that mentioned "matchup".
+       =========================================================================== */
     function getMatchupMetric(samples, performance, riskScore, primaryConcern, selfRating, opponentRating, selfContext = null, riskMetrics = {}) {
         const activity = getMatchupActivityMetric(samples.weekGames);
         const form = getMatchupFormMetric(samples.formGames);
@@ -4822,6 +5382,13 @@
         const performanceText = data.performance.performanceRating === null
             ? `${data.performance.label} (${data.performance.count} ${data.mode} games in ${LEGITIMACY_PERFORMANCE_WINDOW_DAYS} days)`
             : `${data.performance.label}: PR ${data.performance.performanceRating}; rated ${data.mode} only; last ${LEGITIMACY_PERFORMANCE_WINDOW_DAYS} days; baseline ${Math.round(data.performance.baselineRating)}; gap ${formatSignedNumber(data.performance.gap)}; actual ${formatPercent(data.performance.actualScoreRate)} vs expected ${formatPercent(data.performance.expectedScoreRate)} over ${data.performance.count} games; sample confidence ${formatPercent(data.performance.confidence)}`;
+        /* ===== MATCHUP ADVICE — DISABLED (chess.com TOS review pending) =====
+           The hover-report strings below describe the matchup recommendation and are
+           commented out (not deleted). data.matchup is no longer populated (see the
+           banner above getMatchupMetric). To re-enable, delete this opening marker and
+           the closing one just before surgeText, then uncomment the matching
+           "Matchup ..." entries in the returned array further down.
+
         const matchupActivityText = `${data.matchup.activity.label}; ${data.matchup.activity.count} ${data.mode} game${data.matchup.activity.count === 1 ? '' : 's'} in ${MATCHUP_ACTIVITY_WINDOW_DAYS} days, unrated included (${formatSignedNumber(data.matchup.activity.points)})`;
         const matchupFormText = data.matchup.form.scoreRate === null
             ? `${data.matchup.form.label}; ${data.matchup.form.count} game${data.matchup.form.count === 1 ? '' : 's'} in ${MATCHUP_FORM_WINDOW_DAYS} days (${formatSignedNumber(data.matchup.form.points)})`
@@ -4859,6 +5426,7 @@
         const matchupOddsText = data.matchup.odds.baseExpectedScore === null
             ? data.matchup.odds.label
             : `${data.matchup.odds.label}; your rating ${Math.round(data.matchup.odds.selfRating)}, opponent ${Math.round(data.matchup.odds.opponentRating)}; base expected ${formatPercent(data.matchup.odds.baseExpectedScore)}, adjusted ${formatPercent(data.matchup.odds.adjustedExpectedScore)}; rating EV edge ${formatSignedPercent(data.matchup.odds.edge)}; ${ratingDeltaText}; W/D/L ${formatPercent(data.matchup.odds.winProbability)}/${formatPercent(data.matchup.odds.drawProbability)}/${formatPercent(data.matchup.odds.lossProbability)} (${formatSignedNumber(data.matchup.odds.points)})`;
+        /* ===== end MATCHUP ADVICE — DISABLED ===== */
         const surgeText = data.surge.gain === null ? 'not enough games' : `${data.surge.gain >= 0 ? '+' : ''}${data.surge.gain} over ${data.surge.games} games`;
         const totalGamesText = Number.isFinite(data.totalGames) ? data.totalGames : 'unknown';
         const ratingText = Number.isFinite(data.currentRating) ? data.currentRating : 'unknown';
@@ -4870,7 +5438,8 @@
 
         return [
             `EloGuard cheat-risk estimate for ${data.username}: ${data.score}/100`,
-            `Matchup recommendation: ${data.matchup.verdict} (${data.matchup.score}/100)`,
+            // MATCHUP ADVICE — DISABLED (see banner above getMatchupMetric):
+            // `Matchup recommendation: ${data.matchup.verdict} (${data.matchup.score}/100)`,
             `Account age: ${ageText} (+${Math.round(data.accountAge.risk)})`,
             `Rated ${data.mode} history: ${data.volume.label}; ${totalGamesText} rated games; current rating: ${ratingText} (${volumeImpactText})`,
             `All-time best ${data.mode} rating: ${peakText}`,
@@ -4883,17 +5452,21 @@
             `30-day performance rating: ${performanceText} (+${Math.round(data.performance.risk)})`,
             `Rating trajectory: ${trajectoryText} (+${Math.round(data.trajectory.risk)})`,
             `Rating surge: ${surgeText} (+${Math.round(data.surge.risk)})`,
-            `Matchup activity: ${matchupActivityText}`,
-            `Matchup form: ${matchupFormText}`,
-            `Recent-form recommendation cap: ${matchupFormCapText}`,
-            `Matchup performance: ${matchupPerformanceText}`,
-            `Peak rating matchup: ${matchupPeakText}`,
-            `Your form context: ${selfContextText}`,
-            `Form differential: ${formDifferentialText}`,
-            `Matchup odds desk: ${matchupOddsText}`,
-            `Rating-value trap: ${poolTrapText}`,
-            `Top matchup reasons: ${reasonsText}`,
-            `Matchup safety: ${data.matchup.riskPenalty.label} (${formatSignedNumber(data.matchup.riskPenalty.points)})`,
+            // ===== MATCHUP ADVICE — DISABLED (chess.com TOS review pending) =====
+            // The matchup recommendation lines below are commented out (not deleted).
+            // Re-enable with the matchup const block above and the getMatchupMetric()
+            // call site in calculateOpponentLegitimacy().
+            // `Matchup activity: ${matchupActivityText}`,
+            // `Matchup form: ${matchupFormText}`,
+            // `Recent-form recommendation cap: ${matchupFormCapText}`,
+            // `Matchup performance: ${matchupPerformanceText}`,
+            // `Peak rating matchup: ${matchupPeakText}`,
+            // `Your form context: ${selfContextText}`,
+            // `Form differential: ${formDifferentialText}`,
+            // `Matchup odds desk: ${matchupOddsText}`,
+            // `Rating-value trap: ${poolTrapText}`,
+            // `Top matchup reasons: ${reasonsText}`,
+            // `Matchup safety: ${data.matchup.riskPenalty.label} (${formatSignedNumber(data.matchup.riskPenalty.points)})`,
             `Primary concern: ${data.primaryConcern}`,
             `Confidence: ${data.confidence}`,
             `Visible score calibration: mild standalone risk is compressed; strong smurf/performance/accuracy combinations can set minimum score floors`,
@@ -5257,22 +5830,205 @@
             toggle = document.createElement('button');
             toggle.id = ENHANCED_FOCUS_TOGGLE_ID;
             toggle.type = 'button';
-            toggle.addEventListener('click', () => {
-                ENHANCED_FOCUS_MODE = !ENHANCED_FOCUS_MODE;
-                chrome.storage.sync.set({ enhancedFocusMode: ENHANCED_FOCUS_MODE });
-                applyEnhancedFocusMode();
-            });
+
+            const label = document.createElement('span');
+            label.className = ENHANCED_FOCUS_TOGGLE_LABEL_CLASS;
+
+            const minimize = document.createElement('span');
+            minimize.className = ENHANCED_FOCUS_TOGGLE_MIN_CLASS;
+            minimize.textContent = '–'; // en dash
+            minimize.setAttribute('aria-hidden', 'true');
+
+            toggle.append(label, minimize);
+            toggle.addEventListener('click', handleEnhancedFocusToggleClick);
+            setupEnhancedFocusToggleDrag(toggle);
         }
 
-        toggle.textContent = ENHANCED_FOCUS_MODE ? 'Exit focus' : 'Enhanced focus';
-        toggle.title = ENHANCED_FOCUS_MODE ? 'Exit enhanced focus mode' : 'Enter enhanced focus mode';
+        const label = toggle.querySelector(`.${ENHANCED_FOCUS_TOGGLE_LABEL_CLASS}`);
+        if (label) label.textContent = ENHANCED_FOCUS_MODE ? 'Exit focus' : 'Enhanced focus';
         toggle.setAttribute('aria-pressed', ENHANCED_FOCUS_MODE ? 'true' : 'false');
+        applyEnhancedFocusToggleMinimizedState(toggle);
 
-        const stage = document.getElementById(ENHANCED_FOCUS_STAGE_ID);
-        const parent = ENHANCED_FOCUS_MODE && stage ? stage : document.body;
-        if (toggle.parentNode !== parent) parent.appendChild(toggle);
+        if (toggle.parentNode !== document.body) document.body.appendChild(toggle);
+
+        positionEnhancedFocusToggle(toggle);
 
         return toggle;
+    }
+
+    function handleEnhancedFocusToggleClick(event) {
+        // A drag just ended on this element: swallow the click it generated.
+        if (ENHANCED_FOCUS_TOGGLE_DRAG.moved) {
+            ENHANCED_FOCUS_TOGGLE_DRAG.moved = false;
+            event.preventDefault();
+            event.stopPropagation();
+            return;
+        }
+
+        // Minimizing is only available on the normal-mode "Enhanced focus" button.
+        if (!ENHANCED_FOCUS_MODE) {
+            // Clicking the minimize affordance collapses the button.
+            if (ENHANCED_FOCUS_TOGGLE_DRAG.pressedMinimize || event.target.closest(`.${ENHANCED_FOCUS_TOGGLE_MIN_CLASS}`)) {
+                event.preventDefault();
+                event.stopPropagation();
+                setEnhancedFocusToggleMinimized(true);
+                return;
+            }
+
+            // While minimized, a click restores the button instead of toggling focus.
+            if (ENHANCED_FOCUS_TOGGLE_MINIMIZED) {
+                setEnhancedFocusToggleMinimized(false);
+                return;
+            }
+        }
+
+        ENHANCED_FOCUS_MODE = !ENHANCED_FOCUS_MODE;
+        chrome.storage.sync.set({ enhancedFocusMode: ENHANCED_FOCUS_MODE });
+        applyEnhancedFocusMode();
+    }
+
+    function applyEnhancedFocusToggleMinimizedState(toggle) {
+        if (!toggle) return;
+        // Minimizing only applies to the normal-mode "Enhanced focus" button; the
+        // "Exit focus" button always shows in full so it stays an obvious control.
+        const minimized = ENHANCED_FOCUS_TOGGLE_MINIMIZED && !ENHANCED_FOCUS_MODE;
+        toggle.classList.toggle(ENHANCED_FOCUS_TOGGLE_MINIMIZED_CLASS, minimized);
+        if (minimized) {
+            toggle.title = 'Show EloGuard focus button';
+        } else {
+            toggle.title = ENHANCED_FOCUS_MODE ? 'Exit enhanced focus mode' : 'Enter enhanced focus mode';
+        }
+    }
+
+    function setEnhancedFocusToggleMinimized(minimized) {
+        ENHANCED_FOCUS_TOGGLE_MINIMIZED = !!minimized;
+        try {
+            chrome.storage.sync.set({ enhancedFocusButtonMinimized: ENHANCED_FOCUS_TOGGLE_MINIMIZED });
+        } catch (e) {}
+        const toggle = document.getElementById(ENHANCED_FOCUS_TOGGLE_ID);
+        if (!toggle) return;
+        applyEnhancedFocusToggleMinimizedState(toggle);
+        positionEnhancedFocusToggle(toggle);
+    }
+
+    function getEnhancedFocusToggleSize(toggle) {
+        return {
+            width: toggle.offsetWidth || 150,
+            height: toggle.offsetHeight || 34
+        };
+    }
+
+    function clampEnhancedFocusTogglePosition(left, top, size) {
+        const margin = ENHANCED_FOCUS_TOGGLE_EDGE_MARGIN;
+        const maxLeft = Math.max(margin, window.innerWidth - size.width - margin);
+        const maxTop = Math.max(margin, window.innerHeight - size.height - margin);
+        return {
+            left: Math.min(Math.max(left, margin), maxLeft),
+            top: Math.min(Math.max(top, margin), maxTop)
+        };
+    }
+
+    function applyEnhancedFocusTogglePositionStyles(toggle, left, top) {
+        toggle.style.setProperty('left', `${Math.round(left)}px`, 'important');
+        toggle.style.setProperty('top', `${Math.round(top)}px`, 'important');
+        toggle.style.setProperty('right', 'auto', 'important');
+        toggle.style.setProperty('bottom', 'auto', 'important');
+    }
+
+    function clearEnhancedFocusTogglePositionStyles(toggle) {
+        toggle.style.removeProperty('left');
+        toggle.style.removeProperty('top');
+        toggle.style.removeProperty('right');
+        toggle.style.removeProperty('bottom');
+    }
+
+    function setEnhancedFocusToggleStoredPosition(left, top) {
+        ENHANCED_FOCUS_TOGGLE_POS =
+            (Number.isFinite(left) && Number.isFinite(top))
+                ? { left, top }
+                : null;
+    }
+
+    function positionEnhancedFocusToggle(toggle) {
+        if (!toggle || ENHANCED_FOCUS_TOGGLE_DRAG.active) return;
+
+        // In focus mode the "Exit focus" button is always pinned to the top-right
+        // (the stylesheet default); it is never dragged or auto-anchored to the clock.
+        if (ENHANCED_FOCUS_MODE) {
+            clearEnhancedFocusTogglePositionStyles(toggle);
+            return;
+        }
+
+        if (ENHANCED_FOCUS_TOGGLE_POS) {
+            const size = getEnhancedFocusToggleSize(toggle);
+            const clamped = clampEnhancedFocusTogglePosition(
+                ENHANCED_FOCUS_TOGGLE_POS.left,
+                ENHANCED_FOCUS_TOGGLE_POS.top,
+                size
+            );
+            applyEnhancedFocusTogglePositionStyles(toggle, clamped.left, clamped.top);
+            return;
+        }
+
+        // No saved drag position: use the stylesheet default (top-right).
+        clearEnhancedFocusTogglePositionStyles(toggle);
+    }
+
+    function setupEnhancedFocusToggleDrag(toggle) {
+        toggle.addEventListener('pointerdown', (event) => {
+            if (event.button !== 0) return;
+            // No dragging in focus mode — the "Exit focus" button stays pinned top-right.
+            if (ENHANCED_FOCUS_MODE) return;
+            const rect = toggle.getBoundingClientRect();
+            ENHANCED_FOCUS_TOGGLE_DRAG.active = true;
+            ENHANCED_FOCUS_TOGGLE_DRAG.moved = false;
+            ENHANCED_FOCUS_TOGGLE_DRAG.pressedMinimize = !!event.target.closest(`.${ENHANCED_FOCUS_TOGGLE_MIN_CLASS}`);
+            ENHANCED_FOCUS_TOGGLE_DRAG.startX = event.clientX;
+            ENHANCED_FOCUS_TOGGLE_DRAG.startY = event.clientY;
+            ENHANCED_FOCUS_TOGGLE_DRAG.originLeft = rect.left;
+            ENHANCED_FOCUS_TOGGLE_DRAG.originTop = rect.top;
+            ENHANCED_FOCUS_TOGGLE_DRAG.pointerId = event.pointerId;
+            try { toggle.setPointerCapture(event.pointerId); } catch (e) {}
+        });
+
+        toggle.addEventListener('pointermove', (event) => {
+            if (!ENHANCED_FOCUS_TOGGLE_DRAG.active) return;
+            const dx = event.clientX - ENHANCED_FOCUS_TOGGLE_DRAG.startX;
+            const dy = event.clientY - ENHANCED_FOCUS_TOGGLE_DRAG.startY;
+            if (!ENHANCED_FOCUS_TOGGLE_DRAG.moved && Math.hypot(dx, dy) < 4) return;
+
+            ENHANCED_FOCUS_TOGGLE_DRAG.moved = true;
+            toggle.classList.add(ENHANCED_FOCUS_TOGGLE_DRAGGING_CLASS);
+
+            const size = getEnhancedFocusToggleSize(toggle);
+            const pos = clampEnhancedFocusTogglePosition(
+                ENHANCED_FOCUS_TOGGLE_DRAG.originLeft + dx,
+                ENHANCED_FOCUS_TOGGLE_DRAG.originTop + dy,
+                size
+            );
+            ENHANCED_FOCUS_TOGGLE_POS = pos;
+            applyEnhancedFocusTogglePositionStyles(toggle, pos.left, pos.top);
+        });
+
+        const endDrag = () => {
+            if (!ENHANCED_FOCUS_TOGGLE_DRAG.active) return;
+            ENHANCED_FOCUS_TOGGLE_DRAG.active = false;
+            toggle.classList.remove(ENHANCED_FOCUS_TOGGLE_DRAGGING_CLASS);
+            try { toggle.releasePointerCapture(ENHANCED_FOCUS_TOGGLE_DRAG.pointerId); } catch (e) {}
+
+            if (ENHANCED_FOCUS_TOGGLE_DRAG.moved && ENHANCED_FOCUS_TOGGLE_POS) {
+                try {
+                    chrome.storage.sync.set({
+                        enhancedFocusButtonLeft: Math.round(ENHANCED_FOCUS_TOGGLE_POS.left),
+                        enhancedFocusButtonTop: Math.round(ENHANCED_FOCUS_TOGGLE_POS.top)
+                    });
+                } catch (e) {}
+            }
+            // ENHANCED_FOCUS_TOGGLE_DRAG.moved stays set so the click that fires
+            // after this pointerup is swallowed by the click handler, which resets it.
+        };
+        toggle.addEventListener('pointerup', endDrag);
+        toggle.addEventListener('pointercancel', endDrag);
     }
 
     function ensureEnhancedFocusFlipButton(parent = document.getElementById(ENHANCED_FOCUS_STAGE_ID)) {
@@ -5582,6 +6338,21 @@
                 el.classList.remove(ENHANCED_FOCUS_BOARD_CLASS);
             }
         });
+    }
+
+    function isEloGuardBoardChrome(el) {
+        if (!el) return false;
+        const ownedSelector = [
+            '#elo-guard-review-panel',
+            '#elo-guard-review-board-overlay',
+            '#elo-guard-review-board-toggle',
+            '#elo-guard-postgame-floating',
+            '.elo-guard-postgame-buttons',
+            '#elo-guard-legitimacy-badge',
+            '#elo-guard-enhanced-focus-toggle',
+            '#elo-guard-enhanced-focus-flip'
+        ].join(',');
+        return Boolean(el.matches?.(ownedSelector) || el.closest?.(ownedSelector));
     }
 
     function clearEnhancedFocusClockMarks() {
@@ -6068,6 +6839,7 @@
             '#board-single',
             'wc-chess-board',
             'chess-board',
+            'cg-board',
             '#board-layout-chessboard',
             '.board-layout-chessboard',
             '[class*="board-layout-chessboard"]',
@@ -6086,6 +6858,7 @@
     function isEnhancedFocusBoardCandidate(el) {
         if (!el || el.nodeType !== Node.ELEMENT_NODE) return false;
         if (elementIsEnhancedFocusStageChrome(el)) return false;
+        if (isEloGuardBoardChrome(el)) return false;
         if (el.closest('#board-layout-player-top, #board-layout-player-bottom, [class*="player-top"], [class*="player-bottom"], [class*="sidebar"]')) return false;
 
         const rect = el.getBoundingClientRect();
@@ -6170,7 +6943,73 @@
         else document.body.classList.remove('elo-shield-zen');
         
         // Trigger a process pass immediately to catch anything currently on screen
-        processChatForZen(); 
+        processChatForZen();
+        hideBoardRatingsForZen();
+    }
+
+    function applyRiskProfilePillVisibility() {
+        if (!document.body) return;
+
+        document.body.classList.toggle('elo-guard-hide-risk-profile-pill', !SHOW_RISK_PROFILE_PILL);
+        if (!SHOW_RISK_PROFILE_PILL) hideOpponentLegitimacyBadge();
+    }
+
+    async function consumePremiumFeature(featureKey, usageId) {
+        const api = window.EloGuardEntitlements;
+        if (!api || typeof api.consumeFeature !== 'function') {
+            return { allowed: false, isPro: false, limit: 0, remaining: 0, unavailable: true };
+        }
+
+        try {
+            return await api.consumeFeature(featureKey, usageId);
+        } catch (_) {
+            return { allowed: false, isPro: false, limit: 0, remaining: 0, unavailable: true };
+        }
+    }
+
+    async function getPremiumFeatureAccess(featureKey, usageId) {
+        const api = window.EloGuardEntitlements;
+        if (!api || typeof api.getFeatureAccess !== 'function') {
+            return { allowed: false, isPro: false, limit: 0, remaining: 0, alreadyGranted: false, unavailable: true };
+        }
+
+        try {
+            return await api.getFeatureAccess(featureKey, usageId);
+        } catch (_) {
+            return { allowed: false, isPro: false, limit: 0, remaining: 0, alreadyGranted: false, unavailable: true };
+        }
+    }
+
+    function dailyLeftSuffix(access) {
+        if (!access || access.isPro || !Number.isFinite(access.remaining)) return '';
+        return ` (${Math.max(0, access.remaining)} left)`;
+    }
+
+    async function updateDailyLeftButton(button, baseText, featureKey, usageId) {
+        if (!button) return null;
+        try {
+            const access = await getPremiumFeatureAccess(featureKey, usageId);
+            if (!button.isConnected) return access;
+            button.textContent = `${baseText}${dailyLeftSuffix(access)}`;
+            if (!access.isPro && Number.isFinite(access.remaining)) {
+                const limit = Number.isFinite(access.limit) ? access.limit : 0;
+                button.title = `${Math.max(0, access.remaining)} of ${limit} free uses left today`;
+            } else {
+                button.title = '';
+            }
+            return access;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    function openPremiumUpgrade(featureKey) {
+        const api = window.EloGuardEntitlements;
+        if (api && typeof api.openBilling === 'function') {
+            api.openBilling('checkout', { feature: featureKey });
+            return;
+        }
+        window.open(`https://eloguard.app/checkout?feature=${encodeURIComponent(featureKey)}`, '_blank', 'noopener');
     }
 
     chrome.storage.onChanged.addListener((changes) => {
@@ -6186,8 +7025,2206 @@
                 checkRating();
             }
         }
+
+        const changedKeys = Object.keys(changes);
+        const onlyFocusButtonStateChanged = changedKeys.length > 0 && changedKeys.every(key =>
+            key === 'enhancedFocusButtonLeft'
+            || key === 'enhancedFocusButtonTop'
+            || key === 'enhancedFocusButtonMinimized'
+        );
+
+        if (changes.enhancedFocusButtonMinimized) {
+            ENHANCED_FOCUS_TOGGLE_MINIMIZED = !!changes.enhancedFocusButtonMinimized.newValue;
+            applyEnhancedFocusToggleMinimizedState(document.getElementById(ENHANCED_FOCUS_TOGGLE_ID));
+        }
+
+        if (changes.enhancedFocusButtonLeft || changes.enhancedFocusButtonTop) {
+            setEnhancedFocusToggleStoredPosition(
+                changes.enhancedFocusButtonLeft?.newValue ?? ENHANCED_FOCUS_TOGGLE_POS?.left,
+                changes.enhancedFocusButtonTop?.newValue ?? ENHANCED_FOCUS_TOGGLE_POS?.top
+            );
+            positionEnhancedFocusToggle(document.getElementById(ENHANCED_FOCUS_TOGGLE_ID));
+        }
+
+        if (onlyFocusButtonStateChanged) return;
         loadSettings();
     });
+
+    // =====================================================================
+    // --- POST-GAME ANALYSIS (Lichess export + EloGuard Game Review) ---
+    // =====================================================================
+
+    const POSTGAME_CONTAINER_CLASS = 'elo-guard-postgame-buttons';
+    const POSTGAME_FLOATING_ID = 'elo-guard-postgame-floating';
+    const REVIEW_PANEL_ID = 'elo-guard-review-panel';
+    const REVIEW_ENGINE_FRAME_ID = 'elo-guard-engine-frame';
+    const REVIEW_ENGINE_LABEL = 'Stockfish 18';
+    const REVIEW_DEPTH_MIN = 6;
+    const REVIEW_DEPTH_MAX = 18;
+    const REVIEW_DEPTH_DEFAULT = 12;
+    const REVIEW_GLYPHS = {
+        brilliant: {
+            sym: '!!',
+            label: 'Brilliant',
+            chessCom: 'brilliant',
+            effect: 'brilliant',
+            analysisClass: 'analysis-brilliant',
+            icon: 'https://images.chesscomfiles.com/uploads/v1/images_users/tiny_mce/PedroPinhata/phpQcwe5E.png'
+        },
+        great: {
+            sym: '!',
+            label: 'Great Move',
+            chessCom: 'greatFind',
+            effect: 'greatfind',
+            analysisClass: 'analysis-greatFind',
+            icon: 'https://images.chesscomfiles.com/uploads/v1/images_users/tiny_mce/PedroPinhata/phpmDwOPG.png'
+        },
+        best: {
+            sym: '*',
+            label: 'Best Move',
+            chessCom: 'bestMove',
+            effect: 'bestmove',
+            analysisClass: 'analysis-bestMove',
+            icon: 'https://images.chesscomfiles.com/uploads/v1/images_users/tiny_mce/PedroPinhata/phpE0gpKi.png'
+        },
+        excellent: {
+            sym: '!',
+            label: 'Excellent',
+            chessCom: 'excellent',
+            effect: 'excellent',
+            analysisClass: 'analysis-excellent',
+            icon: 'https://images.chesscomfiles.com/uploads/v1/images_users/tiny_mce/PedroPinhata/php12KLQL.png'
+        },
+        good: {
+            sym: '!',
+            label: 'Good',
+            chessCom: 'good',
+            effect: 'good',
+            analysisClass: 'analysis-good',
+            icon: 'https://images.chesscomfiles.com/uploads/v1/images_users/tiny_mce/PedroPinhata/phpbFKLz5.png'
+        },
+        book: {
+            sym: 'book',
+            label: 'Book',
+            chessCom: 'book',
+            effect: 'book',
+            analysisClass: 'analysis-book',
+            icon: 'https://images.chesscomfiles.com/uploads/v1/images_users/tiny_mce/PedroPinhata/phpdFgJU0.png'
+        },
+        forced: {
+            sym: '->',
+            label: 'Forced',
+            chessCom: 'forced',
+            effect: 'forced',
+            analysisClass: 'analysis-forced'
+        },
+        inaccuracy: {
+            sym: '?!',
+            label: 'Inaccuracy',
+            chessCom: 'inaccuracy',
+            effect: 'inaccuracy',
+            analysisClass: 'analysis-inaccuracy',
+            icon: 'https://images.chesscomfiles.com/uploads/v1/images_users/tiny_mce/PedroPinhata/phpStQeGp.png'
+        },
+        miss: {
+            sym: 'x',
+            label: 'Miss',
+            chessCom: 'miss',
+            effect: 'miss',
+            analysisClass: 'analysis-miss',
+            icon: 'https://images.chesscomfiles.com/uploads/v1/images_users/tiny_mce/PedroPinhata/phprSK0EW.png'
+        },
+        mistake: {
+            sym: '?',
+            label: 'Mistake',
+            chessCom: 'mistake',
+            effect: 'mistake',
+            analysisClass: 'analysis-mistake',
+            icon: 'https://images.chesscomfiles.com/uploads/v1/images_users/tiny_mce/PedroPinhata/phpJ6F97j.png'
+        },
+        blunder: {
+            sym: '??',
+            label: 'Blunder',
+            chessCom: 'blunder',
+            effect: 'blunder',
+            analysisClass: 'analysis-blunder',
+            icon: 'https://images.chesscomfiles.com/uploads/v1/images_users/tiny_mce/PedroPinhata/phprZy2C4.png'
+        }
+    };
+    const REVIEW_BOARD_TOGGLE_ID = 'elo-guard-review-board-toggle';
+    const REVIEW_BOARD_OVERLAY_ID = 'elo-guard-review-board-overlay';
+    const REVIEW_BOARD_ANALYSIS_STORAGE_KEY = 'eloGuardReviewBoardAnalysisEnabled';
+    // Common chess.com live time controls, as {base, inc} in seconds.
+    const REVIEW_TC_OPTIONS = [
+        { base: 60, inc: 0 }, { base: 60, inc: 1 }, { base: 120, inc: 1 },
+        { base: 180, inc: 0 }, { base: 180, inc: 2 }, { base: 300, inc: 0 },
+        { base: 300, inc: 2 }, { base: 300, inc: 5 },
+        { base: 600, inc: 0 }, { base: 600, inc: 5 }, { base: 900, inc: 10 },
+        { base: 1800, inc: 0 }, { base: 86400, inc: 0, label: 'Daily' }
+    ];
+
+    function timeControlLabel(tc) {
+        if (tc.label) return tc.label;
+        if (tc.base >= 86400) return 'Daily';
+        if (tc.base < 60) return `${tc.base}s+${tc.inc || 0}`;
+        return `${Math.round(tc.base / 60)}+${tc.inc || 0}`;
+    }
+    const REVIEW_CACHE = new Map(); // movesKey:depth -> { review, record, depth }
+    const REVIEW_CACHE_MAX = 4;
+
+    let REVIEW_ENGINE_FRAME = null;
+    let REVIEW_ENGINE_READY = false;
+    let REVIEW_ENGINE_ERROR = null;
+    let REVIEW_ENGINE_PING_TIMER = null;
+    let REVIEW_JOB_COUNTER = 0;
+    const REVIEW_JOBS = new Map();
+    const REVIEW_EXT_ORIGIN = new URL(chrome.runtime.getURL('')).origin;
+    let REVIEW_SELECTED_DEPTH = REVIEW_DEPTH_DEFAULT;
+    let REVIEW_ACTIVE_JOB_ID = null;
+    let REVIEW_BOARD_ANALYSIS_ENABLED = true;
+    let REVIEW_BOARD_ANALYSIS_USER_SET = false;
+    let REVIEW_BOARD_STATE = null; // { record, review, depth, ply, locationKey }
+    let REVIEW_BOARD_SYNC_TIMER = null;
+
+    try {
+        chrome.storage.local.get({ [REVIEW_BOARD_ANALYSIS_STORAGE_KEY]: true }, (items) => {
+            if (REVIEW_BOARD_ANALYSIS_USER_SET) return;
+            REVIEW_BOARD_ANALYSIS_ENABLED = items[REVIEW_BOARD_ANALYSIS_STORAGE_KEY] !== false;
+            syncReviewBoardAnalysis();
+        });
+    } catch (e) {
+        REVIEW_BOARD_ANALYSIS_ENABLED = true;
+    }
+
+    function clampReviewDepth(value) {
+        const depth = parseInt(value, 10);
+        if (Number.isNaN(depth)) return REVIEW_DEPTH_DEFAULT;
+        return Math.max(REVIEW_DEPTH_MIN, Math.min(REVIEW_DEPTH_MAX, depth));
+    }
+
+    function reviewCacheKey(movesKey, depth) {
+        return `${movesKey}:d${clampReviewDepth(depth)}`;
+    }
+
+    function reviewPositionsToAnalyze(prepared) {
+        const indexes = new Set();
+        const moves = prepared?.moves || [];
+        const bookPlies = prepared?.bookPlies || 0;
+        const legalCounts = prepared?.legalCounts || [];
+        for (let i = 0; i < moves.length; i++) {
+            if (i < bookPlies || legalCounts[i] === 1) continue;
+            indexes.add(i);
+            if (!(prepared.terminal && i + 1 === moves.length)) indexes.add(i + 1);
+        }
+        if (!indexes.size && moves.length && !prepared.terminal) indexes.add(moves.length);
+        return [...indexes].sort((a, b) => a - b);
+    }
+
+    // --- game record extraction ---
+
+    function sanFromMoveNode(node) {
+        const target = node.querySelector('.node-highlight-content') || node;
+        let out = '';
+        const walk = (el) => {
+            for (const child of el.childNodes) {
+                if (child.nodeType === Node.TEXT_NODE) {
+                    out += child.textContent;
+                } else if (child.nodeType === Node.ELEMENT_NODE) {
+                    const fig = child.getAttribute && child.getAttribute('data-figurine');
+                    if (fig) out += fig;
+                    else if (!/icon|clock|time|glyph|eval|annotation/i.test(String(child.className || ''))) walk(child);
+                }
+            }
+        };
+        walk(target);
+        out = out.replace(/[\s ]+/g, '').replace(/[!?]+$/, '');
+        if (!out) return '';
+        if (/^(1-0|0-1|½-½|1\/2-1\/2|\*)$/.test(out)) return '';
+        out = out.replace(/^0-0-0/, 'O-O-O').replace(/^0-0/, 'O-O');
+        if (/^(O-O(-O)?|[KQRBN]?[a-h]?[1-8]?x?[a-h][1-8](=?[QRBN])?)[+#]?$/.test(out)) return out;
+        return null;
+    }
+
+    function getMoveListSans() {
+        const containers = [
+            document.querySelector('wc-simple-move-list'),
+            document.querySelector('wc-vertical-move-list'),
+            document.querySelector('wc-move-list'),
+            ...document.querySelectorAll('[class*="move-list"], [id*="move-list"]')
+        ].filter(Boolean);
+        for (const container of containers) {
+            // Prefer explicitly main-line nodes — archive/analysis views can add
+            // engine-suggestion or header rows that aren't part of the game.
+            const nodeSets = [
+                container.querySelectorAll('.main-line-row .node, .node.main-line-ply'),
+                container.querySelectorAll('.node')
+            ];
+            for (const nodes of nodeSets) {
+                if (!nodes.length) continue;
+                const sans = [];
+                const seen = new Set();
+                for (const node of nodes) {
+                    if (seen.has(node)) continue;
+                    node.querySelectorAll('.node').forEach((inner) => seen.add(inner));
+                    if (node.closest('[class*="variation"]')) continue;
+                    const san = sanFromMoveNode(node);
+                    // Tolerate non-move rows; prepareGame's legality replay catches
+                    // any genuine corruption this could introduce.
+                    if (!san) continue;
+                    sans.push(san);
+                }
+                if (sans.length) return sans;
+            }
+        }
+        return null;
+    }
+
+    function getNativeReviewMoveNodes() {
+        const containers = [
+            document.querySelector('wc-simple-move-list'),
+            document.querySelector('wc-vertical-move-list'),
+            document.querySelector('wc-move-list'),
+            ...document.querySelectorAll('[class*="move-list"], [id*="move-list"]')
+        ].filter(Boolean);
+        for (const container of containers) {
+            if (container.closest?.('#' + REVIEW_PANEL_ID)) continue;
+            const nodeSets = [
+                container.querySelectorAll('.main-line-row .node, .node.main-line-ply'),
+                container.querySelectorAll('.node')
+            ];
+            for (const nodes of nodeSets) {
+                if (!nodes.length) continue;
+                const moveNodes = [];
+                const seen = new Set();
+                for (const node of nodes) {
+                    if (seen.has(node)) continue;
+                    node.querySelectorAll('.node').forEach((inner) => seen.add(inner));
+                    if (node.closest('[class*="variation"]')) continue;
+                    if (!sanFromMoveNode(node)) continue;
+                    moveNodes.push(node);
+                }
+                if (moveNodes.length) return moveNodes;
+            }
+        }
+        return [];
+    }
+
+    function hasMoveListMoves() {
+        return document.querySelectorAll(
+            'wc-simple-move-list .node, wc-vertical-move-list .node, [class*="move-list"] .node'
+        ).length >= 2;
+    }
+
+    function getBoardFlippedState() {
+        const board = document.querySelector('wc-chess-board, chess-board, #board-single');
+        return !!(board && board.classList.contains('flipped'));
+    }
+
+    function getPlayerNameFromRoot(root) {
+        if (!root) return '';
+        const el = root.querySelector('[data-test-element="user-tagline-username"]')
+            || root.querySelector('.user-tagline-compact-username')
+            || root.querySelector('[class*="user-username"]')
+            || root.querySelector('[class*="username"]');
+        return (el?.textContent || '').trim();
+    }
+
+    function getPlayerRatingFromRoot(root) {
+        if (!root) return null;
+        const el = root.querySelector('[class*="rating"]');
+        let m = el ? (el.textContent || '').match(/(\d{3,4})/) : null;
+        if (!m) m = (root.textContent || '').match(/\((\d{3,4})\)/);
+        if (!m) return null;
+        const v = +m[1];
+        return v >= 100 && v <= 3500 ? v : null;
+    }
+
+    function detectReviewTimeClass() {
+        const icon = document.querySelector(
+            '.icon-font-chess.bullet, .icon-font-chess.blitz, .icon-font-chess.rapid, .icon-font-chess.rapid-game, .icon-font-chess.daily'
+        );
+        if (icon) {
+            const cl = String(icon.className || '');
+            if (/bullet/i.test(cl)) return 'bullet';
+            if (/blitz/i.test(cl)) return 'blitz';
+            if (/rapid/i.test(cl)) return 'rapid';
+            if (/daily/i.test(cl)) return 'classical';
+        }
+        if (/bullet/i.test(GAME_MODE)) return 'bullet';
+        if (/rapid/i.test(GAME_MODE)) return 'rapid';
+        if (/daily|classical/i.test(GAME_MODE)) return 'classical';
+        return 'blitz';
+    }
+
+    // Exact "10 min" / "3 | 2" spec from the page; null when not found.
+    function detectTimeControlSpec() {
+        const scopes = document.querySelectorAll(
+            '[class*="time-control"], [data-cy*="time-control"], [class*="game-time"], .game-details, .header-title-component, [class*="live-game-start-time"]'
+        );
+        for (const scope of scopes) {
+            const text = (scope.textContent || '').slice(0, 200);
+            let m = text.match(/(\d{1,3})\s*\|\s*(\d{1,3})/);
+            if (m) return { base: +m[1] * 60, inc: +m[2] };
+            m = text.match(/(\d{1,3})\s*min\b/i);
+            if (m) return { base: +m[1] * 60, inc: 0 };
+            m = text.match(/(\d{1,3})\s*sec\b/i);
+            if (m) return { base: +m[1], inc: 0 };
+        }
+        return null;
+    }
+
+    function detectTimeControl() {
+        const spec = detectTimeControlSpec();
+        if (spec) return spec;
+        const byClass = { bullet: { base: 60, inc: 0 }, blitz: { base: 180, inc: 0 }, rapid: { base: 600, inc: 0 }, classical: { base: 86400, inc: 0 } };
+        return byClass[detectReviewTimeClass()] || byClass.blitz;
+    }
+
+    function detectGameResult(prepared, userColor) {
+        if (prepared.terminal === 'checkmate') {
+            return prepared.moves[prepared.moves.length - 1].color === 'w' ? '1-0' : '0-1';
+        }
+        if (prepared.terminal === 'stalemate' || prepared.terminal === 'draw') return '1/2-1/2';
+        const scopes = document.querySelectorAll('.game-over-modal-content, [class*="game-over"], .board-modal-container');
+        for (const scope of scopes) {
+            const text = scope.textContent || '';
+            if (/\b1\s*-\s*0\b/.test(text)) return '1-0';
+            if (/\b0\s*-\s*1\b/.test(text)) return '0-1';
+            if (/(½\s*-\s*½|1\/2\s*-\s*1\/2|\bdraw\b|stalemate|repetition|agreement|insufficient)/i.test(text)) return '1/2-1/2';
+            if (/\byou\s+won\b/i.test(text)) return userColor === 'w' ? '1-0' : '0-1';
+            if (/\bwhite\s+w[oi]n/i.test(text)) return '1-0';
+            if (/\bblack\s+w[oi]n/i.test(text)) return '0-1';
+        }
+        return '*';
+    }
+
+    function extractGameRecord() {
+        if (typeof EloGuardReviewCore === 'undefined' || typeof Chess === 'undefined') return null;
+        const sans = getMoveListSans();
+        if (!sans || sans.length < 2) return null;
+        const prepared = EloGuardReviewCore.prepareGame(sans);
+        if (prepared.error) {
+            console.warn('🛡️ EloGuard Review: ' + prepared.error);
+            return null;
+        }
+        const flipped = getBoardFlippedState();
+        const userColor = flipped ? 'b' : 'w';
+        const bottomName = getPlayerNameFromRoot(getBottomPlayerRoot()) || USERNAME || 'Me';
+        const topName = getPlayerNameFromRoot(getTopOpponentRoot()) || getCurrentOpponentUsername() || 'Opponent';
+        const record = {
+            prepared,
+            sans: prepared.moves.map((m) => m.san),
+            userColor,
+            whiteName: flipped ? topName : bottomName,
+            blackName: flipped ? bottomName : topName,
+            timeControl: detectTimeControl()
+        };
+        // Baselines for the "played like" view: page-displayed ratings, with the
+        // user's own side falling back to their cached account rating.
+        const bottomRating = getPlayerRatingFromRoot(getBottomPlayerRoot());
+        const topRating = getPlayerRatingFromRoot(getTopOpponentRoot());
+        record.whiteRating = flipped ? topRating : bottomRating;
+        record.blackRating = flipped ? bottomRating : topRating;
+        const pool = EloGuardReviewCore.timeClassOf(record.timeControl);
+        const own = REVIEW_USER_RATINGS ? REVIEW_USER_RATINGS[pool] : null;
+        if (typeof own === 'number') {
+            if (userColor === 'w' && typeof record.whiteRating !== 'number') record.whiteRating = own;
+            if (userColor === 'b' && typeof record.blackRating !== 'number') record.blackRating = own;
+        }
+        record.result = detectGameResult(prepared, userColor);
+        record.movesKey = record.sans.join(' ');
+        return record;
+    }
+
+    function buildMovetext(record) {
+        const parts = [];
+        for (let i = 0; i < record.sans.length; i++) {
+            if (i % 2 === 0) parts.push(`${i / 2 + 1}.`);
+            parts.push(record.sans[i]);
+        }
+        return parts.join(' ');
+    }
+
+    function buildPgn(record) {
+        const now = new Date();
+        const pad = (v) => String(v).padStart(2, '0');
+        const headers = [
+            ['Event', 'Live Chess'],
+            ['Site', 'Chess.com'],
+            ['Date', `${now.getFullYear()}.${pad(now.getMonth() + 1)}.${pad(now.getDate())}`],
+            ['White', record.whiteName],
+            ['Black', record.blackName],
+            ['Result', record.result]
+        ];
+        const tc = record.timeControl;
+        if (tc && tc.base < 86400) {
+            headers.push(['TimeControl', tc.inc > 0 ? `${tc.base}+${tc.inc}` : `${tc.base}`]);
+        }
+        return headers.map(([k, v]) => `[${k} "${String(v).replace(/["\\]/g, '')}"]`).join('\n')
+            + '\n\n' + buildMovetext(record) + ' ' + record.result;
+    }
+
+    // --- lichess export ---
+
+    async function openOnLichess(button) {
+        const record = extractGameRecord();
+        if (!record) {
+            flashButtonText(button, 'No moves found');
+            return;
+        }
+        const pgn = buildPgn(record);
+        // Fallback carries movetext only — bracketed headers don't belong in a URL path.
+        const fallbackUrl = 'https://lichess.org/analysis/pgn/' + encodeURIComponent(buildMovetext(record))
+            + (record.userColor === 'b' ? '?color=black' : '');
+        // Open the tab synchronously so the popup blocker sees a user gesture,
+        // then point it at the imported game once the import call resolves.
+        const tab = window.open('about:blank', '_blank');
+        const originalText = button.textContent;
+        button.textContent = 'Importing…';
+        button.disabled = true;
+        let target = fallbackUrl;
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 8000);
+            const resp = await fetch('https://lichess.org/api/import', {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: 'pgn=' + encodeURIComponent(pgn),
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+            if (resp.ok) {
+                const data = await resp.json();
+                if (data && data.url) {
+                    target = data.url + (record.userColor === 'b' ? '/black' : '');
+                }
+            }
+        } catch (e) { /* fall back to the analysis-board URL */ }
+        button.textContent = originalText;
+        button.disabled = false;
+        if (tab && !tab.closed) tab.location.href = target;
+        else window.open(target, '_blank');
+    }
+
+    function flashButtonText(button, text) {
+        const original = button.textContent;
+        button.textContent = text;
+        setTimeout(() => { button.textContent = original; }, 1800);
+    }
+
+    // --- post-game button injection ---
+
+    function buildPostGameButtons(variant) {
+        const container = document.createElement('div');
+        container.className = `${POSTGAME_CONTAINER_CLASS} elo-guard-postgame-${variant}`;
+        const lichessBtn = document.createElement('button');
+        lichessBtn.type = 'button';
+        lichessBtn.className = 'elo-guard-postgame-btn elo-guard-lichess-btn';
+        lichessBtn.textContent = '♞ Analyze on Lichess';
+        lichessBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openOnLichess(lichessBtn);
+        });
+        const reviewBtn = document.createElement('button');
+        reviewBtn.type = 'button';
+        reviewBtn.className = 'elo-guard-postgame-btn elo-guard-review-btn';
+        reviewBtn.textContent = '★ Game Review';
+        const record = extractGameRecord();
+        updateDailyLeftButton(reviewBtn, 'Game Review', PRO_FEATURE_GAME_REVIEW, record?.movesKey);
+        reviewBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openReviewPanel();
+        });
+        container.appendChild(lichessBtn);
+        container.appendChild(reviewBtn);
+        return container;
+    }
+
+    function isVisibleElement(el) {
+        if (!el) return false;
+        const rect = el.getBoundingClientRect();
+        if (!rect.width && !rect.height) return false;
+        const style = getComputedStyle(el);
+        return style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
+    }
+
+    function hasActiveGameControls() {
+        const selectors = [
+            '[data-cy*="resign"]',
+            '[data-cy*="draw"]',
+            '[data-cy*="submit"]',
+            '[aria-label*="resign" i]',
+            '[aria-label*="draw" i]',
+            '[aria-label*="submit" i]',
+            'button',
+            'a',
+            '[role="button"]'
+        ].join(',');
+
+        for (const el of document.querySelectorAll(selectors)) {
+            if (el.classList?.contains('elo-guard-postgame-btn')) continue;
+            if (el.closest('#' + REVIEW_PANEL_ID)) continue;
+            if (el.closest('.' + POSTGAME_CONTAINER_CLASS)) continue;
+            if (el.disabled || el.getAttribute?.('aria-disabled') === 'true') continue;
+            if (!isVisibleElement(el)) continue;
+
+            const label = [
+                el.getAttribute?.('data-cy'),
+                el.getAttribute?.('aria-label'),
+                el.getAttribute?.('title'),
+                el.textContent
+            ].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+
+            if (/\b(resign|draw|offer draw|submit move|submit)\b/i.test(label)) return true;
+        }
+
+        return false;
+    }
+
+    function isGameOverUiPresent() {
+        return !!(document.querySelector('[data-cy="game-over-modal-new-game-button"]')
+            || document.querySelector('[data-cy="sidebar-rematch-button"]')
+            || document.querySelector('[data-cy="sidebar-game-over-rematch-button"]')
+            || document.querySelector('.game-over-controls')
+            || document.querySelector('.game-over-modal-content'));
+    }
+
+    function hasVisibleFinishedGameStatusText() {
+        const selectors = [
+            '.game-over-message-component',
+            '.header-title-component',
+            '[class*="game-over"]',
+            '[class*="post-game"]',
+            '[class*="game-result"]',
+            '[class*="game-status"]',
+            '[data-cy*="game-over"]',
+            '[data-cy*="game-result"]',
+            '[data-cy*="game-review"]'
+        ].join(',');
+        for (const el of document.querySelectorAll(selectors)) {
+            if (el.closest('#' + REVIEW_PANEL_ID)) continue;
+            const rect = el.getBoundingClientRect();
+            if (!rect.width || !rect.height) continue;
+            const text = (el.textContent || '').replace(/\s+/g, ' ').trim();
+            if (/\b(1\s*-\s*0|0\s*-\s*1|1\/2\s*-\s*1\/2|you won|you lost|white won|black won|game over|checkmate|resigned|abandoned|timeout|won on time|draw by|stalemate|repetition|agreement|insufficient)\b/i.test(text)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // Viewing a finished game from the archive. chess.com can also serve active
+    // games at /game/<id>, so URL shape alone is not a finished-game signal.
+    function isArchivedGamePage(nativeReviewBtn) {
+        if (/\/analysis\/game\//.test(location.pathname)) return true;
+        if (!/\/game\/(live\/|daily\/)?\d+/.test(location.pathname)) return false;
+        return !!nativeReviewBtn || hasVisibleFinishedGameStatusText();
+    }
+
+    // chess.com's own "Game Review" button in the archived-game sidebar — the most
+    // natural place to attach our buttons. Located by label since its classes churn.
+    function findNativeGameReviewAnchor() {
+        for (const el of document.querySelectorAll('button, a')) {
+            if (el.classList.contains('elo-guard-postgame-btn')) continue;
+            if (el.closest('#' + REVIEW_PANEL_ID)) continue;
+            const label = (el.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
+            if (label.includes('game review')) return el;
+        }
+        return null;
+    }
+
+    function ensurePostGameButtons() {
+        // A native "Game Review" button is a finished-game signal in its own
+        // right — chess.com's game-page URL formats keep shifting under us.
+        const nativeReviewBtn = findNativeGameReviewAnchor();
+        const activeGame = hasActiveGameControls();
+        const over = !activeGame
+            && (isGameOverUiPresent() || isArchivedGamePage(nativeReviewBtn) || !!nativeReviewBtn)
+            && hasMoveListMoves();
+        const floating = document.getElementById(POSTGAME_FLOATING_ID);
+        if (!over) {
+            document.querySelectorAll('.' + POSTGAME_CONTAINER_CLASS).forEach((el) => el.remove());
+            return;
+        }
+
+        const modal = document.querySelector('.game-over-modal-content');
+        if (modal && !modal.querySelector('.' + POSTGAME_CONTAINER_CLASS)) {
+            modal.appendChild(buildPostGameButtons('modal'));
+        }
+
+        const sidebarBtn = document.querySelector('[data-cy="sidebar-rematch-button"], [data-cy="sidebar-game-over-rematch-button"]');
+        const sidebarAnchor = sidebarBtn?.closest('.game-over-modal-content') ? null : sidebarBtn?.parentElement;
+        if (sidebarAnchor && !sidebarAnchor.querySelector('.' + POSTGAME_CONTAINER_CLASS)) {
+            sidebarAnchor.appendChild(buildPostGameButtons('sidebar'));
+        }
+
+        const hasAnchored = !!document.querySelector('.' + POSTGAME_CONTAINER_CLASS + ':not(#' + POSTGAME_FLOATING_ID + ')');
+        if (nativeReviewBtn && !hasAnchored) {
+            nativeReviewBtn.insertAdjacentElement('afterend', buildPostGameButtons('archive'));
+        }
+
+        // Guarantee visibility: if neither anchored copy is actually rendered, float one.
+        const anyVisible = [...document.querySelectorAll('.' + POSTGAME_CONTAINER_CLASS)]
+            .some((el) => el.id !== POSTGAME_FLOATING_ID && el.offsetParent !== null);
+        if (!anyVisible) {
+            if (!floating) {
+                const float = buildPostGameButtons('floating');
+                float.id = POSTGAME_FLOATING_ID;
+                document.body.appendChild(float);
+            }
+        } else if (floating) {
+            floating.remove();
+        }
+    }
+
+    // --- engine iframe client ---
+
+    // True once this content script has been orphaned by an extension reload/update:
+    // chrome.runtime.id goes undefined and every chrome.* call throws
+    // "Extension context invalidated". Only a page reload recovers it.
+    function isExtensionContextInvalidated(e) {
+        if (e && typeof e.message === 'string' && /Extension context invalidated/i.test(e.message)) {
+            return true;
+        }
+        try {
+            return !chrome.runtime || !chrome.runtime.id;
+        } catch (_) {
+            return true;
+        }
+    }
+
+    function ensureEngineFrame() {
+        if (REVIEW_ENGINE_FRAME && REVIEW_ENGINE_FRAME.isConnected) return;
+        REVIEW_ENGINE_READY = false;
+        REVIEW_ENGINE_ERROR = null;
+        const frame = document.createElement('iframe');
+        frame.id = REVIEW_ENGINE_FRAME_ID;
+        frame.src = chrome.runtime.getURL('engine/engine.html');
+        frame.setAttribute('aria-hidden', 'true');
+        // Stockfish runs on this iframe's main thread. A literal display:none
+        // iframe can be timer/CPU throttled by Chromium mid-analysis, which makes
+        // depth searches appear to "randomly" freeze. Keep it visually invisible
+        // but layout-alive so the browser schedules the engine consistently.
+        frame.style.cssText = [
+            'display:block !important',
+            'position:fixed !important',
+            'left:0 !important',
+            'top:0 !important',
+            'width:1px !important',
+            'height:1px !important',
+            'border:0 !important',
+            'opacity:0 !important',
+            'pointer-events:none !important',
+            'z-index:-1 !important'
+        ].join(';');
+        (document.body || document.documentElement).appendChild(frame);
+        REVIEW_ENGINE_FRAME = frame;
+        if (REVIEW_ENGINE_PING_TIMER) clearInterval(REVIEW_ENGINE_PING_TIMER);
+        REVIEW_ENGINE_PING_TIMER = setInterval(() => {
+            if (REVIEW_ENGINE_READY || REVIEW_ENGINE_ERROR || !REVIEW_ENGINE_FRAME?.isConnected) {
+                clearInterval(REVIEW_ENGINE_PING_TIMER);
+                REVIEW_ENGINE_PING_TIMER = null;
+                return;
+            }
+            try {
+                REVIEW_ENGINE_FRAME.contentWindow?.postMessage({ type: 'eg-ping' }, REVIEW_EXT_ORIGIN);
+            } catch (e) { /* frame not ready yet */ }
+        }, 400);
+    }
+
+    window.addEventListener('message', (event) => {
+        if (event.origin !== REVIEW_EXT_ORIGIN) return;
+        const msg = event.data;
+        if (!msg || typeof msg.type !== 'string') return;
+        if (msg.type === 'eg-ready') REVIEW_ENGINE_READY = true;
+        if (msg.type === 'eg-engine-error' && !msg.jobId) REVIEW_ENGINE_ERROR = msg.error || 'Engine failed';
+        if (!msg.jobId) return;
+        const job = REVIEW_JOBS.get(msg.jobId);
+        if (!job) return;
+        if (msg.type === 'eg-progress') {
+            job.onProgress && job.onProgress(msg.done, msg.total);
+        } else if (msg.type === 'eg-result') {
+            REVIEW_JOBS.delete(msg.jobId);
+            job.resolve(msg.positions);
+        } else if (msg.type === 'eg-engine-error') {
+            REVIEW_JOBS.delete(msg.jobId);
+            job.reject(new Error(msg.error || 'Engine failed'));
+        }
+    });
+
+    function waitForEngineReady(timeoutMs = 30000) {
+        ensureEngineFrame();
+        return new Promise((resolve, reject) => {
+            const startedAt = Date.now();
+            const tick = () => {
+                if (REVIEW_ENGINE_READY) return resolve();
+                if (REVIEW_ENGINE_ERROR) return reject(new Error(REVIEW_ENGINE_ERROR));
+                if (Date.now() - startedAt > timeoutMs) return reject(new Error('Engine took too long to start'));
+                setTimeout(tick, 120);
+            };
+            tick();
+        });
+    }
+
+    function analyzeMovesWithEngine(moves, depth, skipLast, onProgress, positionIndexes) {
+        return waitForEngineReady().then(() => new Promise((resolve, reject) => {
+            const jobId = 'egjob' + (++REVIEW_JOB_COUNTER);
+            REVIEW_ACTIVE_JOB_ID = jobId;
+            REVIEW_JOBS.set(jobId, { resolve, reject, onProgress });
+            REVIEW_ENGINE_FRAME.contentWindow.postMessage(
+                { type: 'eg-analyze', jobId, moves, depth, skipLast, positionIndexes },
+                REVIEW_EXT_ORIGIN
+            );
+        }));
+    }
+
+    function cancelActiveReviewJob() {
+        if (!REVIEW_ACTIVE_JOB_ID) return;
+        const job = REVIEW_JOBS.get(REVIEW_ACTIVE_JOB_ID);
+        try {
+            REVIEW_ENGINE_FRAME?.contentWindow?.postMessage(
+                { type: 'eg-cancel', jobId: REVIEW_ACTIVE_JOB_ID },
+                REVIEW_EXT_ORIGIN
+            );
+        } catch (e) { /* frame already gone */ }
+        REVIEW_JOBS.delete(REVIEW_ACTIVE_JOB_ID);
+        if (job) job.reject(new Error('cancelled'));
+        REVIEW_ACTIVE_JOB_ID = null;
+    }
+
+    // The wasm engine holds a sizeable heap — release it when the panel closes.
+    function teardownEngineFrame() {
+        if (REVIEW_ENGINE_PING_TIMER) {
+            clearInterval(REVIEW_ENGINE_PING_TIMER);
+            REVIEW_ENGINE_PING_TIMER = null;
+        }
+        REVIEW_ENGINE_FRAME?.remove();
+        REVIEW_ENGINE_FRAME = null;
+        REVIEW_ENGINE_READY = false;
+        REVIEW_ENGINE_ERROR = null;
+    }
+
+    // --- review history (fuels the Strength Profile) ---
+
+    const REVIEW_HISTORY_KEY = 'eloGuardReviewHistory';
+    const REVIEW_HISTORY_MAX = 300;
+    const REVIEW_PROFILE_LOAD_TIMEOUT_MS = 5000;
+    const REVIEW_PROFILE_RATINGS_TIMEOUT_MS = 4500;
+
+    function reviewHistoryHash(movesKey) {
+        let h = 5381;
+        for (let i = 0; i < movesKey.length; i++) h = ((h << 5) + h + movesKey.charCodeAt(i)) | 0;
+        return 'g' + (h >>> 0).toString(36);
+    }
+
+    // Persist the user's side of a completed review. Only games the user played
+    // (when we can tell) — reviewing other people's games shouldn't pollute the
+    // profile. `gameTs` (ms) lets batch imports keep the game's real date.
+    function saveReviewToHistory(record, review, gameTs) {
+        const userName = record.userColor === 'w' ? record.whiteName : record.blackName;
+        if (USERNAME && userName && !identityMatchesCurrentUser(userName)) return;
+        const p = review.players[record.userColor];
+        if (!p || p.accuracy === null || p.scoredCount < 6) return;
+        const entry = {
+            v: 2,
+            ts: gameTs || Date.now(),
+            key: reviewHistoryHash(record.movesKey),
+            timeControl: review.timeControl,
+            color: record.userColor,
+            opponent: record.userColor === 'w' ? record.blackName : record.whiteName,
+            plies: record.sans.length,
+            stats: {
+                accuracy: p.accuracy,
+                acpl: p.acpl,
+                scoredCount: p.scoredCount,
+                complexity: p.complexity,
+                bookMoves: p.bookMoves,
+                blunderRate: p.blunderRate,
+                fastRate: typeof p.fastRate === 'number' ? p.fastRate : null,
+                scramble: typeof p.scramble === 'number' ? p.scramble : null,
+                analysisDepth: typeof p.analysisDepth === 'number' ? p.analysisDepth : null
+            },
+            phases: p.phases || null
+        };
+        try {
+            chrome.storage.local.get([REVIEW_HISTORY_KEY], (data) => {
+                try {
+                    if (chrome.runtime.lastError) return;
+                    data = data || {};
+                    let list = Array.isArray(data[REVIEW_HISTORY_KEY]) ? data[REVIEW_HISTORY_KEY] : [];
+                    list = list.filter((e) => e && e.key !== entry.key);
+                    list.push(entry);
+                    if (list.length > REVIEW_HISTORY_MAX) list = list.slice(list.length - REVIEW_HISTORY_MAX);
+                    chrome.storage.local.set({ [REVIEW_HISTORY_KEY]: list });
+                } catch (e) {
+                    console.warn('EloGuard Review: could not save profile history', e);
+                }
+            });
+        } catch (e) {
+            console.warn('EloGuard Review: could not save profile history', e);
+        }
+    }
+
+    // --- batch analysis (My Stats: analyze last X games or a period) ---
+
+    const REVIEW_BATCH_RANGES = [
+        { key: 'all', label: 'All reviewed (recency-weighted)' },
+        { key: 'last10', label: 'Last 10 games', count: 10 },
+        { key: 'last25', label: 'Last 25 games', count: 25 },
+        { key: 'last50', label: 'Last 50 games', count: 50 },
+        { key: '7d', label: 'Last week', days: 7 },
+        { key: '14d', label: 'Last 2 weeks', days: 14 },
+        { key: '30d', label: 'Last month', days: 30 },
+        { key: '90d', label: 'Last 3 months', days: 90 }
+    ];
+    const REVIEW_BATCH_MAX_GAMES = 50;
+    const REVIEW_BATCH_DEPTH = 12;
+    let REVIEW_PROFILE_RANGE = 'all';
+    let REVIEW_BATCH_ACTIVE = false;
+    let REVIEW_BATCH_CANCEL = false;
+
+    function getBatchRange(key) {
+        return REVIEW_BATCH_RANGES.find((r) => r.key === key) || REVIEW_BATCH_RANGES[0];
+    }
+
+    function parseChessComTimeControl(str) {
+        if (!str || String(str).includes('/')) return null; // daily
+        const m = String(str).match(/^(\d+)(?:\+(\d+))?$/);
+        return m ? { base: +m[1], inc: +(m[2] || 0) } : null;
+    }
+
+    // PGN movetext -> { sans, clocks } (remaining clock after each move, when
+    // the PGN carries [%clk] comments — chess.com's do).
+    function parsePgnGame(pgn) {
+        const idx = pgn.indexOf('\n\n');
+        const text = (idx > -1 ? pgn.slice(idx + 2) : pgn).replace(/\$\d+/g, ' ');
+        const sans = [];
+        const clocks = [];
+        const re = /\{([^}]*)\}|(\S+)/g;
+        let m;
+        while ((m = re.exec(text))) {
+            if (m[1] !== undefined) {
+                const cm = m[1].match(/\[%clk\s+([^\]\s]+)/);
+                if (cm && sans.length && clocks.length < sans.length) {
+                    const parts = cm[1].split(':').map(parseFloat);
+                    let sec = 0;
+                    for (const p of parts) sec = sec * 60 + p;
+                    while (clocks.length < sans.length - 1) clocks.push(null);
+                    clocks.push(Number.isNaN(sec) ? null : sec);
+                }
+                continue;
+            }
+            const tok = m[2];
+            if (!tok || /^\d+\.+$/.test(tok) || /^(1-0|0-1|1\/2-1\/2|\*)$/.test(tok)) continue;
+            const clean = tok.replace(/^\d+\.+/, '').replace(/[!?]+$/, '');
+            if (!clean) continue;
+            if (!/^(O-O(-O)?|[KQRBN]?[a-h]?[1-8]?x?[a-h][1-8](=[QRBN])?)[+#]?$/.test(clean)) return null;
+            sans.push(clean);
+        }
+        while (clocks.length < sans.length) clocks.push(null);
+        return sans.length ? { sans, clocks } : null;
+    }
+
+    // Time-management features for one side (mirrors the calibration pipeline).
+    function clockFeaturesForSide(sans, clocks, tc, bookPlies, color) {
+        const threshold = Math.max(0.8, tc.base * 0.015);
+        const offset = color === 'w' ? 0 : 1;
+        let prev = tc.base;
+        let considered = 0, fast = 0, scramble = 0;
+        for (let i = offset; i < sans.length; i += 2) {
+            const clk = clocks[i];
+            if (clk === null || clk === undefined) { prev = null; continue; }
+            if (prev !== null && i >= bookPlies) {
+                considered++;
+                if (prev - clk + tc.inc <= threshold) fast++;
+                if (clk < tc.base * 0.12) scramble++;
+            }
+            prev = clk;
+        }
+        return considered >= 8
+            ? { fastRate: fast / considered, scramble: scramble / considered }
+            : { fastRate: null, scramble: null };
+    }
+
+    function filterEntriesForRange(entries, rangeKey, nowTs) {
+        const range = getBatchRange(rangeKey);
+        let list = entries.slice().sort((a, b) => (b.ts || 0) - (a.ts || 0));
+        if (range.days) list = list.filter((e) => (e.ts || 0) >= nowTs - range.days * 86400000);
+        else if (range.count) list = list.slice(0, range.count);
+        return list;
+    }
+
+    async function fetchUserGamesForRange(rangeKey) {
+        if (!USERNAME) throw new Error('Set your chess.com username in the EloGuard popup first.');
+        const range = getBatchRange(rangeKey);
+        const cutoff = range.days ? Date.now() - range.days * 86400000 : 0;
+        const target = Math.min(range.count || REVIEW_BATCH_MAX_GAMES, REVIEW_BATCH_MAX_GAMES);
+        const uname = USERNAME.toLowerCase();
+        const archResp = await fetch(`https://api.chess.com/pub/player/${encodeURIComponent(uname)}/games/archives`);
+        if (!archResp.ok) throw new Error('Could not fetch your archives (HTTP ' + archResp.status + ')');
+        const months = (await archResp.json()).archives || [];
+        const games = [];
+        for (let mi = months.length - 1; mi >= 0 && games.length < target; mi--) {
+            const resp = await fetch(months[mi]);
+            if (!resp.ok) continue;
+            const month = (await resp.json()).games || [];
+            if (cutoff && month.length && (month[month.length - 1].end_time || 0) * 1000 < cutoff) break;
+            for (let gi = month.length - 1; gi >= 0 && games.length < target; gi--) {
+                const g = month[gi];
+                const endMs = (g.end_time || 0) * 1000;
+                if (cutoff && endMs < cutoff) continue;
+                if (g.rules !== 'chess' || !g.rated || !g.pgn) continue;
+                if (!['bullet', 'blitz', 'rapid'].includes(g.time_class)) continue;
+                const tc = parseChessComTimeControl(g.time_control);
+                if (!tc) continue;
+                const wName = g.white?.username || '', bName = g.black?.username || '';
+                let userColor = null;
+                if (wName.toLowerCase() === uname) userColor = 'w';
+                else if (bName.toLowerCase() === uname) userColor = 'b';
+                else continue;
+                const parsed = parsePgnGame(g.pgn);
+                if (!parsed || parsed.sans.length < 20 || parsed.sans.length > 160) continue;
+                games.push({
+                    sans: parsed.sans, clocks: parsed.clocks, timeControl: tc,
+                    userColor, whiteName: wName, blackName: bName, endTimeMs: endMs
+                });
+            }
+            if (!cutoff && !range.count) break; // 'all' range: don't crawl history
+        }
+        return games;
+    }
+
+    function getReviewHistory() {
+        return new Promise((resolve, reject) => {
+            try {
+                chrome.storage.local.get([REVIEW_HISTORY_KEY], (data) => {
+                    try {
+                        const err = chrome.runtime.lastError;
+                        if (err) {
+                            reject(new Error(err.message || 'Could not load review history'));
+                            return;
+                        }
+                        data = data || {};
+                        resolve(Array.isArray(data[REVIEW_HISTORY_KEY]) ? data[REVIEW_HISTORY_KEY] : []);
+                    } catch (e) {
+                        reject(e);
+                    }
+                });
+            } catch (e) {
+                reject(e);
+            }
+        });
+    }
+
+    function withReviewTimeout(promise, timeoutMs, message) {
+        return new Promise((resolve, reject) => {
+            const timer = setTimeout(() => reject(new Error(message)), timeoutMs);
+            Promise.resolve(promise).then((value) => {
+                clearTimeout(timer);
+                resolve(value);
+            }, (error) => {
+                clearTimeout(timer);
+                reject(error);
+            });
+        });
+    }
+
+    async function loadReviewHistoryWithTimeout() {
+        return withReviewTimeout(
+            getReviewHistory(),
+            REVIEW_PROFILE_LOAD_TIMEOUT_MS,
+            'Review history took too long to load'
+        );
+    }
+
+    async function loadUserRatingsForProfile() {
+        return withReviewTimeout(
+            fetchUserRatings(),
+            REVIEW_PROFILE_RATINGS_TIMEOUT_MS,
+            'Rating lookup took too long'
+        ).catch(() => null);
+    }
+
+    // The user's current pool ratings — the Bayesian baseline for the anchored
+    // strength view. Cached for 10 minutes.
+    let REVIEW_USER_RATINGS = null;
+
+    async function fetchUserRatings() {
+        if (!USERNAME) return null;
+        if (REVIEW_USER_RATINGS && Date.now() - REVIEW_USER_RATINGS.fetchedAt < 600000) return REVIEW_USER_RATINGS;
+        try {
+            const resp = await fetch(`https://api.chess.com/pub/player/${encodeURIComponent(USERNAME.toLowerCase())}/stats`);
+            if (!resp.ok) return null;
+            const data = await resp.json();
+            REVIEW_USER_RATINGS = {
+                bullet: data.chess_bullet?.last?.rating ?? null,
+                blitz: data.chess_blitz?.last?.rating ?? null,
+                rapid: data.chess_rapid?.last?.rating ?? null,
+                classical: data.chess_rapid?.last?.rating ?? null,
+                fetchedAt: Date.now()
+            };
+            return REVIEW_USER_RATINGS;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    async function startBatchAnalysis(rangeKey) {
+        if (REVIEW_BATCH_ACTIVE) return;
+        REVIEW_BATCH_ACTIVE = true;
+        REVIEW_BATCH_CANCEL = false;
+        const setStatus = (text) => {
+            const el = getReviewBody()?.querySelector('.egr-batch-status');
+            if (el) el.textContent = text;
+        };
+        const setProgress = (frac) => {
+            const fill = getReviewBody()?.querySelector('.egr-batch-progress-fill');
+            if (!fill) return;
+            fill.parentElement.style.display = 'block';
+            fill.style.width = `${Math.min(100, Math.round(frac * 100))}%`;
+        };
+        try {
+            setStatus('Fetching your games from chess.com…');
+            const games = await fetchUserGamesForRange(rangeKey);
+            const existing = new Set((await getReviewHistory()).map((e) => e.key));
+            const todo = [];
+            for (const g of games) {
+                const prepared = EloGuardReviewCore.prepareGame(g.sans);
+                if (prepared.error) continue;
+                const movesKey = prepared.moves.map((m) => m.san).join(' ');
+                if (existing.has(reviewHistoryHash(movesKey))) continue;
+                todo.push({ ...g, prepared, movesKey });
+            }
+            if (!todo.length) {
+                setStatus(games.length
+                    ? `All ${games.length} games in this range are already reviewed.`
+                    : 'No games found in this range.');
+            } else {
+                let done = 0, failed = 0;
+                const t0 = Date.now();
+                for (const g of todo) {
+                    if (REVIEW_BATCH_CANCEL) break;
+                    try {
+                        const positions = await analyzeMovesWithEngine(
+                            g.prepared.moves.map((m) => m.uci), REVIEW_BATCH_DEPTH, !!g.prepared.terminal,
+                            (p, total) => {
+                                const perGame = done > 0 ? (Date.now() - t0) / 1000 / done : null;
+                                const eta = perGame ? ` · about ${Math.max(1, Math.ceil(perGame * (todo.length - done) / 60))} min left` : '';
+                                setStatus(`Reviewing game ${done + 1} of ${todo.length}${eta}`);
+                                setProgress((done + p / total) / todo.length);
+                            },
+                            reviewPositionsToAnalyze(g.prepared)
+                        );
+                        REVIEW_ACTIVE_JOB_ID = null;
+                        const review = EloGuardReviewCore.buildReview(g.prepared, positions,
+                            { timeControl: g.timeControl, depth: REVIEW_BATCH_DEPTH });
+                        const clk = clockFeaturesForSide(g.sans, g.clocks, g.timeControl, g.prepared.bookPlies, g.userColor);
+                        review.players[g.userColor].fastRate = clk.fastRate;
+                        review.players[g.userColor].scramble = clk.scramble;
+                        const record = {
+                            prepared: g.prepared,
+                            sans: g.prepared.moves.map((m) => m.san),
+                            userColor: g.userColor,
+                            whiteName: g.whiteName,
+                            blackName: g.blackName,
+                            timeControl: g.timeControl,
+                            movesKey: g.movesKey
+                        };
+                        saveReviewToHistory(record, review, g.endTimeMs);
+                        done++;
+                    } catch (e) {
+                        if (e && e.message === 'cancelled') break;
+                        failed++;
+                    }
+                }
+                setStatus(`Reviewed ${done} game${done === 1 ? '' : 's'}${failed ? ` (${failed} failed)` : ''}${REVIEW_BATCH_CANCEL ? ' — cancelled' : ''}.`);
+            }
+        } catch (e) {
+            setStatus('Batch failed: ' + (e?.message || 'unknown error'));
+        }
+        REVIEW_BATCH_ACTIVE = false;
+        REVIEW_BATCH_CANCEL = false;
+        const list = await getReviewHistory().catch(() => []);
+        if (getReviewPanel()) renderReviewProfile(list);
+    }
+
+    // --- review panel UI ---
+
+    // Board pieces: chess.com's own CDN sprites when reachable, Unicode otherwise.
+    const REVIEW_PIECE_URL = 'https://www.chess.com/chess-themes/pieces/neo/150/';
+    const REVIEW_UNICODE_PIECES = { k: '♚', q: '♛', r: '♜', b: '♝', n: '♞', p: '♟' };
+    let REVIEW_PIECE_MODE = 'text'; // upgraded to 'img' once a sprite loads
+    let REVIEW_NAV = null; // { record, review, ply } while results are on screen
+    let REVIEW_PROFILE_LOAD_ID = 0;
+
+    function probePieceImages() {
+        if (REVIEW_PIECE_MODE === 'img') return;
+        const img = new Image();
+        img.onload = () => {
+            REVIEW_PIECE_MODE = 'img';
+            if (REVIEW_NAV) renderReviewBoardPosition();
+        };
+        img.src = REVIEW_PIECE_URL + 'wn.png';
+    }
+
+    function getReviewGlyph(cls) {
+        return REVIEW_GLYPHS[cls] || REVIEW_GLYPHS.good;
+    }
+
+    function reviewGlyphClassName(cls, extraClass = '') {
+        const glyph = getReviewGlyph(cls);
+        return [
+            'egr-glyph',
+            'egr-native-glyph',
+            glyph.icon ? 'egr-native-glyph-img-wrap' : 'egr-native-glyph-fallback',
+            `egr-glyph-${cls}`,
+            glyph.analysisClass,
+            extraClass
+        ].filter(Boolean).join(' ');
+    }
+
+    function reviewGlyphHtml(cls, extraClass = '') {
+        const glyph = getReviewGlyph(cls);
+        const classes = reviewGlyphClassName(cls, extraClass);
+        const attrs = `class="${classes}" title="${escapeHtml(glyph.label)}" data-classification="${escapeHtml(glyph.chessCom || cls)}"`;
+        if (glyph.icon) {
+            return `<span ${attrs}><img class="egr-native-glyph-img" alt="" draggable="false" src="${escapeHtml(glyph.icon)}"></span>`;
+        }
+        return `<span ${attrs}><span class="egr-native-glyph-text">${escapeHtml(glyph.sym)}</span></span>`;
+    }
+
+    function createReviewGlyphElement(cls, extraClass = '') {
+        const glyph = getReviewGlyph(cls);
+        const el = document.createElement('span');
+        el.className = reviewGlyphClassName(cls, extraClass);
+        el.title = glyph.label;
+        el.dataset.classification = glyph.chessCom || cls;
+        if (glyph.icon) {
+            const img = document.createElement('img');
+            img.className = 'egr-native-glyph-img';
+            img.alt = '';
+            img.draggable = false;
+            img.src = glyph.icon;
+            el.appendChild(img);
+        } else {
+            const text = document.createElement('span');
+            text.className = 'egr-native-glyph-text';
+            text.textContent = glyph.sym;
+            el.appendChild(text);
+        }
+        return el;
+    }
+
+    function setReviewBoardAnalysisState(record, review, depth, ply = 0) {
+        REVIEW_BOARD_STATE = {
+            record,
+            review,
+            depth,
+            ply: clampReviewPlyFor(record, ply),
+            syncedNativePly: null,
+            locationKey: getReviewBoardLocationKey()
+        };
+        ensureReviewBoardAnalysisToggle();
+        startReviewBoardAnalysisSync();
+        syncReviewBoardAnalysis();
+    }
+
+    function updateReviewBoardAnalysisPly(ply) {
+        if (!REVIEW_BOARD_STATE || !REVIEW_NAV) return;
+        if (REVIEW_BOARD_STATE.record.movesKey !== REVIEW_NAV.record.movesKey) return;
+        REVIEW_BOARD_STATE.ply = clampReviewPlyFor(REVIEW_NAV.record, ply);
+        syncChessComBoardToReviewPly(REVIEW_BOARD_STATE.ply);
+        syncReviewBoardAnalysis();
+    }
+
+    function syncChessComBoardToReviewPly(ply) {
+        if (!REVIEW_BOARD_ANALYSIS_ENABLED || !REVIEW_BOARD_STATE || ply <= 0) return;
+        if (REVIEW_BOARD_STATE.syncedNativePly === ply) return;
+        const node = getNativeReviewMoveNodes()[ply - 1];
+        if (!node) return;
+        REVIEW_BOARD_STATE.syncedNativePly = ply;
+        try {
+            node.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, view: window }));
+            node.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, view: window }));
+            node.click();
+        } catch (e) {
+            // Board glyphs still render if the native move list refuses the click.
+        }
+    }
+
+    function clearReviewBoardAnalysisState() {
+        REVIEW_BOARD_STATE = null;
+        stopReviewBoardAnalysisSync();
+        document.getElementById(REVIEW_BOARD_OVERLAY_ID)?.remove();
+        document.getElementById(REVIEW_BOARD_TOGGLE_ID)?.remove();
+    }
+
+    function clampReviewPlyFor(record, ply) {
+        const max = Math.max(0, (record?.prepared?.fens?.length || 1) - 1);
+        return Math.max(0, Math.min(max, Number.isFinite(ply) ? ply : max));
+    }
+
+    function startReviewBoardAnalysisSync() {
+        if (REVIEW_BOARD_SYNC_TIMER) return;
+        REVIEW_BOARD_SYNC_TIMER = setInterval(syncReviewBoardAnalysis, 350);
+        window.addEventListener('resize', syncReviewBoardAnalysis, { passive: true });
+        window.addEventListener('scroll', syncReviewBoardAnalysis, { passive: true });
+    }
+
+    function stopReviewBoardAnalysisSync() {
+        if (REVIEW_BOARD_SYNC_TIMER) {
+            clearInterval(REVIEW_BOARD_SYNC_TIMER);
+            REVIEW_BOARD_SYNC_TIMER = null;
+        }
+        window.removeEventListener('resize', syncReviewBoardAnalysis);
+        window.removeEventListener('scroll', syncReviewBoardAnalysis);
+    }
+
+    function ensureReviewBoardAnalysisToggle() {
+        if (!document.body || !REVIEW_BOARD_STATE) return null;
+        let button = document.getElementById(REVIEW_BOARD_TOGGLE_ID);
+        if (!button) {
+            button = document.createElement('button');
+            button.id = REVIEW_BOARD_TOGGLE_ID;
+            button.type = 'button';
+            button.addEventListener('click', (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                REVIEW_BOARD_ANALYSIS_USER_SET = true;
+                REVIEW_BOARD_ANALYSIS_ENABLED = !REVIEW_BOARD_ANALYSIS_ENABLED;
+                try {
+                    chrome.storage.local.set({ [REVIEW_BOARD_ANALYSIS_STORAGE_KEY]: REVIEW_BOARD_ANALYSIS_ENABLED });
+                } catch (e) {
+                    // The current page state still updates if storage is unavailable.
+                }
+                if (REVIEW_BOARD_ANALYSIS_ENABLED && REVIEW_BOARD_STATE) {
+                    REVIEW_BOARD_STATE.syncedNativePly = null;
+                    syncChessComBoardToReviewPly(REVIEW_BOARD_STATE.ply);
+                }
+                syncReviewBoardAnalysis();
+            });
+            document.body.appendChild(button);
+        }
+        button.textContent = REVIEW_BOARD_ANALYSIS_ENABLED ? 'Analysis on' : 'Analysis off';
+        button.title = REVIEW_BOARD_ANALYSIS_ENABLED ? 'Hide EloGuard analysis on the chess.com board' : 'Show EloGuard analysis on the chess.com board';
+        button.setAttribute('aria-pressed', REVIEW_BOARD_ANALYSIS_ENABLED ? 'true' : 'false');
+        return button;
+    }
+
+    function ensureReviewBoardOverlay() {
+        if (!document.body) return null;
+        let overlay = document.getElementById(REVIEW_BOARD_OVERLAY_ID);
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = REVIEW_BOARD_OVERLAY_ID;
+            overlay.setAttribute('aria-hidden', 'true');
+            document.body.appendChild(overlay);
+        }
+        return overlay;
+    }
+
+    function syncReviewBoardAnalysis() {
+        if (!REVIEW_BOARD_STATE) return;
+        if (REVIEW_BOARD_STATE.locationKey !== getReviewBoardLocationKey()) {
+            clearReviewBoardAnalysisState();
+            return;
+        }
+
+        const button = ensureReviewBoardAnalysisToggle();
+        const board = findReviewBoardElement();
+        const overlay = ensureReviewBoardOverlay();
+        if (!overlay) return;
+
+        if (!board) {
+            overlay.hidden = true;
+            if (button) button.hidden = true;
+            return;
+        }
+
+        positionReviewBoardToggle(button, board);
+
+        const mv = REVIEW_BOARD_STATE.ply > 0
+            ? REVIEW_BOARD_STATE.review.moves[REVIEW_BOARD_STATE.ply - 1]
+            : null;
+        if (!REVIEW_BOARD_ANALYSIS_ENABLED || !mv) {
+            overlay.hidden = true;
+            return;
+        }
+
+        const boardRect = board.getBoundingClientRect();
+        if (boardRect.width < 120 || boardRect.height < 120) {
+            overlay.hidden = true;
+            return;
+        }
+
+        const toSq = mv.to || mv.uci?.slice(2, 4);
+        if (!toSq) {
+            overlay.hidden = true;
+            return;
+        }
+
+        overlay.hidden = false;
+        overlay.style.left = `${boardRect.left}px`;
+        overlay.style.top = `${boardRect.top}px`;
+        overlay.style.width = `${boardRect.width}px`;
+        overlay.style.height = `${boardRect.height}px`;
+        overlay.innerHTML = '';
+
+        const toMarker = createReviewBoardSquareMarker(toSq, 'to', board, mv.cls);
+        toMarker.appendChild(createReviewGlyphElement(mv.cls, 'egr-live-glyph'));
+        overlay.appendChild(toMarker);
+    }
+
+    function findReviewBoardElement() {
+        return findEnhancedFocusBoardElement();
+    }
+
+    function getReviewBoardLocationKey() {
+        return `${location.origin}${location.pathname}`;
+    }
+
+    function positionReviewBoardToggle(button, board) {
+        if (!button) return;
+        const rect = board.getBoundingClientRect();
+        if (rect.width < 120 || rect.height < 120) {
+            button.hidden = true;
+            return;
+        }
+
+        button.hidden = false;
+        const buttonWidth = button.offsetWidth || 116;
+        const left = Math.max(12, Math.min(window.innerWidth - buttonWidth - 12, rect.right - buttonWidth));
+        const aboveTop = rect.top - 42;
+        const top = aboveTop >= 12 ? aboveTop : Math.min(window.innerHeight - 44, rect.top + 8);
+        button.style.left = `${left}px`;
+        button.style.top = `${Math.max(12, top)}px`;
+    }
+
+    function createReviewBoardSquareMarker(square, role, board, cls = '') {
+        const marker = document.createElement('div');
+        marker.className = [
+            'egr-live-square',
+            `egr-live-square-${role}`,
+            cls ? `egr-live-square-${cls}` : ''
+        ].filter(Boolean).join(' ');
+        const pos = getReviewBoardSquarePosition(square, board);
+        marker.style.left = `${pos.col * 12.5}%`;
+        marker.style.top = `${pos.row * 12.5}%`;
+        marker.style.width = '12.5%';
+        marker.style.height = '12.5%';
+        marker.dataset.square = square;
+        return marker;
+    }
+
+    function getReviewBoardSquarePosition(square, board) {
+        const file = 'abcdefgh'.indexOf(String(square || '')[0]);
+        const rank = Number(String(square || '')[1]);
+        const safeFile = file >= 0 ? file : 0;
+        const safeRank = rank >= 1 && rank <= 8 ? rank : 1;
+        const flipped = isReviewBoardFlipped(board);
+        return flipped
+            ? { col: 7 - safeFile, row: safeRank - 1 }
+            : { col: safeFile, row: 8 - safeRank };
+    }
+
+    function isReviewBoardFlipped(board) {
+        const candidates = [
+            board,
+            board?.parentElement,
+            board?.closest?.('wc-chess-board, chess-board, cg-board, [class*="chess-board"], [class*="board-layout-chessboard"], [class*="board-layout-board"]')
+        ].filter(Boolean);
+        for (const candidate of candidates) {
+            const orientation = getBoardOrientationState(candidate);
+            if (orientation) return orientation === 'black';
+        }
+        return getBoardFlippedState() || Boolean(ENHANCED_FOCUS_MODE && ENHANCED_FOCUS_VISUAL_FLIPPED);
+    }
+
+    // FEN piece-placement field -> 8x8 grid, [0][0] = a8.
+    function fenToGrid(fen) {
+        const grid = [];
+        for (const row of fen.split(' ')[0].split('/')) {
+            const cells = [];
+            for (const ch of row) {
+                if (/\d/.test(ch)) for (let i = 0; i < +ch; i++) cells.push(null);
+                else cells.push(ch);
+            }
+            grid.push(cells);
+        }
+        return grid;
+    }
+
+    // The board lives in a fixed bar between the header and the scrolling body,
+    // so it never overlaps or steals space from the results while scrolling.
+    function setReviewBoardBar(active) {
+        const panel = getReviewPanel();
+        if (!panel) return null;
+        panel.querySelector('.egr-boardbar')?.remove();
+        if (!active) return null;
+        const bar = document.createElement('div');
+        bar.className = 'egr-boardbar';
+        bar.innerHTML = `
+            <div class="egr-board"></div>
+            <div class="egr-nav">
+                <button type="button" class="egr-nav-btn" data-nav="first" title="Start (Home)">⏮</button>
+                <button type="button" class="egr-nav-btn" data-nav="prev" title="Previous (←)">◀</button>
+                <div class="egr-nav-status">Start</div>
+                <button type="button" class="egr-nav-btn" data-nav="next" title="Next (→)">▶</button>
+                <button type="button" class="egr-nav-btn" data-nav="last" title="End (End)">⏭</button>
+            </div>`;
+        panel.querySelector('.egr-header').insertAdjacentElement('afterend', bar);
+        bar.querySelectorAll('.egr-nav-btn').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                if (!REVIEW_NAV) return;
+                const action = btn.dataset.nav;
+                if (action === 'first') goToReviewPly(0);
+                else if (action === 'prev') goToReviewPly(REVIEW_NAV.ply - 1);
+                else if (action === 'next') goToReviewPly(REVIEW_NAV.ply + 1);
+                else if (action === 'last') goToReviewPly(Infinity);
+            });
+        });
+        return bar;
+    }
+
+    function renderReviewBoardPosition() {
+        const panel = getReviewPanel();
+        if (!panel || !REVIEW_NAV) return;
+        const { record, review, ply } = REVIEW_NAV;
+        const boardEl = panel.querySelector('.egr-board');
+        if (!boardEl) return;
+        const grid = fenToGrid(record.prepared.fens[ply]);
+        const mv = ply > 0 ? (review.moves[ply - 1] || null) : null;
+        const fromSq = mv ? (mv.from || mv.uci.slice(0, 2)) : null;
+        const toSq = mv ? (mv.to || mv.uci.slice(2, 4)) : null;
+        const flipped = record.userColor === 'b';
+        let html = '';
+        for (let r = 0; r < 8; r++) {
+            for (let f = 0; f < 8; f++) {
+                const rr = flipped ? 7 - r : r;
+                const ff = flipped ? 7 - f : f;
+                const piece = grid[rr][ff];
+                const sq = 'abcdefgh'[ff] + (8 - rr);
+                const isLight = (rr + ff) % 2 === 0;
+                const hl = mv && (fromSq === sq || toSq === sq);
+                let inner = '';
+                if (piece) {
+                    const color = piece === piece.toUpperCase() ? 'w' : 'b';
+                    const type = piece.toLowerCase();
+                    inner = REVIEW_PIECE_MODE === 'img'
+                        ? `<img class="egr-piece-img" alt="" draggable="false" src="${REVIEW_PIECE_URL}${color}${type}.png">`
+                        : `<span class="egr-piece-txt egr-piece-${color}">${REVIEW_UNICODE_PIECES[type]}</span>`;
+                }
+                const glyph = mv && toSq === sq ? reviewGlyphHtml(mv.cls, 'egr-sq-glyph') : '';
+                html += `<div class="egr-sq ${isLight ? 'egr-sq-light' : 'egr-sq-dark'}${hl ? ' egr-sq-hl' : ''}">${inner}${glyph}</div>`;
+            }
+        }
+        boardEl.innerHTML = html;
+
+        const status = panel.querySelector('.egr-nav-status');
+        if (status) {
+            if (!mv) {
+                status.textContent = 'Start';
+            } else {
+                const moveNo = Math.ceil(mv.ply / 2) + (mv.color === 'w' ? '.' : '…');
+                status.textContent = `${moveNo} ${mv.san} · ${mv.evalDisplay}`;
+            }
+        }
+
+        panel.querySelectorAll('.egr-move-cell').forEach((c) => c.classList.remove('egr-move-selected'));
+        if (mv) {
+            const cell = panel.querySelector(`.egr-move-cell[data-ply="${mv.ply}"]`);
+            if (cell) {
+                cell.classList.add('egr-move-selected');
+                cell.scrollIntoView({ block: 'nearest' });
+            }
+        }
+        showMoveDetail(mv);
+        updateReviewBoardAnalysisPly(ply);
+    }
+
+    function goToReviewPly(ply) {
+        if (!REVIEW_NAV) return;
+        const max = REVIEW_NAV.record.prepared.fens.length - 1;
+        REVIEW_NAV.ply = Math.max(0, Math.min(max, ply));
+        renderReviewBoardPosition();
+    }
+
+    function showMoveDetail(mv) {
+        const detail = getReviewBody()?.querySelector('.egr-detail');
+        if (!detail) return;
+        if (!mv) {
+            detail.textContent = 'Step through with ◀ ▶ (or arrow keys), or click a move.';
+            return;
+        }
+        const glyph = REVIEW_GLYPHS[mv.cls];
+        const moveNo = Math.ceil(mv.ply / 2) + (mv.color === 'w' ? '.' : '…');
+        let text = `<b>${moveNo} ${escapeHtml(mv.san)}</b> — <span class="egr-detail-${mv.cls}">${glyph.label}</span>. Eval: ${escapeHtml(mv.evalDisplay)}.`;
+        if (mv.accuracy !== null) text += ` Move accuracy ${mv.accuracy.toFixed(0)}%.`;
+        if (mv.bestSan && mv.bestSan !== mv.san && mv.cls !== 'book' && mv.cls !== 'forced') {
+            text += ` Best was <b>${escapeHtml(mv.bestSan)}</b>.`;
+        }
+        detail.innerHTML = text;
+    }
+
+    window.addEventListener('keydown', (e) => {
+        if (!REVIEW_NAV || !getReviewPanel()) return;
+        if (e.key === 'ArrowLeft') goToReviewPly(REVIEW_NAV.ply - 1);
+        else if (e.key === 'ArrowRight') goToReviewPly(REVIEW_NAV.ply + 1);
+        else if (e.key === 'Home') goToReviewPly(0);
+        else if (e.key === 'End') goToReviewPly(Infinity);
+        else if (e.key === 'Escape') closeReviewPanel();
+        else return;
+        e.preventDefault();
+        e.stopPropagation();
+    }, true);
+
+    function getReviewPanel() {
+        return document.getElementById(REVIEW_PANEL_ID);
+    }
+
+    function closeReviewPanel() {
+        REVIEW_PROFILE_LOAD_ID++;
+        cancelActiveReviewJob();
+        teardownEngineFrame();
+        REVIEW_NAV = null;
+        getReviewPanel()?.remove();
+    }
+
+    function openReviewPanel() {
+        REVIEW_PROFILE_LOAD_ID++;
+        let panel = getReviewPanel();
+        if (panel) panel.remove();
+        REVIEW_NAV = null;
+        probePieceImages();
+        fetchUserRatings(); // warm the baseline cache for the "played like" view
+        panel = document.createElement('div');
+        panel.id = REVIEW_PANEL_ID;
+        panel.innerHTML = `
+            <div class="egr-card">
+                <div class="egr-header">
+                    <div>
+                        <div class="egr-title">Game Review</div>
+                        <div class="egr-subtitle">${REVIEW_ENGINE_LABEL} · EloGuard</div>
+                    </div>
+                    <div class="egr-header-actions">
+                        <button type="button" class="egr-back" title="Back to game review" style="display:none">← Back</button>
+                        <button type="button" class="egr-profile-btn" title="Strength Profile (all reviewed games)">📊 My Stats</button>
+                        <button type="button" class="egr-close" title="Close">✕</button>
+                    </div>
+                </div>
+                <div class="egr-body"></div>
+            </div>`;
+        panel.querySelector('.egr-close').addEventListener('click', closeReviewPanel);
+        panel.querySelector('.egr-back').addEventListener('click', () => openReviewPanel());
+        panel.querySelector('.egr-profile-btn').addEventListener('click', openReviewStats);
+        panel.addEventListener('click', (e) => { if (e.target === panel) closeReviewPanel(); });
+        document.body.appendChild(panel);
+
+        const record = extractGameRecord();
+        if (!record) {
+            clearReviewBoardAnalysisState();
+            renderReviewMessage('Could not read the moves of this game from the page.');
+            return;
+        }
+        panel.dataset.movesKey = record.movesKey;
+        const cached = REVIEW_CACHE.get(reviewCacheKey(record.movesKey, REVIEW_SELECTED_DEPTH));
+        if (cached) {
+            renderReviewResults(cached.record, cached.review, cached.depth);
+        } else {
+            renderReviewSetup(record);
+        }
+    }
+
+    // Opens the Strength Profile (My Stats) view inside an already-open review
+    // panel, or its paywall for free users. Shared by the header "My Stats"
+    // button and the popup's stats shortcut.
+    async function openReviewStats() {
+        if (!getReviewPanel()) return;
+        const access = await getPremiumFeatureAccess(PRO_FEATURE_GAME_REVIEW);
+        if (!access.isPro) {
+            renderReviewPaywall('Strength Profile', PRO_FEATURE_GAME_REVIEW, access, true);
+            return;
+        }
+        openReviewProfile();
+    }
+
+    // Swaps the header between the game-review view ([📊 My Stats]) and the
+    // stats sub-view ([← Back]). Inline display is used so the toggle survives
+    // whatever button styling chess.com's own CSS might impose.
+    function setReviewHeaderMode(mode) {
+        const panel = getReviewPanel();
+        if (!panel) return;
+        const inStats = mode === 'stats';
+        const back = panel.querySelector('.egr-back');
+        const profileBtn = panel.querySelector('.egr-profile-btn');
+        if (back) back.style.display = inStats ? '' : 'none';
+        if (profileBtn) profileBtn.style.display = inStats ? 'none' : '';
+    }
+
+    // Entry point for the extension popup's "My Stats" button. The popup calls
+    // this via chrome.scripting.executeScript (ISOLATED world, shared with this
+    // content script) on the active tab. Set once on first load; the version
+    // guard at the top of this IIFE makes re-injection a no-op, so the hook
+    // survives the popup re-injecting content.js.
+    window.__eloGuardOpenStats = () => {
+        openReviewPanel();
+        openReviewStats();
+    };
+
+    function getReviewBody() {
+        return getReviewPanel()?.querySelector('.egr-body') || null;
+    }
+
+    function renderReviewMessage(text) {
+        setReviewBoardBar(false);
+        const body = getReviewBody();
+        if (body) body.innerHTML = `<div class="egr-message">${escapeHtml(text)}</div>`;
+    }
+
+    function reviewProfileLoadIsCurrent(loadId) {
+        return loadId === REVIEW_PROFILE_LOAD_ID && !!getReviewPanel();
+    }
+
+    function renderReviewProfileLoadError(error) {
+        const body = getReviewBody();
+        if (!body) return;
+        REVIEW_NAV = null;
+        clearReviewBoardAnalysisState();
+        setReviewBoardBar(false);
+        setReviewHeaderMode('stats');
+        const message = error?.message || 'unknown error';
+        const needsReload = isExtensionContextInvalidated(error) || /review tools unavailable/i.test(message);
+        const title = needsReload
+            ? 'Reload this page to reopen My Stats.'
+            : 'Could not load your Strength Profile.';
+        const detail = needsReload
+            ? 'EloGuard needs a fresh content script on this tab.'
+            : message;
+        body.innerHTML = `
+            <div class="egr-results">
+                <div class="egr-profile-head">Strength Profile</div>
+                <div class="egr-message">${escapeHtml(title)}<br>${escapeHtml(detail)}</div>
+                <div class="egr-footer">
+                    <button type="button" class="egr-again-btn egr-profile-back">Back to review</button>
+                    <button type="button" class="egr-again-btn ${needsReload ? 'egr-profile-reload' : 'egr-profile-retry'}">${needsReload ? 'Reload page' : 'Try again'}</button>
+                </div>
+            </div>`;
+        body.querySelector('.egr-profile-back')?.addEventListener('click', () => openReviewPanel());
+        body.querySelector('.egr-profile-retry')?.addEventListener('click', openReviewProfile);
+        body.querySelector('.egr-profile-reload')?.addEventListener('click', () => location.reload());
+    }
+
+    function renderReviewPaywall(title, featureKey, access, proOnly = false) {
+        const body = getReviewBody();
+        if (!body) return;
+        REVIEW_NAV = null;
+        clearReviewBoardAnalysisState();
+        setReviewBoardBar(false);
+        // The Strength Profile paywall (proOnly) is a stats sub-view — offer a
+        // way back to the game review; the game-review paywall is top-level.
+        setReviewHeaderMode(proOnly ? 'stats' : 'review');
+        const limit = access?.limit || 1;
+        const remaining = access && Number.isFinite(access.remaining) ? access.remaining : 0;
+        const freeLine = proOnly
+            ? 'This view is included with EloGuard Pro.'
+            : `Free includes ${limit} game review per day. You have ${remaining} left today.`;
+        // MATCHUP ADVICE — DISABLED (chess.com TOS review pending): the upsell copy
+        // below no longer mentions "matchup advice"; the surviving opponent feature is
+        // cheat risk detection / risk profile. Restore the phrase when re-enabling.
+        body.innerHTML = `
+            <div class="egr-pro-lock">
+                <div class="egr-pro-eyebrow">EloGuard Pro</div>
+                <div class="egr-pro-title">${escapeHtml(title)}</div>
+                <div class="egr-pro-copy">${escapeHtml(freeLine)} Pro unlocks unlimited game reviews, Strength Profile, and risk profile.</div>
+                <button type="button" class="egr-start-btn egr-upgrade-btn">Upgrade to Pro</button>
+            </div>`;
+        body.querySelector('.egr-upgrade-btn')?.addEventListener('click', () => openPremiumUpgrade(featureKey));
+    }
+
+    function escapeHtml(value) {
+        return String(value).replace(/[&<>"']/g, (c) => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        }[c]));
+    }
+
+    function renderReviewSetup(record) {
+        const body = getReviewBody();
+        if (!body) return;
+        REVIEW_NAV = null;
+        clearReviewBoardAnalysisState();
+        setReviewBoardBar(false);
+        const plies = record.sans.length;
+        const depth = clampReviewDepth(REVIEW_SELECTED_DEPTH);
+        REVIEW_SELECTED_DEPTH = depth;
+        body.innerHTML = `
+            <div class="egr-setup">
+                <div class="egr-setup-line">${escapeHtml(record.whiteName)} vs ${escapeHtml(record.blackName)} · ${Math.ceil(plies / 2)} moves</div>
+                <div class="egr-depth-control">
+                    <div class="egr-depth-head">
+                        <label for="egr-depth-slider">Depth</label>
+                        <output class="egr-depth-value" for="egr-depth-slider">d${depth}</output>
+                    </div>
+                    <input id="egr-depth-slider" class="egr-depth-slider" type="range" min="${REVIEW_DEPTH_MIN}" max="${REVIEW_DEPTH_MAX}" step="1" value="${depth}" aria-label="Analysis depth">
+                    <div class="egr-depth-scale"><span>Fast</span><span>Stronger</span></div>
+                </div>
+                <button type="button" class="egr-start-btn">Analyze Game</button>
+                <div class="egr-setup-note">Runs Stockfish locally in your browser — nothing is uploaded.</div>
+            </div>`;
+        const slider = body.querySelector('.egr-depth-slider');
+        const value = body.querySelector('.egr-depth-value');
+        slider?.addEventListener('input', () => {
+            REVIEW_SELECTED_DEPTH = clampReviewDepth(slider.value);
+            if (value) value.textContent = `d${REVIEW_SELECTED_DEPTH}`;
+        });
+        const startBtn = body.querySelector('.egr-start-btn');
+        updateDailyLeftButton(startBtn, 'Analyze Game', PRO_FEATURE_GAME_REVIEW, record.movesKey);
+        startBtn?.addEventListener('click', () => startGameReview(record));
+    }
+
+    async function startGameReview(record) {
+        const selectedDepth = clampReviewDepth(REVIEW_SELECTED_DEPTH);
+        const body = getReviewBody();
+        if (!body) return;
+        // Non-consuming gate; a failed/cancelled analysis must not burn the free
+        // daily review. We spend it only after buildReview succeeds (below).
+        const access = await getPremiumFeatureAccess(PRO_FEATURE_GAME_REVIEW, record.movesKey);
+        if (!access.allowed) {
+            renderReviewPaywall('Game Review', PRO_FEATURE_GAME_REVIEW, access);
+            return;
+        }
+        setReviewBoardBar(false);
+        body.innerHTML = `
+            <div class="egr-progress">
+                <div class="egr-progress-label">Starting engine…</div>
+                <div class="egr-progress-track"><div class="egr-progress-fill"></div></div>
+                <button type="button" class="egr-cancel-btn">Cancel</button>
+            </div>`;
+        body.querySelector('.egr-cancel-btn').addEventListener('click', () => {
+            cancelActiveReviewJob();
+            renderReviewSetup(record);
+        });
+        const startedAt = Date.now();
+        const onProgress = (done, totalPositions) => {
+            const label = getReviewBody()?.querySelector('.egr-progress-label');
+            const fill = getReviewBody()?.querySelector('.egr-progress-fill');
+            if (!label || !fill) return;
+            const pct = Math.round((done / totalPositions) * 100);
+            const elapsed = (Date.now() - startedAt) / 1000;
+            const eta = done > 2 ? Math.max(0, Math.round((elapsed / done) * (totalPositions - done))) : null;
+            label.textContent = `Analyzing position ${done}/${totalPositions} (${pct}%)${eta !== null ? ` · ~${eta}s left` : ''}`;
+            fill.style.width = pct + '%';
+        };
+        try {
+            const uciMoves = record.prepared.moves.map((m) => m.uci);
+            const positions = await analyzeMovesWithEngine(
+                uciMoves,
+                selectedDepth,
+                !!record.prepared.terminal,
+                onProgress,
+                reviewPositionsToAnalyze(record.prepared)
+            );
+            REVIEW_ACTIVE_JOB_ID = null;
+            // Panel may have been closed / reopened for a different game meanwhile.
+            const panel = getReviewPanel();
+            if (!panel || panel.dataset.movesKey !== record.movesKey) return;
+            const review = EloGuardReviewCore.buildReview(record.prepared, positions,
+                { timeControl: record.timeControl, depth: selectedDepth });
+            REVIEW_CACHE.set(reviewCacheKey(record.movesKey, selectedDepth), { review, record, depth: selectedDepth });
+            if (REVIEW_CACHE.size > REVIEW_CACHE_MAX) {
+                REVIEW_CACHE.delete(REVIEW_CACHE.keys().next().value);
+            }
+            // Spend the free daily review only now that analysis succeeded.
+            // Idempotent per game (movesKey); a Pro user is never charged.
+            await consumePremiumFeature(PRO_FEATURE_GAME_REVIEW, record.movesKey);
+            saveReviewToHistory(record, review);
+            renderReviewResults(record, review, selectedDepth);
+        } catch (e) {
+            REVIEW_ACTIVE_JOB_ID = null;
+            if (e && e.message === 'cancelled') return;
+            teardownEngineFrame(); // a retry gets a fresh engine
+            // When the extension is reloaded/updated, this already-loaded content
+            // script is orphaned and every chrome.* call throws "Extension context
+            // invalidated". A retry can't recover it — only a page reload can.
+            if (isExtensionContextInvalidated(e)) {
+                renderReviewMessage('EloGuard was updated. Reload this page to re-enable Game Review.');
+                const reloadBody = getReviewBody();
+                if (reloadBody) {
+                    const reload = document.createElement('button');
+                    reload.type = 'button';
+                    reload.className = 'egr-start-btn';
+                    reload.textContent = 'Reload page';
+                    reload.addEventListener('click', () => location.reload());
+                    reloadBody.appendChild(reload);
+                }
+                return;
+            }
+            renderReviewMessage('Analysis failed: ' + (e?.message || 'unknown error'));
+            const failBody = getReviewBody();
+            if (failBody) {
+                const retry = document.createElement('button');
+                retry.type = 'button';
+                retry.className = 'egr-start-btn';
+                retry.textContent = 'Try again';
+                retry.addEventListener('click', () => renderReviewSetup(record));
+                failBody.appendChild(retry);
+            }
+        }
+    }
+
+    function formatEstimate(est) {
+        if (!est) return '—';
+        return `~${est.rating} <span class="egr-est-unc">±${est.uncertainty}</span>`;
+    }
+
+    // --- strength profile (aggregated over all reviewed games) ---
+
+    async function openReviewProfile() {
+        const body = getReviewBody();
+        if (!body) return;
+        const loadId = ++REVIEW_PROFILE_LOAD_ID;
+        REVIEW_NAV = null;
+        setReviewBoardBar(false);
+        setReviewHeaderMode('stats');
+        body.innerHTML = '<div class="egr-message">Loading profile…</div>';
+        if (typeof EloGuardReviewCore === 'undefined') {
+            renderReviewProfileLoadError(new Error('Review tools unavailable'));
+            return;
+        }
+        try {
+            const ratingsPromise = loadUserRatingsForProfile();
+            const list = await loadReviewHistoryWithTimeout();
+            if (!reviewProfileLoadIsCurrent(loadId)) return;
+            renderReviewProfile(list);
+            ratingsPromise.then((ratings) => {
+                if (!ratings || !reviewProfileLoadIsCurrent(loadId)) return;
+                try {
+                    renderReviewProfile(list);
+                } catch (e) {
+                    if (reviewProfileLoadIsCurrent(loadId)) renderReviewProfileLoadError(e);
+                }
+            });
+        } catch (e) {
+            if (reviewProfileLoadIsCurrent(loadId)) renderReviewProfileLoadError(e);
+        }
+    }
+
+    function renderReviewProfile(entries) {
+        const body = getReviewBody();
+        if (!body) return;
+        const now = Date.now();
+        const filtered = filterEntriesForRange(entries, REVIEW_PROFILE_RANGE, now);
+        const profile = EloGuardReviewCore.aggregateProfile(filtered, now, { noDecay: REVIEW_PROFILE_RANGE !== 'all' });
+        const rangeOptions = REVIEW_BATCH_RANGES.map((r) =>
+            `<option value="${r.key}"${r.key === REVIEW_PROFILE_RANGE ? ' selected' : ''}>${r.label}</option>`
+        ).join('');
+        const controls = `
+            <div class="egr-batch-row">
+                <select class="egr-tc-select egr-range-select">${rangeOptions}</select>
+                <button type="button" class="egr-again-btn egr-batch-btn">${REVIEW_BATCH_ACTIVE ? 'Cancel' : 'Analyze range'}</button>
+            </div>
+            <div class="egr-batch-status">${REVIEW_BATCH_ACTIVE ? 'Working…' : ''}</div>
+            <div class="egr-batch-progress"><div class="egr-batch-progress-fill"></div></div>`;
+
+        if (!profile) {
+            body.innerHTML = `
+                <div class="egr-results">
+                    <div class="egr-profile-head">Strength Profile</div>
+                    ${controls}
+                    <div class="egr-message">Nothing reviewed in this range yet. Pick a range and hit
+                    "Analyze range" — your recent chess.com games get reviewed automatically, right in
+                    your browser. Or review games one at a time after playing.</div>
+                    <div class="egr-footer">
+                        <button type="button" class="egr-again-btn egr-profile-back">Back to review</button>
+                    </div>
+                </div>`;
+            wireProfileControls(body);
+            return;
+        }
+
+        // Anchored view: the user's chess.com rating pins the level and the engine
+        // measures the deviation from it. Falls back to the rating-free estimate
+        // when no baseline rating is known for the pool.
+        const baselines = REVIEW_USER_RATINGS || {};
+        const anchoringOn = ['bullet', 'blitz', 'rapid', 'classical']
+            .some((pool) => profile.pools[pool] && typeof baselines[pool] === 'number');
+        const fmtDelta = (d) => (d >= 0 ? '+' : '') + d;
+
+        const gamesLabel = (n) => `${n} game${n === 1 ? '' : 's'}`;
+        const deltaDir = (d) => (d > 0 ? 'up' : d < 0 ? 'down' : 'flat');
+        const accBar = (acc) =>
+            `<div class="egr-accbar"><div class="egr-accbar-fill" style="width:${Math.max(2, Math.min(100, acc)).toFixed(1)}%"></div></div>`;
+        const poolIcons = { bullet: '🚀', blitz: '⚡', rapid: '⏱️', classical: '🐢' };
+        const poolCards = ['bullet', 'blitz', 'rapid', 'classical']
+            .filter((pool) => profile.pools[pool])
+            .map((pool) => {
+                const p = profile.pools[pool];
+                const anchor = anchoringOn && typeof baselines[pool] === 'number'
+                    ? EloGuardReviewCore.anchoredPerformance(
+                        typeof p.performanceFeature === 'number' ? p.performanceFeature : p.feature,
+                        typeof p.performanceEffMoves === 'number' ? p.performanceEffMoves : p.effMoves,
+                        pool,
+                        baselines[pool]
+                    )
+                    : null;
+                const strength = anchor ? anchor.strength : p.rating;
+                const unc = anchor ? anchor.uncertainty : p.uncertainty;
+                const delta = anchor
+                    ? (anchor.delta === 0
+                        ? `<div class="egr-pool-delta" data-dir="flat">even with your ${anchor.baseline}</div>`
+                        : `<div class="egr-pool-delta" data-dir="${deltaDir(anchor.delta)}">${anchor.delta > 0 ? '▲' : '▼'} ${fmtDelta(anchor.delta)} vs your ${anchor.baseline}</div>`)
+                    : '<div class="egr-pool-delta" data-dir="flat">estimated</div>';
+                return `
+                    <div class="egr-pool-card" data-pool="${pool}">
+                        <div class="egr-pool-top">
+                            <span class="egr-pool-name"><span class="egr-pool-ico">${poolIcons[pool] || ''}</span>${pool}</span>
+                            <span class="egr-pool-games">${gamesLabel(p.games)}</span>
+                        </div>
+                        <div class="egr-pool-strength">~${strength}<span class="egr-pool-unc">±${unc}</span></div>
+                        ${delta}
+                        <div class="egr-pool-acc">${accBar(p.accuracy)}<span class="egr-pool-accnum">${p.accuracy.toFixed(1)}%</span></div>
+                    </div>`;
+            }).join('');
+
+        const phaseLabels = { opening: 'Opening', middlegame: 'Middlegame', endgame: 'Endgame' };
+        const primaryBaseline = anchoringOn && typeof baselines[profile.primaryPool] === 'number'
+            ? baselines[profile.primaryPool] : null;
+        const phaseRows = EloGuardReviewCore.PHASES
+            .filter((ph) => profile.phases[ph])
+            .map((ph) => {
+                const p = profile.phases[ph];
+                const anchor = primaryBaseline !== null
+                    ? EloGuardReviewCore.anchoredStrength(p.feature, p.effMoves, profile.primaryPool, primaryBaseline, p.phaseOffset)
+                    : null;
+                const chip = anchor
+                    ? `<span class="egr-phase-delta" data-dir="${deltaDir(anchor.delta)}">${fmtDelta(anchor.delta)}</span>`
+                    : `<span class="egr-phase-delta" data-dir="flat">~${p.rating} ±${p.uncertainty}</span>`;
+                return `
+                    <div class="egr-phase-row">
+                        <div class="egr-phase-line">
+                            <span class="egr-phase-name">${phaseLabels[ph]}</span>
+                            ${chip}
+                            <span class="egr-phase-moves">${p.moves} moves</span>
+                            <span class="egr-phase-accnum">${p.accuracy.toFixed(1)}%</span>
+                        </div>
+                        ${accBar(p.accuracy)}
+                    </div>`;
+            }).join('');
+
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const recentRows = profile.recent.map((r) => {
+            const d = new Date(r.ts);
+            const date = `${monthNames[d.getMonth()]} ${d.getDate()}`;
+            const baseline = baselines[r.pool];
+            // Show the SAME per-game number the single-game Game Review card
+            // shows ("played like ~X" vs your level) so the two views agree.
+            // Falls back to the rating-free estimate when no baseline rating is
+            // known for the pool.
+            let est = r.rating;
+            if (anchoringOn && typeof baseline === 'number' && r.stats && r.timeControl) {
+                const perf = EloGuardReviewCore.gamePerformance(r.stats, r.timeControl, baseline);
+                if (perf) est = perf.perf;
+            }
+            return `
+                <div class="egr-recent-row">
+                    <span class="egr-recent-date">${date}</span>
+                    <span class="egr-recent-pool" data-pool="${r.pool}">${r.pool}</span>
+                    <span class="egr-recent-acc">${r.accuracy.toFixed(1)}%</span>
+                    <span class="egr-recent-est">~${est}</span>
+                </div>`;
+        }).join('');
+
+        body.innerHTML = `
+            <div class="egr-results">
+                <div class="egr-profile-head">Strength Profile
+                    <span class="egr-profile-sub">${gamesLabel(profile.totalGames)} reviewed</span>
+                </div>
+                ${controls}
+                <div class="egr-profile-pools">${poolCards}</div>
+                <div class="egr-profile-section">By phase</div>
+                <div class="egr-phase-list">${phaseRows || '<div class="egr-message">Not enough phase data yet.</div>'}</div>
+                <div class="egr-profile-section">Recent games</div>
+                <div class="egr-recent-list">${recentRows}</div>
+                <div class="egr-footer">
+                    <button type="button" class="egr-again-btn egr-profile-back">Back to review</button>
+                    <button type="button" class="egr-again-btn egr-profile-clear">Clear history</button>
+                </div>
+            </div>`;
+        wireProfileControls(body);
+        body.querySelector('.egr-profile-clear').addEventListener('click', (e) => {
+            const btn = e.target;
+            if (btn.dataset.confirm) {
+                chrome.storage.local.set({ [REVIEW_HISTORY_KEY]: [] }, () => renderReviewProfile([]));
+            } else {
+                btn.dataset.confirm = '1';
+                btn.textContent = 'Really clear?';
+                setTimeout(() => { delete btn.dataset.confirm; btn.textContent = 'Clear history'; }, 2500);
+            }
+        });
+    }
+
+    function wireProfileControls(body) {
+        body.querySelector('.egr-profile-back')?.addEventListener('click', () => openReviewPanel());
+        body.querySelector('.egr-range-select')?.addEventListener('change', async (e) => {
+            REVIEW_PROFILE_RANGE = e.target.value;
+            try {
+                renderReviewProfile(await loadReviewHistoryWithTimeout());
+            } catch (error) {
+                renderReviewProfileLoadError(error);
+            }
+        });
+        body.querySelector('.egr-batch-btn')?.addEventListener('click', () => {
+            if (REVIEW_BATCH_ACTIVE) {
+                REVIEW_BATCH_CANCEL = true;
+                cancelActiveReviewJob();
+                return;
+            }
+            const btn = body.querySelector('.egr-batch-btn');
+            if (btn) btn.textContent = 'Cancel';
+            startBatchAnalysis(REVIEW_PROFILE_RANGE);
+        });
+    }
+
+    function renderReviewResults(record, review, depth) {
+        const body = getReviewBody();
+        if (!body) return;
+        const names = { w: record.whiteName, b: record.blackName };
+        const userMark = record.userColor;
+
+        const ratingOf = { w: record.whiteRating, b: record.blackRating };
+        const perfHtml = (color) => {
+            const p = review.players[color];
+            const perf = typeof ratingOf[color] === 'number'
+                ? EloGuardReviewCore.gamePerformance(p, review.timeControl, ratingOf[color])
+                : null;
+            if (perf) {
+                return {
+                    est: `~${perf.perf}`,
+                    label: `played like · ${perf.delta >= 0 ? '+' : ''}${perf.delta} vs their ${perf.baseline}`
+                };
+            }
+            return {
+                est: formatEstimate(p.estimate),
+                label: `This game (${review.timeClass} scale)`
+            };
+        };
+        const playerCard = (color) => {
+            const p = review.players[color];
+            const acc = p.accuracy !== null ? p.accuracy.toFixed(1) : '—';
+            const acpl = p.acpl !== null ? Math.round(p.acpl) : '—';
+            const perf = perfHtml(color);
+            return `
+                <div class="egr-player egr-player-${color}${userMark === color ? ' egr-player-me' : ''}">
+                    <div class="egr-player-name"><span class="egr-color-dot egr-dot-${color}"></span>${escapeHtml(names[color])}${userMark === color ? ' <span class="egr-me-tag">you</span>' : ''}</div>
+                    <div class="egr-accuracy">${acc}</div>
+                    <div class="egr-accuracy-label">Accuracy</div>
+                    <div class="egr-est" data-color="${color}">${perf.est}</div>
+                    <div class="egr-est-label" data-color="${color}" title="Full-credit single-game performance vs the player's rating (swingy by design). The shrunk multi-game strength estimate lives in My Stats.">${perf.label}</div>
+                    <div class="egr-acpl">ACPL ${acpl}</div>
+                </div>`;
+        };
+
+        const countRows = EloGuardReviewCore.CLASS_ORDER
+            .filter((cls) => review.players.w.counts[cls] || review.players.b.counts[cls])
+            .map((cls) => {
+                const glyph = REVIEW_GLYPHS[cls];
+                return `
+                    <div class="egr-count-row">
+                        <span class="egr-count-white">${review.players.w.counts[cls] || 0}</span>
+                        <span class="egr-count-label">${reviewGlyphHtml(cls)}${glyph.label}</span>
+                        <span class="egr-count-black">${review.players.b.counts[cls] || 0}</span>
+                    </div>`;
+            }).join('');
+
+        const phaseLabels = { opening: 'Opening', middlegame: 'Middlegame', endgame: 'Endgame' };
+        const phaseAcc = (p) => (p && p.accuracy !== null && p.scoredCount >= 2 ? p.accuracy.toFixed(0) + '%' : '—');
+        const phaseRows = EloGuardReviewCore.PHASES
+            .filter((ph) => (review.players.w.phases?.[ph]?.scoredCount || 0) + (review.players.b.phases?.[ph]?.scoredCount || 0) > 0)
+            .map((ph) => `
+                <div class="egr-count-row">
+                    <span class="egr-count-white">${phaseAcc(review.players.w.phases?.[ph])}</span>
+                    <span class="egr-count-label">${phaseLabels[ph]}</span>
+                    <span class="egr-count-black">${phaseAcc(review.players.b.phases?.[ph])}</span>
+                </div>`).join('');
+
+        const tcKey = (t) => `${t.base}|${t.inc || 0}`;
+        const currentTc = (review.timeControl && typeof review.timeControl === 'object')
+            ? review.timeControl
+            : (record.timeControl || { base: 600, inc: 0 });
+        const tcChoices = REVIEW_TC_OPTIONS.slice();
+        if (!tcChoices.some((t) => tcKey(t) === tcKey(currentTc))) tcChoices.unshift(currentTc);
+        const tcOptions = tcChoices.map((t) =>
+            `<option value="${tcKey(t)}"${tcKey(t) === tcKey(currentTc) ? ' selected' : ''}>${timeControlLabel(t)} · ${EloGuardReviewCore.timeClassOf(t)}</option>`
+        ).join('');
+
+        let movesHtml = '';
+        for (let i = 0; i < review.moves.length; i += 2) {
+            const white = review.moves[i];
+            const black = review.moves[i + 1] || null;
+            const cell = (mv) => {
+                if (!mv) return '<span class="egr-move-cell egr-move-empty"></span>';
+                const glyph = REVIEW_GLYPHS[mv.cls];
+                return `<span class="egr-move-cell egr-move-${mv.cls}" data-ply="${mv.ply}" title="${glyph.label}">
+                    <span class="egr-move-san">${escapeHtml(mv.san)}</span>
+                    ${reviewGlyphHtml(mv.cls)}
+                </span>`;
+            };
+            movesHtml += `<div class="egr-move-row"><span class="egr-move-num">${i / 2 + 1}.</span>${cell(white)}${cell(black)}</div>`;
+        }
+
+        body.innerHTML = `
+            <div class="egr-results">
+                <div class="egr-players">${playerCard('w')}${playerCard('b')}</div>
+                ${review.opening ? `<div class="egr-opening" title="${escapeHtml(review.opening.eco)}">${escapeHtml(review.opening.name)}</div>` : ''}
+                <div class="egr-time-row">
+                    <span class="egr-time-label">Time control</span>
+                    <select class="egr-tc-select">${tcOptions}</select>
+                </div>
+                <div class="egr-counts">${countRows}</div>
+                ${phaseRows ? `<div class="egr-counts"><div class="egr-profile-section">Accuracy by phase</div>${phaseRows}</div>` : ''}
+                <div class="egr-moves">${movesHtml}</div>
+                <div class="egr-detail">Step through with ◀ ▶ (or arrow keys), or click a move.</div>
+                <div class="egr-footer">
+                    <span>depth ${depth}</span>
+                    <button type="button" class="egr-again-btn">Re-analyze</button>
+                </div>
+            </div>`;
+
+        REVIEW_NAV = { record, review, ply: 0 };
+        setReviewBoardAnalysisState(record, review, depth, 0);
+        setReviewBoardBar(true);
+
+        body.querySelector('.egr-tc-select').addEventListener('change', (e) => {
+            const [base, inc] = e.target.value.split('|').map(Number);
+            const tc = { base, inc };
+            review.timeControl = tc;
+            review.timeClass = EloGuardReviewCore.timeClassOf(tc);
+            for (const color of ['w', 'b']) {
+                review.players[color].estimate = EloGuardReviewCore.estimateRating(review.players[color], tc);
+                const perf = perfHtml(color);
+                const el = body.querySelector(`.egr-est[data-color="${color}"]`);
+                if (el) el.innerHTML = perf.est;
+                const lbl = body.querySelector(`.egr-est-label[data-color="${color}"]`);
+                if (lbl) lbl.textContent = perf.label;
+            }
+            saveReviewToHistory(record, review); // keep the profile's time control in sync
+        });
+
+        body.querySelectorAll('.egr-move-cell[data-ply]').forEach((cell) => {
+            cell.addEventListener('click', () => goToReviewPly(parseInt(cell.dataset.ply, 10)));
+        });
+
+        body.querySelector('.egr-again-btn').addEventListener('click', () => {
+            REVIEW_CACHE.delete(reviewCacheKey(record.movesKey, depth));
+            renderReviewSetup(record);
+        });
+
+        renderReviewBoardPosition();
+    }
+
+    setInterval(ensurePostGameButtons, 1000);
 
     (function hookSpa() {
         const wrap = (fn) => {

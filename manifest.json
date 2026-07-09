@@ -1,14 +1,21 @@
 {
   "manifest_version": 3,
   "name": "EloGuard: Chess Tilt Protection",
-  "version": "1.6.14",
-  "description": "Prevents rage-queuing by locking the Play button when you hit your stop-loss.",
+  "version": "2.0.1",
+  "description": "Cheat-risk checks, local game reviews, and stop-loss rating locks for calmer Chess.com sessions.",
   "permissions": ["storage", "activeTab", "scripting"],
-  "host_permissions": ["*://*.chess.com/*"],
+    "host_permissions": [
+        "*://*.chess.com/*",
+        "https://eloguard-billing.eloguard.workers.dev/*",
+        "https://eloguard.app/*"
+    ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+  },
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
-      "16": "icon.png", 
+      "16": "icon.png",
       "48": "icon.png",
       "128": "icon.png"
     }
@@ -17,7 +24,13 @@
     {
       "matches": ["*://*.chess.com/*"],
       "css": ["styles.css"],
-      "js": ["content.js"]
+      "js": ["lib/chess.js", "lib/book.js", "lib/review-core.js", "lib/entitlements.js", "content.js"]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["engine/*"],
+      "matches": ["*://*.chess.com/*"]
     }
   ]
 }

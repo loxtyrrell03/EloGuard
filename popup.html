@@ -11,7 +11,11 @@
     <div id="mainView">
         <div class="header">
             <h2>🛡️ EloGuard</h2>
-            <button id="settingsBtn" class="icon-btn">⚙️</button>
+            <div class="header-actions">
+                <button id="upgradeBtn" class="upgrade-btn">Upgrade</button>
+                <button id="statsBtn" class="icon-btn" title="My Stats — Strength Profile">📊</button>
+                <button id="settingsBtn" class="icon-btn">⚙️</button>
+            </div>
         </div>
 
         <div class="status-card">
@@ -40,7 +44,7 @@
             <button id="toggleRatingVisBtn" class="text-link-btn">Hide</button>
         </div>
 
-        <div id="activateBtnContainer" style="width: 85%; margin: 20px auto;">
+        <div id="activateBtnContainer" style="width: 85%; margin: 14px auto;">
             <button id="activateBtn" class="big-btn">ACTIVATE GUARD</button>
             <div id="unlockUI" class="unlock-ui hidden">
                 <div class="unlock-string-display" id="unlockStringDisplay"></div>
@@ -84,7 +88,61 @@
             </label>
             <span class="zen-label">Enhanced focus mode</span>
         </div>
+
+        <div class="zen-wrapper opponent-wrapper">
+            <label class="switch">
+                <input type="checkbox" id="showRiskProfilePill">
+                <span class="slider"></span>
+            </label>
+            <span class="zen-label">Cheat risk detection</span>
+        </div>
     </div>
+
+        <div id="proSection" class="pro-section">
+            <div class="pro-shine" aria-hidden="true"></div>
+            <div class="pro-section-head">
+                <span id="proSectionTitle" class="pro-section-title">Pro features</span>
+                <button id="refreshProBtn" class="pro-refresh-link" title="Recheck subscription">↻</button>
+            </div>
+            <ul class="pro-feature-list">
+                <li class="pro-feature" data-feature="riskProfile">
+                    <span class="pro-feature-lock">🔒</span>
+                    <span class="pro-feature-label">Unlimited cheat risk detection</span>
+                </li>
+                <li class="pro-feature" data-feature="gameReview">
+                    <span class="pro-feature-lock">🔒</span>
+                    <span class="pro-feature-label">Full game reviews</span>
+                </li>
+                <!-- MATCHUP ADVICE — DISABLED (chess.com TOS review pending):
+                     The "Opponent matchup advice" Pro row is commented out (not deleted)
+                     because the matchup feature is turned off in content.js pending a
+                     check on whether it violates the Chess.com Terms of Service. The
+                     cheat risk detection row ("Unlimited cheat risk detection") above stays.
+                     Re-enable this row together with the matchup feature. -->
+                <!--
+                <li class="pro-feature" data-feature="matchup">
+                    <span class="pro-feature-lock">🔒</span>
+                    <span class="pro-feature-label">Opponent matchup advice</span>
+                </li>
+                -->
+                <li class="pro-feature" data-feature="smartBracket">
+                    <span class="pro-feature-lock">🔒</span>
+                    <span class="pro-feature-label">Smart bracket auto-set</span>
+                </li>
+            </ul>
+            <div id="proUsageHint" class="pro-usage-hint"></div>
+        </div>
+
+        <!-- Pro tester toggle disabled for public launch.
+        <div id="devProRow" class="dev-pro-row hidden">
+            <label class="switch">
+                <input type="checkbox" id="devProToggle">
+                <span class="slider"></span>
+            </label>
+            <span class="dev-pro-label">Pro mode (testing)</span>
+        </div>
+        -->
+
     </div>
 
     <div id="settingsView" class="hidden">
@@ -146,8 +204,6 @@
             </div>
         </div>
 
-        <hr class="divider">
-
         <div class="input-group">
             <label>
                 🧊 Analysis Cool Down
@@ -182,9 +238,9 @@
 
         <div class="input-group smart-bracket-group">
             <label>
-                ⚡ Smart Bracket (Auto-Set)
+                ⚡ Smart Bracket (Auto-Set) <span class="pro-inline-badge">Pro</span>
                 <div class="tooltip-container">
-                    <span class="tooltip" data-text="Automatically sets Stop Loss & Target based on your CURRENT rating +/- this amount.">?</span>
+                    <span class="tooltip" data-text="Pro feature. Automatically sets Stop Loss & Target based on your CURRENT rating +/- this amount.">?</span>
                 </div>
             </label>
             <div class="flex-row">
@@ -236,8 +292,25 @@
         </div>
 
         <button id="saveSettingsBtn" class="action-btn">Save Settings</button>
+
+        <section id="billingCard" class="billing-card" aria-label="EloGuard Pro billing">
+            <div class="billing-card-head">
+                <div>
+                    <div class="billing-eyebrow">Billing</div>
+                    <h3 id="billingPlanLabel">Free plan</h3>
+                </div>
+                <button id="billingRefreshBtn" class="billing-icon-btn" title="Refresh billing status">↻</button>
+            </div>
+            <p id="billingStatusLabel" class="billing-status">Free tier active.</p>
+            <div class="billing-actions">
+                <button id="billingManageBtn" class="secondary-btn billing-manage-btn">Manage subscription</button>
+                <button id="billingCancelBtn" class="secondary-btn billing-cancel-btn">Cancel renewal</button>
+            </div>
+            <div id="billingMessage" class="billing-message" role="status" aria-live="polite"></div>
+        </section>
     </div>
 
+    <script src="lib/entitlements.js"></script>
     <script src="popup.js"></script>
 </body>
 </html>

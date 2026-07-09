@@ -61,7 +61,8 @@
 /* --- 2. OPPONENT LEGITIMACY DETECTOR --- */
 #elo-guard-legitimacy-badge {
     --elo-guard-legitimacy-color: #81b64c;
-    --elo-guard-matchup-color: #d6a13d;
+    /* MATCHUP ADVICE — DISABLED (chess.com TOS review pending): matchup pill colour unused. */
+    /* --elo-guard-matchup-color: #d6a13d; */
     position: fixed !important;
     z-index: 2147483646 !important;
     left: 8px;
@@ -91,6 +92,22 @@
     display: none !important;
 }
 
+#elo-guard-legitimacy-badge.elo-guard-legitimacy-inline {
+    position: static !important;
+    left: auto !important;
+    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    flex: 0 0 auto !important;
+    align-self: center !important;
+    margin: 0 0 0 6px !important;
+    vertical-align: middle !important;
+}
+
+body.elo-guard-hide-risk-profile-pill #elo-guard-legitimacy-badge {
+    display: none !important;
+}
+
 #elo-guard-legitimacy-badge .elo-guard-legitimacy-dot {
     width: 7px !important;
     height: 7px !important;
@@ -105,6 +122,9 @@
     text-overflow: ellipsis !important;
 }
 
+/* ===== MATCHUP ADVICE — DISABLED (chess.com TOS review pending) =====
+   The matchup pill segment (.elo-guard-matchup-text) is commented out (not deleted);
+   content.js no longer creates that element. Re-enable with the feature.
 #elo-guard-legitimacy-badge .elo-guard-matchup-text {
     flex: 0 0 auto !important;
     max-width: 112px !important;
@@ -114,6 +134,7 @@
     overflow: hidden !important;
     text-overflow: ellipsis !important;
 }
+===== end MATCHUP ADVICE — DISABLED ===== */
 
 #elo-guard-legitimacy-badge .elo-guard-legitimacy-tooltip {
     display: none !important;
@@ -152,12 +173,54 @@
     animation: elo-guard-legitimacy-pulse 1.2s ease-in-out infinite;
 }
 
+#elo-guard-legitimacy-badge[data-state="pro-lock"] {
+    cursor: pointer !important;
+    gap: 5px !important;
+    padding: 4px 10px !important;
+    border-color: rgba(255, 255, 255, 0.35) !important;
+    background: linear-gradient(135deg, #5cc6ff 0%, #2b9bf4 100%) !important;
+    color: #fff !important;
+    box-shadow: 0 2px 10px rgba(56, 176, 248, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
+    animation: elo-guard-upgrade-pill-glow 2.6s ease-in-out infinite !important;
+}
+
+#elo-guard-legitimacy-badge[data-state="pro-lock"]::before {
+    content: "\01F48E";
+    font-size: 11px !important;
+    line-height: 1 !important;
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.25)) !important;
+}
+
+#elo-guard-legitimacy-badge[data-state="pro-lock"] .elo-guard-legitimacy-dot {
+    display: none !important;
+}
+
+#elo-guard-legitimacy-badge[data-state="pro-lock"] .elo-guard-legitimacy-text {
+    overflow: visible !important;
+    text-overflow: clip !important;
+}
+
+#elo-guard-legitimacy-badge[data-state="pro-lock"]:hover {
+    background: linear-gradient(135deg, #6fceff 0%, #3aa6fb 100%) !important;
+    box-shadow: 0 3px 14px rgba(56, 176, 248, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
+}
+
+@keyframes elo-guard-upgrade-pill-glow {
+    0%, 100% { box-shadow: 0 2px 10px rgba(56, 176, 248, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.4); }
+    50% { box-shadow: 0 2px 16px rgba(56, 176, 248, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.5); }
+}
+
 @keyframes elo-guard-legitimacy-pulse {
     0%, 100% { opacity: 0.45; }
     50% { opacity: 1; }
 }
 
 /* --- 2. ZEN MODE (The Hider) --- */
+.elo-shield-zen .elo-guard-zen-hidden,
+.elo-shield-zen .elo-guard-zen-rating-text {
+    display: none !important;
+}
+
 .elo-shield-zen [data-cy="user-tagline-rating"], 
 .elo-shield-zen .rating-score,
 .elo-shield-zen .user-tagline-rating,
@@ -186,12 +249,36 @@
 .elo-shield-zen .post-game-review-rating,
 .elo-shield-zen .analysis-rating,
 .elo-shield-zen .computer-analysis-rating,
-.elo-shield-zen [class*="rating"][class*="analysis"],
-.elo-shield-zen [class*="rating"][class*="review"],
 .elo-shield-zen .board-modal-rating,
 .elo-shield-zen .player-info-rating,
-.elo-shield-zen [data-cy*="rating"][data-cy*="analysis"],
-.elo-shield-zen [data-cy*="rating"][data-cy*="review"] {
+/* Robust catch-all. chess.com's rating element always has "rating" in its class or
+   data attribute, but the exact name varies (user-tagline-rating, cc-user-rating-*, ...)
+   and differs on the game review page (chess.com/game/live/...). Scope to the board
+   player roots and the review/analysis panels so we hit the rating wherever it renders,
+   without touching EloGuard's own UI (elo-guard-/egr- classes have no "rating").
+   NOTE: the old [class*="rating"][class*="analysis"] / [class*="rating"][class*="review"]
+   selectors were dead — no single element carries both substrings. */
+.elo-shield-zen #board-layout-player-top [class*="rating"],
+.elo-shield-zen #board-layout-player-bottom [class*="rating"],
+.elo-shield-zen [class*="board-layout-player"] [class*="rating"],
+.elo-shield-zen [class*="board-player"] [class*="rating"],
+.elo-shield-zen [class*="player-top"] [class*="rating"],
+.elo-shield-zen [class*="player-bottom"] [class*="rating"],
+.elo-shield-zen [class*="user-tagline"] [class*="rating"],
+.elo-shield-zen [class*="player-tagline"] [class*="rating"],
+.elo-shield-zen [class*="review"] [class*="rating"],
+.elo-shield-zen [class*="analysis"] [class*="rating"],
+.elo-shield-zen [class*="game-review"] [class*="rating"],
+.elo-shield-zen [class*="analysis-sidebar"] [class*="rating"],
+.elo-shield-zen [data-cy*="review"] [class*="rating"],
+.elo-shield-zen [data-cy*="analysis"] [class*="rating"],
+.elo-shield-zen [class*="review"] [data-cy*="rating"],
+.elo-shield-zen [class*="analysis"] [data-cy*="rating"],
+.elo-shield-zen [class*="cc-user-rating"],
+.elo-shield-zen #board-layout-player-top [data-cy*="rating"],
+.elo-shield-zen #board-layout-player-bottom [data-cy*="rating"],
+.elo-shield-zen #board-layout-player-top [data-test-element*="rating"],
+.elo-shield-zen #board-layout-player-bottom [data-test-element*="rating"] {
     display: none !important;
 }
 
@@ -364,6 +451,9 @@
 /* --- 4. ENHANCED FOCUS MODE --- */
 body.elo-guard-enhanced-focus {
     --elo-guard-clock-column-width: 190px;
+    --elo-guard-material-row-height: 24px;
+    --elo-guard-material-gap: 8px;
+    --elo-guard-material-edge-gap: 8px;
     --elo-guard-board-size: min(calc(100vw - var(--elo-guard-clock-column-width) - var(--elo-guard-clock-column-width) - 64px), calc(100vh - 112px));
     background: #302E2B !important;
     overflow: hidden !important;
@@ -439,6 +529,53 @@ body.elo-guard-enhanced-focus #elo-guard-enhanced-focus-flip {
 #elo-guard-enhanced-focus-flip:focus-visible {
     outline: 2px solid #81b64c !important;
     outline-offset: 2px !important;
+}
+
+#elo-guard-enhanced-focus-toggle .elo-guard-focus-toggle-label {
+    display: inline-block !important;
+    white-space: nowrap !important;
+}
+
+#elo-guard-enhanced-focus-toggle .elo-guard-focus-toggle-min {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 16px !important;
+    height: 16px !important;
+    margin-right: -4px !important;
+    border-radius: 999px !important;
+    font: 700 15px/1 Arial, sans-serif !important;
+    color: rgba(245, 245, 245, 0.55) !important;
+    pointer-events: auto !important;
+}
+
+#elo-guard-enhanced-focus-toggle .elo-guard-focus-toggle-min:hover {
+    background: rgba(255, 255, 255, 0.14) !important;
+    color: #ffffff !important;
+}
+
+#elo-guard-enhanced-focus-toggle.elo-guard-focus-toggle-dragging {
+    cursor: grabbing !important;
+    user-select: none !important;
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.42) !important;
+}
+
+#elo-guard-enhanced-focus-toggle.elo-guard-focus-toggle-minimized {
+    gap: 0 !important;
+    width: 30px !important;
+    min-width: 30px !important;
+    height: 30px !important;
+    min-height: 30px !important;
+    padding: 0 !important;
+}
+
+#elo-guard-enhanced-focus-toggle.elo-guard-focus-toggle-minimized .elo-guard-focus-toggle-label,
+#elo-guard-enhanced-focus-toggle.elo-guard-focus-toggle-minimized .elo-guard-focus-toggle-min {
+    display: none !important;
+}
+
+body.elo-guard-enhanced-focus #elo-guard-enhanced-focus-toggle .elo-guard-focus-toggle-min {
+    display: none !important;
 }
 
 body.elo-guard-enhanced-focus header,
@@ -673,7 +810,7 @@ body.elo-guard-enhanced-focus .board-layout-player-bottom {
     overflow: visible !important;
 }
 
-body.elo-guard-enhanced-focus.elo-guard-enhanced-focus-ready > *:not(#elo-guard-enhanced-focus-stage):not(script):not(style):not(link) {
+body.elo-guard-enhanced-focus.elo-guard-enhanced-focus-ready > *:not(#elo-guard-enhanced-focus-stage):not(#elo-guard-enhanced-focus-toggle):not(script):not(style):not(link) {
     visibility: hidden !important;
     pointer-events: none !important;
 }
@@ -855,7 +992,9 @@ body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-material-slot {
     position: fixed !important;
     left: 50% !important;
     width: var(--elo-guard-board-size) !important;
-    min-height: 22px !important;
+    min-height: var(--elo-guard-material-row-height) !important;
+    height: auto !important;
+    max-height: none !important;
     transform: translateX(-50%) !important;
     display: flex !important;
     align-items: flex-start !important;
@@ -863,8 +1002,10 @@ body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-material-slot {
     gap: 0 !important;
     visibility: visible !important;
     opacity: 1 !important;
+    overflow: visible !important;
+    contain: none !important;
     pointer-events: none !important;
-    z-index: 2147483602 !important;
+    z-index: 2147483646 !important;
 }
 
 body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-material-slot[hidden] {
@@ -872,11 +1013,12 @@ body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-material-slot[hidden] {
 }
 
 body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-material-top-slot {
-    top: calc((100vh - var(--elo-guard-board-size)) / 2 - 30px) !important;
+    top: max(var(--elo-guard-material-edge-gap), calc((100vh - var(--elo-guard-board-size)) / 2 - var(--elo-guard-material-row-height) - var(--elo-guard-material-gap))) !important;
 }
 
 body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-material-bottom-slot {
-    top: calc((100vh + var(--elo-guard-board-size)) / 2 + 8px) !important;
+    top: auto !important;
+    bottom: max(var(--elo-guard-material-edge-gap), calc((100vh - var(--elo-guard-board-size)) / 2 - var(--elo-guard-material-row-height) - var(--elo-guard-material-gap))) !important;
 }
 
 body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-material {
@@ -888,12 +1030,30 @@ body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-material {
     width: auto !important;
     min-width: 0 !important;
     max-width: none !important;
-    height: 22px !important;
-    min-height: 22px !important;
+    height: auto !important;
+    min-height: var(--elo-guard-material-row-height) !important;
+    max-height: none !important;
     margin: 0 !important;
     padding: 0 !important;
     overflow: visible !important;
+    contain: none !important;
+    white-space: nowrap !important;
+    flex-wrap: nowrap !important;
     letter-spacing: 0 !important;
+}
+
+body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-material *,
+body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-material::before,
+body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-material::after {
+    visibility: visible !important;
+    opacity: 1 !important;
+    overflow: visible !important;
+    max-width: none !important;
+    max-height: none !important;
+    clip: auto !important;
+    clip-path: none !important;
+    mask-image: none !important;
+    -webkit-mask-image: none !important;
 }
 
 body.elo-guard-enhanced-focus .elo-guard-enhanced-focus-board-slot {
@@ -932,4 +1092,1233 @@ body.elo-guard-enhanced-focus.elo-guard-enhanced-focus-visual-flipped #elo-guard
 body.elo-guard-enhanced-focus.elo-guard-enhanced-focus-visual-flipped #elo-guard-enhanced-focus-stage .elo-guard-enhanced-focus-board .piece,
 body.elo-guard-enhanced-focus.elo-guard-enhanced-focus-visual-flipped #elo-guard-enhanced-focus-stage .elo-guard-enhanced-focus-board [class*="piece"] {
     rotate: 180deg !important;
+}
+
+/* ===================================================================== */
+/* --- POST-GAME ANALYSIS (Lichess export + EloGuard Game Review) --- */
+/* ===================================================================== */
+
+.elo-guard-postgame-buttons {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.elo-guard-postgame-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: 6px;
+    border: 1px solid #4a4846;
+    background: #3a3937;
+    color: #e8e6e3;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+    white-space: nowrap;
+}
+
+.elo-guard-postgame-btn:hover {
+    background: #4a4846;
+    border-color: #5d5b58;
+}
+
+.elo-guard-postgame-btn:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
+
+.elo-guard-lichess-btn:hover {
+    border-color: #7fa650;
+}
+
+.elo-guard-review-btn:hover {
+    border-color: #26c2a3;
+}
+
+.elo-guard-postgame-sidebar,
+.elo-guard-postgame-archive {
+    margin: 8px 0;
+}
+
+#elo-guard-postgame-floating {
+    position: fixed;
+    bottom: 18px;
+    right: 18px;
+    z-index: 2147483000;
+    background: #262421;
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid #3f3d3a;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+    margin-top: 0;
+}
+
+#elo-guard-review-board-toggle {
+    position: fixed;
+    z-index: 2147482600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 104px;
+    height: 34px;
+    padding: 0 12px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 6px;
+    background: rgba(38, 36, 33, 0.94);
+    color: #f4f3f1;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.42);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+#elo-guard-review-board-toggle:hover {
+    background: rgba(58, 57, 55, 0.98);
+}
+
+#elo-guard-review-board-toggle[aria-pressed="false"] {
+    color: #b9b7b4;
+    opacity: 0.88;
+}
+
+#elo-guard-review-board-overlay {
+    position: fixed;
+    z-index: 2147482500;
+    pointer-events: none;
+    contain: layout paint style;
+}
+
+.egr-live-square {
+    position: absolute;
+    box-sizing: border-box;
+    background: transparent;
+    box-shadow: none;
+}
+
+.egr-live-square-from {
+    display: none;
+}
+
+.egr-live-square-to {
+    background: transparent;
+    box-shadow: none;
+}
+
+.egr-live-glyph {
+    position: absolute;
+    top: 5%;
+    right: 5%;
+    width: clamp(22px, 42%, 46px);
+    height: clamp(22px, 42%, 46px);
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.72));
+}
+
+/* --- review panel --- */
+
+#elo-guard-review-panel {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483200;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    pointer-events: none;
+}
+
+#elo-guard-review-panel .egr-card {
+    width: min(430px, 96vw);
+    height: min(92vh, 1000px);
+    margin-right: 24px;
+    background: #262421;
+    color: #e8e6e3;
+    border: 1px solid #3f3d3a;
+    border-radius: 12px;
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    pointer-events: auto;
+}
+
+.egr-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    border-bottom: 1px solid #3f3d3a;
+    flex: 0 0 auto;
+}
+
+.egr-title {
+    font-size: 17px;
+    font-weight: 700;
+}
+
+.egr-subtitle {
+    font-size: 11px;
+    color: #989795;
+    margin-top: 2px;
+}
+
+.egr-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.egr-profile-btn,
+.egr-back {
+    background: #3a3937;
+    border: 1px solid #4a4846;
+    color: #c9c8c6;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 6px 10px;
+    border-radius: 6px;
+    white-space: nowrap;
+}
+
+.egr-profile-btn:hover,
+.egr-back:hover {
+    background: #4a4846;
+    color: #fff;
+}
+
+.egr-profile-head {
+    font-size: 16px;
+    font-weight: 800;
+    color: #e8e6e3;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.egr-profile-sub {
+    font-size: 11px;
+    font-weight: 500;
+    color: #8a8886;
+}
+
+.egr-profile-section {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: #a5a29e;
+}
+
+.egr-profile-section::before {
+    content: "";
+    width: 3px;
+    height: 12px;
+    border-radius: 2px;
+    background: #81b64c;
+}
+
+.egr-profile-pools {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 10px;
+}
+
+.egr-pool-card[data-pool="bullet"],
+.egr-recent-pool[data-pool="bullet"] { --pool-accent: #e58f2a; }
+
+.egr-pool-card[data-pool="blitz"],
+.egr-recent-pool[data-pool="blitz"] { --pool-accent: #f0c15c; }
+
+.egr-pool-card[data-pool="rapid"],
+.egr-recent-pool[data-pool="rapid"] { --pool-accent: #81b64c; }
+
+.egr-pool-card[data-pool="classical"],
+.egr-recent-pool[data-pool="classical"] { --pool-accent: #7fa9d6; }
+
+.egr-pool-card {
+    --pool-accent: #81b64c;
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(155deg, #35332f 0%, #2c2a27 55%, #282623 100%);
+    border: 1px solid #403e3a;
+    border-radius: 12px;
+    padding: 12px 14px 13px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.egr-pool-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--pool-accent), transparent 90%);
+}
+
+.egr-pool-card::after {
+    content: "";
+    position: absolute;
+    top: -46px;
+    right: -46px;
+    width: 130px;
+    height: 130px;
+    border-radius: 50%;
+    background: radial-gradient(closest-side, color-mix(in srgb, var(--pool-accent) 18%, transparent), transparent);
+    pointer-events: none;
+}
+
+.egr-pool-top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 6px;
+}
+
+.egr-pool-name {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 5px;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    color: #e8e6e3;
+    text-transform: capitalize;
+}
+
+.egr-pool-ico {
+    font-size: 11px;
+}
+
+.egr-pool-games {
+    font-size: 10px;
+    color: #8a8886;
+    white-space: nowrap;
+}
+
+.egr-pool-strength {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    font-size: 28px;
+    font-weight: 800;
+    color: #fff;
+    line-height: 1.05;
+    margin-top: 2px;
+}
+
+.egr-pool-unc {
+    font-size: 11px;
+    font-weight: 500;
+    color: #8a8886;
+}
+
+.egr-pool-delta {
+    align-self: flex-start;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.egr-pool-delta[data-dir="up"],
+.egr-phase-delta[data-dir="up"] {
+    color: #a3d160;
+    background: rgba(129, 182, 76, 0.16);
+}
+
+.egr-pool-delta[data-dir="down"],
+.egr-phase-delta[data-dir="down"] {
+    color: #ff8d7e;
+    background: rgba(224, 121, 108, 0.14);
+}
+
+.egr-pool-delta[data-dir="flat"],
+.egr-phase-delta[data-dir="flat"] {
+    color: #a5a29e;
+    font-weight: 600;
+}
+
+.egr-pool-acc {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 3px;
+}
+
+.egr-pool-accnum {
+    font-size: 11px;
+    font-weight: 700;
+    color: #c9c8c6;
+}
+
+.egr-accbar {
+    flex: 1;
+    height: 5px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+}
+
+.egr-accbar-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--pool-accent, #81b64c) 70%, #1b1a17), var(--pool-accent, #81b64c));
+}
+
+.egr-phase-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: #302e2b;
+    border: 1px solid #3f3d3a;
+    border-radius: 12px;
+    padding: 13px 14px;
+}
+
+.egr-phase-row {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.egr-phase-line {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.egr-phase-name {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #e8e6e3;
+}
+
+.egr-phase-delta {
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.egr-phase-moves {
+    margin-left: auto;
+    font-size: 10px;
+    color: #8a8886;
+}
+
+.egr-phase-accnum {
+    font-size: 12.5px;
+    font-weight: 800;
+    color: #e8e6e3;
+    min-width: 44px;
+    text-align: right;
+}
+
+.egr-recent-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.egr-recent-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #302e2b;
+    border: 1px solid #3f3d3a;
+    border-radius: 10px;
+    padding: 8px 12px;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.egr-recent-row:hover {
+    background: #34322e;
+    border-color: #4a4846;
+}
+
+.egr-recent-date {
+    font-size: 11px;
+    font-weight: 600;
+    color: #c9c8c6;
+    min-width: 42px;
+}
+
+.egr-recent-pool {
+    --pool-accent: #81b64c;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: capitalize;
+    color: var(--pool-accent);
+    background: color-mix(in srgb, var(--pool-accent) 14%, transparent);
+    padding: 2px 8px;
+    border-radius: 999px;
+}
+
+.egr-recent-acc {
+    margin-left: auto;
+    font-size: 11px;
+    color: #8a8886;
+}
+
+.egr-recent-est {
+    font-size: 13px;
+    font-weight: 800;
+    color: #e8e6e3;
+    min-width: 50px;
+    text-align: right;
+}
+
+.egr-batch-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.egr-batch-row .egr-range-select {
+    flex: 1;
+}
+
+.egr-again-btn.egr-batch-btn {
+    background: #81b64c;
+    border-color: #81b64c;
+    color: #fff;
+    font-weight: 700;
+}
+
+.egr-again-btn.egr-batch-btn:hover {
+    background: #8fc55a;
+}
+
+.egr-batch-status {
+    font-size: 11px;
+    color: #8a8886;
+    min-height: 14px;
+}
+
+.egr-batch-progress {
+    display: none;
+    height: 4px;
+    border-radius: 999px;
+    background: #3f3d3a;
+    overflow: hidden;
+}
+
+.egr-batch-progress-fill {
+    height: 100%;
+    width: 0;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #6d9c41, #a3d160);
+    transition: width 0.4s ease;
+}
+
+.egr-close {
+    background: none;
+    border: none;
+    color: #989795;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 6px 8px;
+    border-radius: 6px;
+}
+
+.egr-close:hover {
+    background: #3a3937;
+    color: #fff;
+}
+
+.egr-body {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+}
+
+.egr-message {
+    color: #c9c8c6;
+    font-size: 13px;
+    line-height: 1.5;
+    padding: 12px 0;
+}
+
+.egr-pro-lock {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: auto 0;
+    padding: 18px;
+    border: 1px solid #4d493d;
+    border-radius: 8px;
+    background: #2f2d28;
+}
+
+.egr-pro-eyebrow {
+    color: #d6a13d;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0;
+}
+
+.egr-pro-title {
+    color: #f4f3f1;
+    font-size: 18px;
+    font-weight: 800;
+}
+
+.egr-pro-copy {
+    color: #c9c8c6;
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+/* setup */
+
+.egr-setup {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    align-items: stretch;
+}
+
+.egr-setup-line {
+    font-size: 13px;
+    color: #c9c8c6;
+    text-align: center;
+}
+
+.egr-depth-control {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 12px;
+    background: #302e2b;
+    border: 1px solid #3f3d3a;
+    border-radius: 8px;
+}
+
+.egr-depth-head,
+.egr-depth-scale {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.egr-depth-head label {
+    color: #c9c8c6;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.egr-depth-value {
+    color: #81b64c;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.egr-depth-scale {
+    color: #8a8886;
+    font-size: 10px;
+}
+
+.egr-depth-slider {
+    width: 100%;
+    accent-color: #81b64c;
+    cursor: pointer;
+}
+
+.egr-start-btn {
+    background: #81b64c;
+    color: #14110e;
+    font-size: 15px;
+    font-weight: 700;
+    border: none;
+    border-radius: 8px;
+    padding: 12px;
+    cursor: pointer;
+}
+
+.egr-start-btn:hover {
+    background: #8fc55b;
+}
+
+/* Upgrade-to-Pro CTA: light-blue premium buy button (overrides the green start btn) */
+.egr-upgrade-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: linear-gradient(135deg, #5cc6ff 0%, #2b9bf4 100%);
+    color: #fff;
+    box-shadow: 0 4px 16px rgba(56, 176, 248, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+    animation: eloUpgradeGlow 2.6s ease-in-out infinite;
+}
+.egr-upgrade-btn::before {
+    content: "💎";
+    font-size: 15px;
+    line-height: 1;
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.3));
+}
+.egr-upgrade-btn:hover {
+    background: linear-gradient(135deg, #6fceff 0%, #3aa6fb 100%);
+    filter: brightness(1.04);
+}
+
+@keyframes eloUpgradeGlow {
+    0%, 100% { box-shadow: 0 4px 16px rgba(56, 176, 248, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.35); }
+    50%      { box-shadow: 0 4px 22px rgba(56, 176, 248, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.45); }
+}
+
+.egr-setup-note {
+    font-size: 11px;
+    color: #8a8886;
+    text-align: center;
+}
+
+/* progress */
+
+.egr-progress {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+    padding: 18px 0;
+}
+
+.egr-progress-label {
+    font-size: 13px;
+    color: #c9c8c6;
+    text-align: center;
+}
+
+.egr-progress-track {
+    height: 8px;
+    background: #3a3937;
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.egr-progress-fill {
+    height: 100%;
+    width: 0;
+    background: #81b64c;
+    border-radius: 999px;
+    transition: width 0.25s ease;
+}
+
+.egr-cancel-btn {
+    align-self: center;
+    background: none;
+    border: 1px solid #4a4846;
+    color: #c9c8c6;
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.egr-cancel-btn:hover {
+    background: #3a3937;
+}
+
+/* results */
+
+.egr-results {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* board + navigation (fixed bar between header and scrolling body) */
+
+.egr-boardbar {
+    flex: 0 0 auto;
+    padding: 10px 16px;
+    background: #262421;
+    border-bottom: 1px solid #3f3d3a;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.egr-board {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    width: 100%;
+    max-width: 360px;
+    margin: 0 auto;
+    aspect-ratio: 1 / 1;
+    border-radius: 6px;
+    overflow: hidden;
+    user-select: none;
+}
+
+.egr-sq {
+    position: relative;
+    aspect-ratio: 1 / 1;
+}
+
+.egr-sq-light { background: #ebecd0; }
+.egr-sq-dark { background: #779556; }
+
+.egr-sq-hl::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: transparent;
+}
+
+.egr-piece-img {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: block;
+    z-index: 1;
+}
+
+.egr-piece-txt {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    font-size: 30px;
+    line-height: 1;
+}
+
+.egr-piece-w {
+    color: #f8f8f8;
+    text-shadow: 0 0 2px #000, 0 1px 1px rgba(0, 0, 0, 0.6);
+}
+
+.egr-piece-b {
+    color: #1b1a17;
+    text-shadow: 0 0 2px rgba(255, 255, 255, 0.35);
+}
+
+.egr-sq-glyph {
+    position: absolute;
+    top: 1px;
+    right: 1px;
+    z-index: 2;
+    min-width: 16px;
+    height: 16px;
+    font-size: 10px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.egr-nav {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.egr-nav-btn {
+    background: #3a3937;
+    color: #e8e6e3;
+    border: 1px solid #4a4846;
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.egr-nav-btn:hover {
+    background: #4a4846;
+}
+
+.egr-nav-status {
+    flex: 1;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 600;
+    color: #e8e6e3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.egr-players {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.egr-player {
+    background: #302e2b;
+    border: 1px solid #3f3d3a;
+    border-radius: 10px;
+    padding: 10px;
+    text-align: center;
+}
+
+.egr-player-me {
+    border-color: #81b64c;
+}
+
+.egr-player-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: #e8e6e3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.egr-color-dot {
+    display: inline-block;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    margin-right: 5px;
+}
+
+.egr-dot-w {
+    background: #f0f0f0;
+    border: 1px solid #999;
+}
+
+.egr-dot-b {
+    background: #1b1a17;
+    border: 1px solid #555;
+}
+
+.egr-me-tag {
+    color: #81b64c;
+    font-size: 10px;
+    text-transform: uppercase;
+}
+
+.egr-accuracy {
+    font-size: 28px;
+    font-weight: 800;
+    color: #81b64c;
+    margin-top: 6px;
+    line-height: 1;
+}
+
+.egr-accuracy-label,
+.egr-est-label {
+    font-size: 10px;
+    color: #8a8886;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-top: 2px;
+}
+
+.egr-est {
+    font-size: 16px;
+    font-weight: 700;
+    color: #e8e6e3;
+    margin-top: 8px;
+}
+
+.egr-est-unc {
+    font-size: 11px;
+    color: #8a8886;
+    font-weight: 400;
+}
+
+.egr-acpl {
+    font-size: 10px;
+    color: #8a8886;
+    margin-top: 6px;
+}
+
+.egr-opening {
+    font-size: 12px;
+    color: #c9c8c6;
+    text-align: center;
+    font-style: italic;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.egr-time-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.egr-time-label {
+    font-size: 11px;
+    color: #8a8886;
+}
+
+.egr-tc-select {
+    background: #3a3937;
+    color: #e8e6e3;
+    border: 1px solid #4a4846;
+    border-radius: 6px;
+    padding: 5px 8px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.egr-tc-select:focus {
+    outline: none;
+    border-color: #81b64c;
+}
+
+/* counts table */
+
+.egr-counts {
+    background: #302e2b;
+    border: 1px solid #3f3d3a;
+    border-radius: 10px;
+    padding: 8px 12px;
+}
+
+.egr-count-row {
+    display: grid;
+    grid-template-columns: 34px 1fr 34px;
+    align-items: center;
+    padding: 3px 0;
+    font-size: 13px;
+}
+
+.egr-count-white {
+    text-align: left;
+    color: #e8e6e3;
+    font-weight: 600;
+}
+
+.egr-count-black {
+    text-align: right;
+    color: #e8e6e3;
+    font-weight: 600;
+}
+
+.egr-count-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    color: #c9c8c6;
+    font-size: 12px;
+}
+
+/* glyphs */
+
+.egr-glyph {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 3px;
+    border-radius: 50%;
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1;
+    color: #fff;
+}
+
+.egr-glyph-brilliant { background: #26c2a3; color: #0b2b25; }
+.egr-glyph-great { background: #749bbf; color: #101c26; }
+.egr-glyph-best { background: #81b64c; color: #1c2513; }
+.egr-glyph-excellent { background: #81b64c; color: #1c2513; opacity: 0.85; }
+.egr-glyph-good { background: #95b776; color: #1c2513; opacity: 0.8; }
+.egr-glyph-book { background: #a88865; color: #241a10; }
+.egr-glyph-forced { background: #66625e; color: #e8e6e3; }
+.egr-glyph-inaccuracy { background: #f0c15c; color: #322708; }
+.egr-glyph-miss { background: #ff7769; color: #33100c; }
+.egr-glyph-mistake { background: #e58f2a; color: #2e1c06; }
+.egr-glyph-blunder { background: #fa412d; color: #330b06; }
+
+.egr-glyph.egr-native-glyph {
+    min-width: 20px;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    overflow: visible;
+}
+
+.egr-native-glyph-img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    pointer-events: none;
+    user-select: none;
+}
+
+.egr-native-glyph-fallback {
+    border-radius: 50% !important;
+    background: currentColor !important;
+    color: var(--color-classification-forced, #8a8886);
+}
+
+.egr-native-glyph-fallback .egr-native-glyph-text {
+    color: #fff;
+}
+
+.egr-native-glyph-text {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    font-size: 9px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.egr-sq-glyph.egr-native-glyph {
+    top: 2px;
+    right: 2px;
+    min-width: 22px;
+    width: 22px;
+    height: 22px;
+    filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.6));
+}
+
+.egr-count-label .egr-native-glyph,
+.egr-move-cell .egr-native-glyph {
+    flex: 0 0 auto;
+}
+
+.egr-glyph.egr-live-glyph {
+    width: clamp(22px, 42%, 46px);
+    height: clamp(22px, 42%, 46px);
+}
+
+/* move list */
+
+.egr-moves {
+    background: #302e2b;
+    border: 1px solid #3f3d3a;
+    border-radius: 10px;
+    padding: 6px 10px;
+    max-height: 260px;
+    overflow-y: auto;
+    font-size: 13px;
+}
+
+.egr-move-row {
+    display: grid;
+    grid-template-columns: 34px 1fr 1fr;
+    align-items: center;
+}
+
+.egr-move-num {
+    color: #8a8886;
+    font-size: 12px;
+}
+
+.egr-move-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 6px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.egr-move-cell:hover {
+    background: #3a3937;
+}
+
+.egr-move-selected {
+    background: #45423e;
+}
+
+.egr-move-san {
+    font-weight: 600;
+    color: #e8e6e3;
+}
+
+.egr-move-brilliant .egr-move-san { color: #26c2a3; }
+.egr-move-great .egr-move-san { color: #749bbf; }
+.egr-move-best .egr-move-san { color: #81b64c; }
+.egr-move-excellent .egr-move-san { color: #81b64c; }
+.egr-move-good .egr-move-san { color: #95b776; }
+.egr-move-book .egr-move-san { color: #d5a47d; }
+.egr-move-forced .egr-move-san { color: #989795; }
+.egr-move-inaccuracy .egr-move-san { color: #f0c15c; }
+.egr-move-miss .egr-move-san { color: #ff7769; }
+.egr-move-mistake .egr-move-san { color: #e58f2a; }
+.egr-move-blunder .egr-move-san { color: #fa412d; }
+
+/* detail + footer */
+
+.egr-detail {
+    font-size: 12px;
+    color: #c9c8c6;
+    line-height: 1.5;
+    background: #302e2b;
+    border: 1px solid #3f3d3a;
+    border-radius: 10px;
+    padding: 8px 12px;
+    min-height: 38px;
+}
+
+.egr-detail-brilliant { color: #26c2a3; font-weight: 700; }
+.egr-detail-great { color: #749bbf; font-weight: 700; }
+.egr-detail-best { color: #81b64c; font-weight: 700; }
+.egr-detail-excellent { color: #81b64c; }
+.egr-detail-good { color: #95b776; }
+.egr-detail-book { color: #a88865; }
+.egr-detail-forced { color: #989795; }
+.egr-detail-inaccuracy { color: #f0c15c; font-weight: 700; }
+.egr-detail-miss { color: #ff7769; font-weight: 700; }
+.egr-detail-mistake { color: #e58f2a; font-weight: 700; }
+.egr-detail-blunder { color: #fa412d; font-weight: 700; }
+
+.egr-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11px;
+    color: #8a8886;
+}
+
+.egr-again-btn {
+    background: none;
+    border: 1px solid #4a4846;
+    color: #c9c8c6;
+    border-radius: 6px;
+    padding: 5px 12px;
+    font-size: 11px;
+    cursor: pointer;
+}
+
+.egr-again-btn:hover {
+    background: #3a3937;
+}
+
+@media (max-width: 700px) {
+    #elo-guard-review-panel {
+        justify-content: center;
+    }
+
+    #elo-guard-review-panel .egr-card {
+        margin-right: 0;
+    }
 }

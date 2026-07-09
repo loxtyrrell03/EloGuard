@@ -1,0 +1,15 @@
+name = "eloguard-billing"
+main = "src/worker.js"
+compatibility_date = "2026-07-08"
+workers_dev = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "eloguard-billing"
+database_id = "4bf13a0c-984e-4762-930d-7d113dd7ef0c"
+
+[vars]
+APP_BASE_URL = "https://eloguard-billing.eloguard.workers.dev"
+STRIPE_AUTOMATIC_TAX = "false"
+STRIPE_TRIAL_DAYS = "0"
+STRIPE_GRACE_DAYS = "14"
