@@ -26,7 +26,7 @@ const LIFETIME_PRICE_ID = process.env.STRIPE_LIFETIME_PRICE_ID || '';
 const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
 const STORE_PATH = process.env.ENTITLEMENT_STORE_PATH || './data/entitlements.json';
 const AUTOMATIC_TAX = process.env.STRIPE_AUTOMATIC_TAX === 'true';
-const TRIAL_DAYS = Math.max(0, Number(process.env.STRIPE_TRIAL_DAYS || 0));
+const TRIAL_DAYS = Math.max(0, Number(process.env.STRIPE_TRIAL_DAYS || 7));
 const GRACE_DAYS = Math.max(0, Number(process.env.STRIPE_GRACE_DAYS || 14));
 
 const store = createStore(STORE_PATH);
@@ -182,6 +182,13 @@ function checkoutPageHtml({ monthlyHref, lifetimeHref }) {
   .flist .lt{color:var(--t-soft)}
   .flist .cap{color:var(--t-muted)}
   .flist .cap .n{font-size:10px; color:var(--amber); font-weight:700; text-transform:uppercase; letter-spacing:.4px; margin-left:2px; white-space:nowrap}
+  .free-limit{font-size:10px; color:var(--green-text-2); font-weight:800; text-transform:uppercase; letter-spacing:.4px; margin-left:4px; white-space:nowrap}
+  .not-included{margin-top:15px; padding-top:13px; border-top:1px solid var(--border); position:relative; z-index:2}
+  .not-included-title{margin-bottom:10px; font-size:9.5px; line-height:1; font-weight:800; letter-spacing:.7px; text-transform:uppercase; color:var(--t-dim)}
+  .flist.locked{gap:9px}
+  .flist.locked li{font-size:12px}
+  .flist.locked .cap{color:var(--t-dim)}
+  .flist.locked .mk svg{opacity:.82}
   .col.pro .flist .lt{color:var(--t-primary); font-weight:600}
   .col.pro .flist .lt .win{display:block; font-size:11px; font-weight:500; color:var(--t-dim); margin-top:1px;}
   .pill-un{
@@ -280,9 +287,18 @@ function checkoutPageHtml({ monthlyHref, lifetimeHref }) {
           <li><span class="mk"><svg viewBox="0 0 24 24"><path d="M5 12.5 L10 17.5 L19 7" fill="none" stroke="#81b64c" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="lt">Zen mode &mdash; hide Elo on site</span></li>
           <li><span class="mk"><svg viewBox="0 0 24 24"><path d="M5 12.5 L10 17.5 L19 7" fill="none" stroke="#81b64c" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="lt">Opponent &amp; self anonymizer</span></li>
           <li><span class="mk"><svg viewBox="0 0 24 24"><path d="M5 12.5 L10 17.5 L19 7" fill="none" stroke="#81b64c" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="lt">Enhanced focus mode &amp; cooldown</span></li>
-          <li><span class="mk"><svg viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="9.5" rx="2" fill="none" stroke="#8a93a3" stroke-width="1.9"/><path d="M8 10.5 V8 a4 4 0 0 1 8 0 v2.5" fill="none" stroke="#8a93a3" stroke-width="1.9"/></svg></span><span class="cap">Cheat-risk detection<span class="n">3&nbsp;/&nbsp;day</span></span></li>
-          <li><span class="mk"><svg viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="9.5" rx="2" fill="none" stroke="#8a93a3" stroke-width="1.9"/><path d="M8 10.5 V8 a4 4 0 0 1 8 0 v2.5" fill="none" stroke="#8a93a3" stroke-width="1.9"/></svg></span><span class="cap">Full game reviews<span class="n">3&nbsp;/&nbsp;day</span></span></li>
+          <!-- CHEAT RISK DETECTION — DISABLED (feature turned off; markup kept for reactivation). Restore this Free-plan row with the pill in content.js, the popup toggle, and the Pro row below. -->
+          <!-- <li><span class="mk"><svg viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="9.5" rx="2" fill="none" stroke="#8a93a3" stroke-width="1.9"/><path d="M8 10.5 V8 a4 4 0 0 1 8 0 v2.5" fill="none" stroke="#8a93a3" stroke-width="1.9"/></svg></span><span class="cap">Cheat-risk detection<span class="n">3&nbsp;/&nbsp;day</span></span></li> -->
+          <li><span class="mk"><svg viewBox="0 0 24 24"><path d="M5 12.5 L10 17.5 L19 7" fill="none" stroke="#81b64c" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="lt">Game reviews<span class="free-limit">3&nbsp;/&nbsp;day</span></span></li>
         </ul>
+        <div class="not-included">
+          <div class="not-included-title">Not included on Free</div>
+          <ul class="flist locked">
+            <li><span class="mk"><svg viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="9.5" rx="2" fill="none" stroke="#8a93a3" stroke-width="1.9"/><path d="M8 10.5 V8 a4 4 0 0 1 8 0 v2.5" fill="none" stroke="#8a93a3" stroke-width="1.9"/></svg></span><span class="cap">Unlimited game reviews</span></li>
+            <li><span class="mk"><svg viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="9.5" rx="2" fill="none" stroke="#8a93a3" stroke-width="1.9"/><path d="M8 10.5 V8 a4 4 0 0 1 8 0 v2.5" fill="none" stroke="#8a93a3" stroke-width="1.9"/></svg></span><span class="cap">Stats, rating trends &amp; batch analysis</span></li>
+            <li><span class="mk"><svg viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="9.5" rx="2" fill="none" stroke="#8a93a3" stroke-width="1.9"/><path d="M8 10.5 V8 a4 4 0 0 1 8 0 v2.5" fill="none" stroke="#8a93a3" stroke-width="1.9"/></svg></span><span class="cap">Smart Bracket auto-set</span></li>
+          </ul>
+        </div>
         <div class="free-foot">
           <span class="fp">$0</span>
           <span class="fn">You're on Free right now</span>
@@ -299,14 +315,16 @@ function checkoutPageHtml({ monthlyHref, lifetimeHref }) {
           Everything in Free &mdash; with no limits
         </div>
         <ul class="flist">
-          <li><span class="mk"><svg viewBox="0 0 24 24"><path d="M5 12.5 L10 17.5 L19 7" fill="none" stroke="#f6c453" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="lt">Unlimited cheat-risk detection<span class="pill-un">Unlimited</span><span class="win">Screen every opponent &mdash; no 3-a-day cap.</span></span></li>
+          <!-- CHEAT RISK DETECTION — DISABLED (feature turned off; markup kept for reactivation). Restore this Pro-plan row with the Free row above and the pill/toggle in the extension. -->
+          <!-- <li><span class="mk"><svg viewBox="0 0 24 24"><path d="M5 12.5 L10 17.5 L19 7" fill="none" stroke="#f6c453" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="lt">Unlimited cheat-risk detection<span class="pill-un">Unlimited</span><span class="win">Screen every opponent &mdash; no 3-a-day cap.</span></span></li> -->
           <li><span class="mk"><svg viewBox="0 0 24 24"><path d="M5 12.5 L10 17.5 L19 7" fill="none" stroke="#f6c453" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="lt">Unlimited game reviews<span class="pill-un">Unlimited</span><span class="win">On-device Stockfish. Nothing leaves your browser.</span></span></li>
+          <li><span class="mk"><svg viewBox="0 0 24 24"><path d="M5 12.5 L10 17.5 L19 7" fill="none" stroke="#f6c453" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="lt">Stats, rating trends &amp; batch analysis<span class="pill-un">Pro only</span><span class="win">Performance rating, rating trend &amp; record per time format.</span></span></li>
           <li><span class="mk"><svg viewBox="0 0 24 24"><path d="M5 12.5 L10 17.5 L19 7" fill="none" stroke="#f6c453" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="lt">Smart Bracket auto-set<span class="pill-un">Pro only</span><span class="win">Auto stop-loss &amp; target from your live rating.</span></span></li>
         </ul>
         <div class="pro-buy">
           <a class="buy monthly" href="${monthlyHref}">
-            <span class="bm">Start Monthly</span>
-            <span class="bs">$2.99 / month &middot; cancel anytime</span>
+            <span class="bm">Start 7-Day Free Trial</span>
+            <span class="bs">$0 today &middot; then $2.99 / month &middot; cancel anytime</span>
           </a>
           <a class="buy lifetime" href="${lifetimeHref}">
             <span class="bv">Best value</span>
@@ -335,12 +353,19 @@ function checkoutPageHtml({ monthlyHref, lifetimeHref }) {
 `;
 }
 
-function planBadge(plan) {
+function planBadge(plan, status = '') {
   if (plan === 'lifetime') {
     return `<div class="plan-badge" aria-label="Your plan: Lifetime">
             <span class="glow" aria-hidden="true"></span>
             <span class="lbl">Plan</span>
             <span class="val">Lifetime <span class="star" aria-hidden="true">&#10022;</span></span>
+          </div>`;
+  }
+  if (plan === 'monthly' && status === 'trialing') {
+    return `<div class="plan-badge" aria-label="Your plan: 7-day free trial">
+            <span class="glow" aria-hidden="true"></span>
+            <span class="lbl">Plan</span>
+            <span class="val">7-Day Free Trial</span>
           </div>`;
   }
   if (plan === 'monthly') {
@@ -357,21 +382,32 @@ function planBadge(plan) {
 // full celebration + confetti) and "pending" (payment taken but not yet
 // provisioned, e.g. webhook still in flight — calm "activating" copy, no
 // confetti, no plan badge).
-function renderSuccessPage({ provisioned, plan }) {
-  const tokens = provisioned
+function renderSuccessPage({ provisioned, plan, status = '' }) {
+  const trialing = provisioned && status === 'trialing';
+  const tokens = trialing
     ? {
+        TITLE: 'Your EloGuard Pro Trial Is Active',
+        STATE: 'confirmed',
+        EYEBROW: 'Free Trial Active',
+        HEADLINE: 'Your free week has started.<br><span class="grad">Welcome to EloGuard Pro.</span>',
+        SUB: 'Your card was saved, but you were not charged today. Pro is unlocked now; $2.99/month starts after seven days unless you cancel.',
+        PLAN_BADGE: planBadge(plan, status),
+        FEATURE_TAG: 'Unlocked'
+      }
+    : provisioned
+      ? {
         TITLE: 'Welcome to EloGuard Pro',
         STATE: 'confirmed',
         EYEBROW: 'Payment Confirmed',
         HEADLINE: 'You&#39;ve earned your title.<br><span class="grad">Welcome to EloGuard Pro.</span>',
         SUB: 'Your defenses are fully deployed. Every Pro tool is now unlocked and standing guard against tilt.',
-        PLAN_BADGE: planBadge(plan),
+        PLAN_BADGE: planBadge(plan, status),
         FEATURE_TAG: 'Unlocked'
       }
-    : {
+      : {
         TITLE: 'Activating EloGuard Pro',
         STATE: 'pending',
-        EYEBROW: 'Payment received',
+        EYEBROW: 'Checkout complete',
         HEADLINE: 'Almost there.<br><span class="grad">Switching on EloGuard Pro&#8230;</span>',
         SUB: 'Thanks for upgrading! Return to the EloGuard popup and press Refresh to activate your Pro tools. If they don&#39;t appear right away, wait a few seconds and refresh again.',
         PLAN_BADGE: '',
@@ -465,13 +501,13 @@ async function customerEmail(customerId) {
 }
 
 async function provisionFromCheckoutSession(sessionId, expectedInstallId = '') {
-  if (!sessionId) return { provisioned: false, plan: '' };
+  if (!sessionId) return { provisioned: false, plan: '', status: '' };
 
   const session = await stripe.checkout.sessions.retrieve(sessionId, {
     expand: ['subscription', 'customer', 'payment_intent']
   });
   const installId = session.client_reference_id || session.metadata?.installId || expectedInstallId || '';
-  if (!isValidInstallId(installId)) return { provisioned: false, plan: '' };
+  if (!isValidInstallId(installId)) return { provisioned: false, plan: '', status: '' };
 
   const customer = session.customer && typeof session.customer === 'object'
     ? session.customer
@@ -490,7 +526,7 @@ async function provisionFromCheckoutSession(sessionId, expectedInstallId = '') {
       paymentIntentId,
       customerEmail: session.customer_details?.email || customer?.email || await customerEmail(customerId)
     });
-    return { provisioned: true, plan: 'lifetime' };
+    return { provisioned: true, plan: 'lifetime', status: 'lifetime' };
   }
 
   const subscription = session.subscription && typeof session.subscription === 'object'
@@ -509,7 +545,7 @@ async function provisionFromCheckoutSession(sessionId, expectedInstallId = '') {
     currentPeriodEndSeconds: subscription?.current_period_end,
     customerEmail: session.customer_details?.email || customer?.email || await customerEmail(customerId)
   });
-  return { provisioned: true, plan: session.metadata?.plan === 'lifetime' ? 'lifetime' : 'monthly' };
+  return { provisioned: true, plan: session.metadata?.plan === 'lifetime' ? 'lifetime' : 'monthly', status };
 }
 
 app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
@@ -648,6 +684,9 @@ app.get('/checkout', billingLimiter, asyncRoute(async (req, res) => {
   };
 
   if (plan === 'monthly') {
+    // Trials have $0 due today. Explicitly require a card so Checkout creates a
+    // reusable payment method for the automatic charge after the free week.
+    checkoutParams.payment_method_collection = 'always';
     checkoutParams.subscription_data = {
       metadata: { installId, plan }
     };
@@ -657,6 +696,14 @@ app.get('/checkout', billingLimiter, asyncRoute(async (req, res) => {
 
   if (plan === 'monthly' && TRIAL_DAYS > 0) {
     checkoutParams.subscription_data.trial_period_days = TRIAL_DAYS;
+    checkoutParams.subscription_data.trial_settings = {
+      end_behavior: { missing_payment_method: 'cancel' }
+    };
+    checkoutParams.custom_text = {
+      submit: {
+        message: `Your card is required but will not be charged today. After ${TRIAL_DAYS} days, EloGuard Pro starts at $2.99/month unless you cancel. Cancel anytime.`
+      }
+    };
   }
 
   const session = await stripe.checkout.sessions.create(checkoutParams);
@@ -688,11 +735,13 @@ app.get('/success', asyncRoute(async (req, res) => {
   const installId = typeof req.query.installId === 'string' ? req.query.installId : '';
   let provisioned = false;
   let plan = '';
+  let status = '';
 
   if (req.query.session_id) {
     const result = await provisionFromCheckoutSession(req.query.session_id, installId);
     provisioned = result.provisioned;
     plan = result.plan;
+    status = result.status;
   }
 
   // Also confirm/label from the store: covers billing-portal returns (which
@@ -704,10 +753,11 @@ app.get('/success', asyncRoute(async (req, res) => {
     if (record && record.plan === 'pro') {
       provisioned = true;
       if (!plan) plan = record.status === 'lifetime' ? 'lifetime' : 'monthly';
+      status = record.status || status;
     }
   }
 
-  res.type('html').send(renderSuccessPage({ provisioned, plan }));
+  res.type('html').send(renderSuccessPage({ provisioned, plan, status }));
 }));
 
 app.get('/cancel', (_req, res) => {
@@ -724,7 +774,7 @@ app.get('/cancel', (_req, res) => {
 // NOTE: this is a good-faith draft written from the extension's behaviour, not
 // legal advice — have it reviewed before relying on it in a dispute.
 // -----------------------------------------------------------------------------
-const LEGAL_UPDATED = '9 July 2026';
+const LEGAL_UPDATED = '10 July 2026';
 const LEGAL_CONTACT = 'loxtyrrell03@gmail.com';
 const LEGAL_HOME = 'https://eloguard.app';
 
@@ -1084,10 +1134,10 @@ function termsDoc() {
 
       <section id="pro">
         <h2><span class="num">8</span> EloGuard Pro: plans, pricing &amp; billing</h2>
-        <p>EloGuard Pro is offered as a <b>Monthly</b> subscription of $2.99 per month, or a one-time <b>Lifetime</b> purchase of $15. Prices are in US dollars and exclude any taxes; taxes, currency conversion, or card fees may be added at checkout or by your payment provider. All payments are processed by Stripe.</p>
+        <p>EloGuard Pro is offered as a <b>Monthly</b> subscription of $2.99 per month, with a seven-day free trial for new subscriptions, or a one-time <b>Lifetime</b> purchase of $15. The Monthly trial requires a payment method, but you are not charged when it starts. Prices are in US dollars and exclude any taxes; taxes, currency conversion, or card fees may be added at checkout or by your payment provider. All payments are processed by Stripe.</p>
         <ul>
-          <li>The Monthly plan <b>renews automatically</b> at the then-current price until you cancel.</li>
-          <li>You can <b>cancel at any time</b> from the Stripe billing portal. When you cancel, you will not be charged again and your Pro access continues until the end of the period you have already paid for.</li>
+          <li>Unless you cancel first, the Monthly plan starts charging $2.99 when the seven-day trial ends and then <b>renews automatically</b> each month at the then-current price.</li>
+          <li>You can <b>cancel at any time</b> in EloGuard or from the Stripe billing portal. If you cancel during the trial, you will not be charged and Pro continues until the trial ends. If you cancel later, you will not be charged again and Pro continues until the end of the period you have already paid for.</li>
           <li>If a renewal payment fails, we may allow a short grace period (up to 14 days) during which Pro stays active while payment is retried, after which Pro access ends.</li>
           <li>We may change Pro pricing or the make-up of the free and Pro tiers in the future; changes will not affect a subscription period you have already paid for.</li>
         </ul>

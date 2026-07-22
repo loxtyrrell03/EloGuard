@@ -1,0 +1,6002 @@
+[
+ {
+  "url": "https://www.chess.com/game/live/171070367642",
+  "depth": 12,
+  "timeClass": "blitz",
+  "timeControl": {
+   "base": 300,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 615,
+    "stats": {
+     "accuracy": 79.58443331965438,
+     "acpl": 56.11363636363637,
+     "scoredCount": 44,
+     "complexity": 4.407475634009862,
+     "bookMoves": 2,
+     "blunderRate": 0.022727272727272728
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 82.4465466955917,
+      "acpl": 46.375,
+      "scoredCount": 8,
+      "complexity": 3.592633744129799
+     },
+     "middlegame": {
+      "accuracy": 81.58919150023902,
+      "acpl": 53.84615384615385,
+      "scoredCount": 26,
+      "complexity": 5.148102350793113
+     },
+     "endgame": {
+      "accuracy": 70.13142564821533,
+      "acpl": 69.8,
+      "scoredCount": 10,
+      "complexity": 3.133719682277456
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 617,
+    "stats": {
+     "accuracy": 79.30658608113143,
+     "acpl": 56.13333333333333,
+     "scoredCount": 45,
+     "complexity": 4.4193688484129385,
+     "bookMoves": 1,
+     "blunderRate": 0.022222222222222223
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 79.25410412600255,
+      "acpl": 52.888888888888886,
+      "scoredCount": 9,
+      "complexity": 3.431679298438965
+     },
+     "middlegame": {
+      "accuracy": 83.75709601817026,
+      "acpl": 46.15384615384615,
+      "scoredCount": 26,
+      "complexity": 5.118467480666836
+     },
+     "endgame": {
+      "accuracy": 66.20878505254308,
+      "acpl": 85,
+      "scoredCount": 10,
+      "complexity": 3.4906329995293803
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171237072988",
+  "depth": 12,
+  "timeClass": "rapid",
+  "timeControl": {
+   "base": 600,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 1335,
+    "stats": {
+     "accuracy": 84.71592644681421,
+     "acpl": 37.89473684210526,
+     "scoredCount": 19,
+     "complexity": 4.041757095332461,
+     "bookMoves": 2,
+     "blunderRate": 0.05263157894736842
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 92.32607009584476,
+      "acpl": 19.375,
+      "scoredCount": 8,
+      "complexity": 1.7229544863151451
+     },
+     "middlegame": {
+      "accuracy": 81.29873537230651,
+      "acpl": 51.36363636363637,
+      "scoredCount": 11,
+      "complexity": 5.7281589927995995
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 1331,
+    "stats": {
+     "accuracy": 73.07548106823491,
+     "acpl": 67.11111111111111,
+     "scoredCount": 18,
+     "complexity": 4.063920231857304,
+     "bookMoves": 2,
+     "blunderRate": 0.05555555555555555
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 90.9559563055461,
+      "acpl": 23.75,
+      "scoredCount": 8,
+      "complexity": 1.8473014279402347
+     },
+     "middlegame": {
+      "accuracy": 65.79262269292921,
+      "acpl": 101.8,
+      "scoredCount": 10,
+      "complexity": 5.837215274990959
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171177791170",
+  "depth": 12,
+  "timeClass": "blitz",
+  "timeControl": {
+   "base": 300,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 861,
+    "stats": {
+     "accuracy": 66.29494511630088,
+     "acpl": 81.92307692307692,
+     "scoredCount": 26,
+     "complexity": 3.6975836799054846,
+     "bookMoves": 1,
+     "blunderRate": 0.038461538461538464
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 87.04421166857782,
+      "acpl": 34.22222222222222,
+      "scoredCount": 9,
+      "complexity": 2.6577592999789497
+     },
+     "middlegame": {
+      "accuracy": 59.65811875165488,
+      "acpl": 107.17647058823529,
+      "scoredCount": 17,
+      "complexity": 4.248078939866591
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 827,
+    "stats": {
+     "accuracy": 85.49972393968146,
+     "acpl": 40.53846153846154,
+     "scoredCount": 26,
+     "complexity": 3.8799883668889192,
+     "bookMoves": 1,
+     "blunderRate": 0
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 85.81345869251818,
+      "acpl": 36.77777777777778,
+      "scoredCount": 9,
+      "complexity": 2.701449918306489
+     },
+     "middlegame": {
+      "accuracy": 85.24770992090194,
+      "acpl": 42.529411764705884,
+      "scoredCount": 17,
+      "complexity": 4.5039204867266776
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171217041934",
+  "depth": 12,
+  "timeClass": "rapid",
+  "timeControl": {
+   "base": 600,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 587,
+    "stats": {
+     "accuracy": 79.99123264412711,
+     "acpl": 60.148148148148145,
+     "scoredCount": 54,
+     "complexity": 4.183128922176146,
+     "bookMoves": 3,
+     "blunderRate": 0.037037037037037035
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 71.0880166738691,
+      "acpl": 74.57142857142857,
+      "scoredCount": 7,
+      "complexity": 5.755327963605047
+     },
+     "middlegame": {
+      "accuracy": 89.21979102806006,
+      "acpl": 43.916666666666664,
+      "scoredCount": 12,
+      "complexity": 2.9060063004442025
+     },
+     "endgame": {
+      "accuracy": 79.66927728761455,
+      "acpl": 62.82857142857143,
+      "scoredCount": 35,
+      "complexity": 4.306559727055604
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 574,
+    "stats": {
+     "accuracy": 85.9138116475591,
+     "acpl": 49.357142857142854,
+     "scoredCount": 56,
+     "complexity": 4.01975119111498,
+     "bookMoves": 2,
+     "blunderRate": 0.017857142857142856
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 95.07826976907259,
+      "acpl": 17.428571428571427,
+      "scoredCount": 7,
+      "complexity": 4.519192349513644
+     },
+     "middlegame": {
+      "accuracy": 95.36798170793561,
+      "acpl": 24.153846153846153,
+      "scoredCount": 13,
+      "complexity": 2.8179455267992544
+     },
+     "endgame": {
+      "accuracy": 81.63079279125085,
+      "acpl": 64.66666666666667,
+      "scoredCount": 36,
+      "complexity": 4.356623011318141
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/136961157506",
+  "depth": 12,
+  "timeClass": "rapid",
+  "timeControl": {
+   "base": 900,
+   "inc": 10
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 1227,
+    "stats": {
+     "accuracy": 76.22499839283867,
+     "acpl": 40.375,
+     "scoredCount": 8,
+     "complexity": 2.4114018572648033,
+     "bookMoves": 5,
+     "blunderRate": 0
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 70.86695943225615,
+      "acpl": 64.6,
+      "scoredCount": 5,
+      "complexity": 3.5227646194061686
+     },
+     "middlegame": {
+      "accuracy": 100,
+      "acpl": 0,
+      "scoredCount": 3,
+      "complexity": 0.5591305870291948
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 1375,
+    "stats": {
+     "accuracy": 80.23445713711959,
+     "acpl": 39.44444444444444,
+     "scoredCount": 9,
+     "complexity": 2.350465057928582,
+     "bookMoves": 4,
+     "blunderRate": 0
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 76.55761359753623,
+      "acpl": 55.5,
+      "scoredCount": 6,
+      "complexity": 3.246274378795638
+     },
+     "middlegame": {
+      "accuracy": 97.81738129937702,
+      "acpl": 7.333333333333333,
+      "scoredCount": 3,
+      "complexity": 0.5588464161944698
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/170200036900",
+  "depth": 12,
+  "timeClass": "bullet",
+  "timeControl": {
+   "base": 60,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 1322,
+    "stats": {
+     "accuracy": 65.77484605441923,
+     "acpl": 92.06451612903226,
+     "scoredCount": 31,
+     "complexity": 7.189995685940101,
+     "bookMoves": 1,
+     "blunderRate": 0.0967741935483871
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 81.5848286093624,
+      "acpl": 46,
+      "scoredCount": 9,
+      "complexity": 2.9241273084615957
+     },
+     "middlegame": {
+      "accuracy": 62.21495834601865,
+      "acpl": 110.9090909090909,
+      "scoredCount": 22,
+      "complexity": 8.935123658544944
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 1290,
+    "stats": {
+     "accuracy": 59.06553925867473,
+     "acpl": 120.83333333333333,
+     "scoredCount": 30,
+     "complexity": 7.445596385352018,
+     "bookMoves": 1,
+     "blunderRate": 0.2
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 83.44707856528066,
+      "acpl": 47.111111111111114,
+      "scoredCount": 9,
+      "complexity": 3.3736429064040476
+     },
+     "middlegame": {
+      "accuracy": 53.935399918736906,
+      "acpl": 152.42857142857142,
+      "scoredCount": 21,
+      "complexity": 9.190719304901148
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171236287176",
+  "depth": 12,
+  "timeClass": "blitz",
+  "timeControl": {
+   "base": 180,
+   "inc": 2
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 1608,
+    "stats": {
+     "accuracy": 89.52362909644754,
+     "acpl": 29.952380952380953,
+     "scoredCount": 21,
+     "complexity": 3.5832940832139974,
+     "bookMoves": 1,
+     "blunderRate": 0
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 90.97463606749898,
+      "acpl": 24.555555555555557,
+      "scoredCount": 9,
+      "complexity": 2.023022127036246
+     },
+     "middlegame": {
+      "accuracy": 88.58074654987763,
+      "acpl": 34,
+      "scoredCount": 12,
+      "complexity": 4.753498050347312
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 1585,
+    "stats": {
+     "accuracy": 73.87606089897598,
+     "acpl": 50.95238095238095,
+     "scoredCount": 21,
+     "complexity": 3.4467585818835538,
+     "bookMoves": 0,
+     "blunderRate": 0.047619047619047616
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 88.22326994163059,
+      "acpl": 29.9,
+      "scoredCount": 10,
+      "complexity": 2.086621579492376
+     },
+     "middlegame": {
+      "accuracy": 66.29301518470744,
+      "acpl": 70.0909090909091,
+      "scoredCount": 11,
+      "complexity": 4.683246765875534
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171220239432",
+  "depth": 12,
+  "timeClass": "blitz",
+  "timeControl": {
+   "base": 180,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 492,
+    "stats": {
+     "accuracy": 88.01833440971299,
+     "acpl": 38.67391304347826,
+     "scoredCount": 46,
+     "complexity": 4.193720874516648,
+     "bookMoves": 2,
+     "blunderRate": 0.021739130434782608
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 88.57550400931264,
+      "acpl": 57.875,
+      "scoredCount": 8,
+      "complexity": 6.941959597385922
+     },
+     "middlegame": {
+      "accuracy": 77.14246711740583,
+      "acpl": 72.16666666666667,
+      "scoredCount": 12,
+      "complexity": 8.266222168533226
+     },
+     "endgame": {
+      "accuracy": 98.27000658618329,
+      "acpl": 17.307692307692307,
+      "scoredCount": 26,
+      "complexity": 1.468492977933836
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 498,
+    "stats": {
+     "accuracy": 83.4150102585529,
+     "acpl": 57.54347826086956,
+     "scoredCount": 46,
+     "complexity": 4.423650980802098,
+     "bookMoves": 1,
+     "blunderRate": 0.021739130434782608
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 74.41868039274078,
+      "acpl": 106.66666666666667,
+      "scoredCount": 9,
+      "complexity": 7.222020486919239
+     },
+     "middlegame": {
+      "accuracy": 77.3498129093988,
+      "acpl": 76,
+      "scoredCount": 12,
+      "complexity": 8.260055568737334
+     },
+     "endgame": {
+      "accuracy": 96.22450860595461,
+      "acpl": 31,
+      "scoredCount": 25,
+      "complexity": 1.5747637563910164
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171175856396",
+  "depth": 12,
+  "timeClass": "blitz",
+  "timeControl": {
+   "base": 300,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 1574,
+    "stats": {
+     "accuracy": 72.8268152368327,
+     "acpl": 90.92727272727272,
+     "scoredCount": 55,
+     "complexity": 5.45517977436899,
+     "bookMoves": 4,
+     "blunderRate": 0.05454545454545454
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 88.1447174838195,
+      "acpl": 28.666666666666668,
+      "scoredCount": 6,
+      "complexity": 1.8309315710860314
+     },
+     "middlegame": {
+      "accuracy": 85.17384192219123,
+      "acpl": 52.22222222222222,
+      "scoredCount": 18,
+      "complexity": 5.497568070338501
+     },
+     "endgame": {
+      "accuracy": 65.3817787600491,
+      "acpl": 125.45161290322581,
+      "scoredCount": 31,
+      "complexity": 6.132034609602751
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 1564,
+    "stats": {
+     "accuracy": 73.74023882895528,
+     "acpl": 73.54545454545455,
+     "scoredCount": 55,
+     "complexity": 5.4047377862030315,
+     "bookMoves": 3,
+     "blunderRate": 0.10909090909090909
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 97.96187114463729,
+      "acpl": 6.714285714285714,
+      "scoredCount": 7,
+      "complexity": 1.8039428919591673
+     },
+     "middlegame": {
+      "accuracy": 73.23369123675027,
+      "acpl": 69.22222222222223,
+      "scoredCount": 18,
+      "complexity": 5.58042430371659
+     },
+     "endgame": {
+      "accuracy": 71.13499894779865,
+      "acpl": 91.73333333333333,
+      "scoredCount": 30,
+      "complexity": 6.139511351018464
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171195397314",
+  "depth": 12,
+  "timeClass": "blitz",
+  "timeControl": {
+   "base": 300,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 633,
+    "stats": {
+     "accuracy": 54.22397646272647,
+     "acpl": 104.48,
+     "scoredCount": 25,
+     "complexity": 5.270147806779695,
+     "bookMoves": 2,
+     "blunderRate": 0.08
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 91.40826730132714,
+      "acpl": 25.125,
+      "scoredCount": 8,
+      "complexity": 3.131440951347858
+     },
+     "middlegame": {
+      "accuracy": 47.62232039984359,
+      "acpl": 141.8235294117647,
+      "scoredCount": 17,
+      "complexity": 6.276598091688796
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 655,
+    "stats": {
+     "accuracy": 75.15927155832283,
+     "acpl": 63.42857142857143,
+     "scoredCount": 28,
+     "complexity": 5.3767603579939545,
+     "bookMoves": 1,
+     "blunderRate": 0.03571428571428571
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 81.86039314277178,
+      "acpl": 44.22222222222222,
+      "scoredCount": 9,
+      "complexity": 3.5438304842941855
+     },
+     "middlegame": {
+      "accuracy": 72.04693842466544,
+      "acpl": 76.55555555555556,
+      "scoredCount": 18,
+      "complexity": 6.564156425843504
+     },
+     "endgame": {
+      "accuracy": 100,
+      "acpl": 0,
+      "scoredCount": 1,
+      "complexity": 0.5
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171220054460",
+  "depth": 12,
+  "timeClass": "rapid",
+  "timeControl": {
+   "base": 600,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 620,
+    "stats": {
+     "accuracy": 68.9737064684098,
+     "acpl": 83.26470588235294,
+     "scoredCount": 34,
+     "complexity": 5.85611038409145,
+     "bookMoves": 1,
+     "blunderRate": 0.08823529411764706
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 86.28622944535898,
+      "acpl": 34.77777777777778,
+      "scoredCount": 9,
+      "complexity": 3.98775216314449
+     },
+     "middlegame": {
+      "accuracy": 67.65951488458707,
+      "acpl": 77.36842105263158,
+      "scoredCount": 19,
+      "complexity": 4.862898735532003
+     },
+     "endgame": {
+      "accuracy": 59.26700315161294,
+      "acpl": 174.66666666666666,
+      "scoredCount": 6,
+      "complexity": 11.803817935950141
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 621,
+    "stats": {
+     "accuracy": 69.37718917661445,
+     "acpl": 79.78787878787878,
+     "scoredCount": 33,
+     "complexity": 5.578902957776722,
+     "bookMoves": 1,
+     "blunderRate": 0.12121212121212122
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 87.77598659612791,
+      "acpl": 29,
+      "scoredCount": 9,
+      "complexity": 4.158998250503709
+     },
+     "middlegame": {
+      "accuracy": 81.43339584428026,
+      "acpl": 50.78947368421053,
+      "scoredCount": 19,
+      "complexity": 4.801575990671899
+     },
+     "endgame": {
+      "accuracy": 40.51424170169295,
+      "acpl": 281.4,
+      "scoredCount": 5,
+      "complexity": 11.08857390586648
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171205807550",
+  "depth": 12,
+  "timeClass": "blitz",
+  "timeControl": {
+   "base": 180,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 1516,
+    "stats": {
+     "accuracy": 84.78561412349704,
+     "acpl": 32.92857142857143,
+     "scoredCount": 56,
+     "complexity": 3.360449554386996,
+     "bookMoves": 4,
+     "blunderRate": 0.03571428571428571
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 61.18422648968259,
+      "acpl": 71.66666666666667,
+      "scoredCount": 6,
+      "complexity": 2.5722114431797003
+     },
+     "middlegame": {
+      "accuracy": 91.41363766958472,
+      "acpl": 17.272727272727273,
+      "scoredCount": 11,
+      "complexity": 4.099578171546849
+     },
+     "endgame": {
+      "accuracy": 86.30140415291726,
+      "acpl": 31.384615384615383,
+      "scoredCount": 39,
+      "complexity": 3.2732447820404693
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 1539,
+    "stats": {
+     "accuracy": 87.29427481430432,
+     "acpl": 29.586206896551722,
+     "scoredCount": 58,
+     "complexity": 3.2733759301820236,
+     "bookMoves": 3,
+     "blunderRate": 0.017241379310344827
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 64.95381406867342,
+      "acpl": 55.57142857142857,
+      "scoredCount": 7,
+      "complexity": 2.3342577218849447
+     },
+     "middlegame": {
+      "accuracy": 95.45403175673403,
+      "acpl": 15.1,
+      "scoredCount": 10,
+      "complexity": 4.23548756359609
+     },
+     "endgame": {
+      "accuracy": 88.46664662710353,
+      "acpl": 28.682926829268293,
+      "scoredCount": 41,
+      "complexity": 3.199051811253705
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171214920330",
+  "depth": 12,
+  "timeClass": "blitz",
+  "timeControl": {
+   "base": 300,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 1326,
+    "stats": {
+     "accuracy": 69.32440529409209,
+     "acpl": 71.27777777777777,
+     "scoredCount": 18,
+     "complexity": 4.660763900149124,
+     "bookMoves": 1,
+     "blunderRate": 0.1111111111111111
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 64.46982681446012,
+      "acpl": 70.11111111111111,
+      "scoredCount": 9,
+      "complexity": 3.1898087269006736
+     },
+     "middlegame": {
+      "accuracy": 72.21674863010458,
+      "acpl": 72.44444444444444,
+      "scoredCount": 9,
+      "complexity": 6.131719073397576
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 1302,
+    "stats": {
+     "accuracy": 59.12540635413728,
+     "acpl": 103.16666666666667,
+     "scoredCount": 18,
+     "complexity": 4.786566595533177,
+     "bookMoves": 0,
+     "blunderRate": 0.16666666666666666
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 67.4442935083316,
+      "acpl": 66.5,
+      "scoredCount": 10,
+      "complexity": 3.136099420813907
+     },
+     "middlegame": {
+      "accuracy": 52.64784296279679,
+      "acpl": 149,
+      "scoredCount": 8,
+      "complexity": 6.849650563932265
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171162614912",
+  "depth": 12,
+  "timeClass": "rapid",
+  "timeControl": {
+   "base": 3600,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 1679,
+    "stats": {
+     "accuracy": 78.60194505356662,
+     "acpl": 70.21739130434783,
+     "scoredCount": 23,
+     "complexity": 3.4966580371794467,
+     "bookMoves": 4,
+     "blunderRate": 0
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 98.38242101244745,
+      "acpl": 5.166666666666667,
+      "scoredCount": 6,
+      "complexity": 0.6570110868557383
+     },
+     "middlegame": {
+      "accuracy": 75.54451741551131,
+      "acpl": 93.17647058823529,
+      "scoredCount": 17,
+      "complexity": 4.498886372587815
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 1871,
+    "stats": {
+     "accuracy": 89.01638886377783,
+     "acpl": 24.875,
+     "scoredCount": 24,
+     "complexity": 3.0810240500566555,
+     "bookMoves": 4,
+     "blunderRate": 0
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 98.45342376338391,
+      "acpl": 4.666666666666667,
+      "scoredCount": 6,
+      "complexity": 0.6624324302037136
+     },
+     "middlegame": {
+      "accuracy": 87.42556762876603,
+      "acpl": 31.61111111111111,
+      "scoredCount": 18,
+      "complexity": 3.887221256674304
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171151995386",
+  "depth": 12,
+  "timeClass": "rapid",
+  "timeControl": {
+   "base": 600,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 139,
+    "stats": {
+     "accuracy": 77.5577619255136,
+     "acpl": 59.5,
+     "scoredCount": 66,
+     "complexity": 4.054049867253654,
+     "bookMoves": 2,
+     "blunderRate": 0.030303030303030304
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 81.40057911535231,
+      "acpl": 52,
+      "scoredCount": 8,
+      "complexity": 6.439312764106762
+     },
+     "middlegame": {
+      "accuracy": 70.02547268848815,
+      "acpl": 99.53846153846153,
+      "scoredCount": 13,
+      "complexity": 9.04167410164047
+     },
+     "endgame": {
+      "accuracy": 81.21146199284303,
+      "acpl": 49.266666666666666,
+      "scoredCount": 45,
+      "complexity": 2.189133906768021
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 147,
+    "stats": {
+     "accuracy": 76.77678519895326,
+     "acpl": 50.421875,
+     "scoredCount": 64,
+     "complexity": 4.136163866646037,
+     "bookMoves": 2,
+     "blunderRate": 0.03125
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 65.79643637192576,
+      "acpl": 98.25,
+      "scoredCount": 8,
+      "complexity": 7.235215800364904
+     },
+     "middlegame": {
+      "accuracy": 57.88416198386649,
+      "acpl": 112.83333333333333,
+      "scoredCount": 12,
+      "complexity": 8.547258660804854
+     },
+     "endgame": {
+      "accuracy": 94.49513099224288,
+      "acpl": 24.704545454545453,
+      "scoredCount": 44,
+      "complexity": 2.369674025744746
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171189400572",
+  "depth": 12,
+  "timeClass": "bullet",
+  "timeControl": {
+   "base": 60,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 1325,
+    "stats": {
+     "accuracy": 87.96290622467438,
+     "acpl": 49.7037037037037,
+     "scoredCount": 54,
+     "complexity": 2.616825239055827,
+     "bookMoves": 3,
+     "blunderRate": 0.018518518518518517
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 93.42236578075125,
+      "acpl": 18.142857142857142,
+      "scoredCount": 7,
+      "complexity": 1.7307105159321203
+     },
+     "middlegame": {
+      "accuracy": 81.78021120056482,
+      "acpl": 55.64705882352941,
+      "scoredCount": 17,
+      "complexity": 3.97499908157416
+     },
+     "endgame": {
+      "accuracy": 92.0319680287956,
+      "acpl": 53.7,
+      "scoredCount": 30,
+      "complexity": 2.053953497024305
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 1333,
+    "stats": {
+     "accuracy": 94.16925394892348,
+     "acpl": 36.018181818181816,
+     "scoredCount": 55,
+     "complexity": 2.4389039019099057,
+     "bookMoves": 2,
+     "blunderRate": 0
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 93.18825883361642,
+      "acpl": 18.75,
+      "scoredCount": 8,
+      "complexity": 1.6878146383338029
+     },
+     "middlegame": {
+      "accuracy": 93.9980251076187,
+      "acpl": 31.875,
+      "scoredCount": 16,
+      "complexity": 3.7045513342256067
+     },
+     "endgame": {
+      "accuracy": 94.35247923718046,
+      "acpl": 42.61290322580645,
+      "scoredCount": 31,
+      "complexity": 1.9794960048633778
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171231168386",
+  "depth": 12,
+  "timeClass": "bullet",
+  "timeControl": {
+   "base": 60,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 1628,
+    "stats": {
+     "accuracy": 82.044820801658,
+     "acpl": 47.84905660377358,
+     "scoredCount": 53,
+     "complexity": 5.0570614978796335,
+     "bookMoves": 1,
+     "blunderRate": 0.03773584905660377
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 94.69478600605672,
+      "acpl": 14,
+      "scoredCount": 9,
+      "complexity": 1.2637837588044494
+     },
+     "middlegame": {
+      "accuracy": 61.787537810813845,
+      "acpl": 107.8,
+      "scoredCount": 10,
+      "complexity": 7.230773942256948
+     },
+     "endgame": {
+      "accuracy": 89.11434462937262,
+      "acpl": 39.1764705882353,
+      "scoredCount": 34,
+      "complexity": 5.421837239288562
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 1728,
+    "stats": {
+     "accuracy": 79.29756241482436,
+     "acpl": 54.84905660377358,
+     "scoredCount": 53,
+     "complexity": 5.164451095506378,
+     "bookMoves": 1,
+     "blunderRate": 0.018867924528301886
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 95.35730003656566,
+      "acpl": 11.444444444444445,
+      "scoredCount": 9,
+      "complexity": 1.2555133840385104
+     },
+     "middlegame": {
+      "accuracy": 69.97326057179194,
+      "acpl": 79.5,
+      "scoredCount": 10,
+      "complexity": 7.590930897628311
+     },
+     "endgame": {
+      "accuracy": 80.45045660402621,
+      "acpl": 59.088235294117645,
+      "scoredCount": 34,
+      "complexity": 5.4854993714473
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171203382614",
+  "depth": 12,
+  "timeClass": "blitz",
+  "timeControl": {
+   "base": 180,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 700,
+    "stats": {
+     "accuracy": 88.9255684300612,
+     "acpl": 55.30434782608695,
+     "scoredCount": 46,
+     "complexity": 2.5169248039990664,
+     "bookMoves": 2,
+     "blunderRate": 0.021739130434782608
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 89.52127814604779,
+      "acpl": 26.125,
+      "scoredCount": 8,
+      "complexity": 1.9837468296909726
+     },
+     "middlegame": {
+      "accuracy": 85.28039018805352,
+      "acpl": 50.94444444444444,
+      "scoredCount": 18,
+      "complexity": 3.7099237799290687
+     },
+     "endgame": {
+      "accuracy": 93.3003412191101,
+      "acpl": 70.9,
+      "scoredCount": 20,
+      "complexity": 1.6564969153853013
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 683,
+    "stats": {
+     "accuracy": 79.18997130622942,
+     "acpl": 73.12765957446808,
+     "scoredCount": 47,
+     "complexity": 2.675940189792342,
+     "bookMoves": 1,
+     "blunderRate": 0.02127659574468085
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 89.92758799471324,
+      "acpl": 24.555555555555557,
+      "scoredCount": 9,
+      "complexity": 1.874472993902121
+     },
+     "middlegame": {
+      "accuracy": 68.19529918886654,
+      "acpl": 77.05555555555556,
+      "scoredCount": 18,
+      "complexity": 4.076895867462596
+     },
+     "endgame": {
+      "accuracy": 91.37732894943667,
+      "acpl": 91.45,
+      "scoredCount": 20,
+      "complexity": 1.7757403180397113
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/168745740404",
+  "depth": 12,
+  "timeClass": "rapid",
+  "timeControl": {
+   "base": 900,
+   "inc": 10
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 1245,
+    "stats": {
+     "accuracy": 85.76708988196305,
+     "acpl": 40.891891891891895,
+     "scoredCount": 37,
+     "complexity": 4.662633417353476,
+     "bookMoves": 2,
+     "blunderRate": 0.05405405405405406
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 80.06983570590143,
+      "acpl": 51.5,
+      "scoredCount": 6,
+      "complexity": 4.194361390343293
+     },
+     "middlegame": {
+      "accuracy": 87.37163938544059,
+      "acpl": 42,
+      "scoredCount": 6,
+      "complexity": 7.7570443262148645
+     },
+     "endgame": {
+      "accuracy": 86.57101829028164,
+      "acpl": 38.08,
+      "scoredCount": 25,
+      "complexity": 4.032360085709187
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 1267,
+    "stats": {
+     "accuracy": 77.23872807923786,
+     "acpl": 45.27777777777778,
+     "scoredCount": 36,
+     "complexity": 4.667752777284713,
+     "bookMoves": 2,
+     "blunderRate": 0.027777777777777776
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 80.46582076299542,
+      "acpl": 53.666666666666664,
+      "scoredCount": 6,
+      "complexity": 4.602057251261691
+     },
+     "middlegame": {
+      "accuracy": 52.5906024514897,
+      "acpl": 125,
+      "scoredCount": 6,
+      "complexity": 8.017273850843397
+     },
+     "endgame": {
+      "accuracy": 92.15133868858291,
+      "acpl": 23.25,
+      "scoredCount": 24,
+      "complexity": 3.846796390400795
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/168938708660",
+  "depth": 12,
+  "timeClass": "rapid",
+  "timeControl": {
+   "base": 600,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 294,
+    "stats": {
+     "accuracy": 71.87119208924207,
+     "acpl": 82.56818181818181,
+     "scoredCount": 44,
+     "complexity": 5.167024825504849,
+     "bookMoves": 1,
+     "blunderRate": 0.06818181818181818
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 86.49749287292704,
+      "acpl": 36.77777777777778,
+      "scoredCount": 9,
+      "complexity": 2.286208668216727
+     },
+     "middlegame": {
+      "accuracy": 60.76015115509672,
+      "acpl": 110.27777777777777,
+      "scoredCount": 18,
+      "complexity": 6.7937112050114035
+     },
+     "endgame": {
+      "accuracy": 85.43200442337849,
+      "acpl": 77.47058823529412,
+      "scoredCount": 17,
+      "complexity": 4.9697889775327955
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 310,
+    "stats": {
+     "accuracy": 79.5056199168585,
+     "acpl": 73.04545454545455,
+     "scoredCount": 44,
+     "complexity": 4.993584281586347,
+     "bookMoves": 1,
+     "blunderRate": 0.06818181818181818
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 88.84473338810255,
+      "acpl": 31,
+      "scoredCount": 9,
+      "complexity": 2.3837903012342143
+     },
+     "middlegame": {
+      "accuracy": 69.26288312752948,
+      "acpl": 102.76470588235294,
+      "scoredCount": 17,
+      "complexity": 6.468839887791015
+     },
+     "endgame": {
+      "accuracy": 88.54638001774944,
+      "acpl": 66,
+      "scoredCount": 18,
+      "complexity": 4.905184310346894
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/169564500570",
+  "depth": 12,
+  "timeClass": "bullet",
+  "timeControl": {
+   "base": 60,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 939,
+    "stats": {
+     "accuracy": 80.51018062760653,
+     "acpl": 62.354838709677416,
+     "scoredCount": 31,
+     "complexity": 3.9572384209117764,
+     "bookMoves": 2,
+     "blunderRate": 0.03225806451612903
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 92.25444605242248,
+      "acpl": 22.285714285714285,
+      "scoredCount": 7,
+      "complexity": 2.312394555491306
+     },
+     "middlegame": {
+      "accuracy": 69.42901961748156,
+      "acpl": 144,
+      "scoredCount": 11,
+      "complexity": 8.565839676116099
+     },
+     "endgame": {
+      "accuracy": 98.12304075872629,
+      "acpl": 14.846153846153847,
+      "scoredCount": 13,
+      "complexity": 0.9433379017345267
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 899,
+    "stats": {
+     "accuracy": 74.83643715842534,
+     "acpl": 89.86666666666666,
+     "scoredCount": 30,
+     "complexity": 4.409840936853297,
+     "bookMoves": 2,
+     "blunderRate": 0.06666666666666667
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 88.31866252307593,
+      "acpl": 33.42857142857143,
+      "scoredCount": 7,
+      "complexity": 2.627839224723876
+     },
+     "middlegame": {
+      "accuracy": 61.24067428132958,
+      "acpl": 222.4,
+      "scoredCount": 10,
+      "complexity": 10.055348925242702
+     },
+     "endgame": {
+      "accuracy": 97.24817149852407,
+      "acpl": 18.307692307692307,
+      "scoredCount": 13,
+      "complexity": 1.026681867700364
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171234339422",
+  "depth": 12,
+  "timeClass": "rapid",
+  "timeControl": {
+   "base": 600,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 675,
+    "stats": {
+     "accuracy": 77.44823384293431,
+     "acpl": 83.9,
+     "scoredCount": 20,
+     "complexity": 3.7652674216250253,
+     "bookMoves": 3,
+     "blunderRate": 0.05
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 64.12432863232505,
+      "acpl": 156.42857142857142,
+      "scoredCount": 7,
+      "complexity": 5.912523677711265
+     },
+     "middlegame": {
+      "accuracy": 90.33217630896297,
+      "acpl": 44.84615384615385,
+      "scoredCount": 13,
+      "complexity": 2.6090525145016645
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 643,
+    "stats": {
+     "accuracy": 65.94307402495699,
+     "acpl": 136.05,
+     "scoredCount": 20,
+     "complexity": 3.8523340720734907,
+     "bookMoves": 2,
+     "blunderRate": 0.05
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 53.48315995596539,
+      "acpl": 186.125,
+      "scoredCount": 8,
+      "complexity": 6.112199730808548
+     },
+     "middlegame": {
+      "accuracy": 82.95249984689298,
+      "acpl": 102.66666666666667,
+      "scoredCount": 12,
+      "complexity": 2.3457569662501188
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171152221408",
+  "depth": 12,
+  "timeClass": "rapid",
+  "timeControl": {
+   "base": 600,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 810,
+    "stats": {
+     "accuracy": 73.96317658538823,
+     "acpl": 55.71875,
+     "scoredCount": 32,
+     "complexity": 3.54529017534069,
+     "bookMoves": 4,
+     "blunderRate": 0.03125
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 90.85795015014838,
+      "acpl": 26.5,
+      "scoredCount": 6,
+      "complexity": 2.9334935757517933
+     },
+     "middlegame": {
+      "accuracy": 87.60586345006556,
+      "acpl": 31.714285714285715,
+      "scoredCount": 14,
+      "complexity": 4.278090493079927
+     },
+     "endgame": {
+      "accuracy": 56.20619828623289,
+      "acpl": 98.33333333333333,
+      "scoredCount": 12,
+      "complexity": 2.9962547711060297
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 816,
+    "stats": {
+     "accuracy": 91.03093847274249,
+     "acpl": 26.696969696969695,
+     "scoredCount": 33,
+     "complexity": 3.51263881822554,
+     "bookMoves": 3,
+     "blunderRate": 0
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 82.14017499761071,
+      "acpl": 52.857142857142854,
+      "scoredCount": 7,
+      "complexity": 3.2234084000751113
+     },
+     "middlegame": {
+      "accuracy": 91.61901076994297,
+      "acpl": 24,
+      "scoredCount": 13,
+      "complexity": 4.215180001691314
+     },
+     "endgame": {
+      "accuracy": 95.72430449105039,
+      "acpl": 15.307692307692308,
+      "scoredCount": 13,
+      "complexity": 2.965837090686922
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171226762892",
+  "depth": 12,
+  "timeClass": "blitz",
+  "timeControl": {
+   "base": 300,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 211,
+    "stats": {
+     "accuracy": 71.51054137946102,
+     "acpl": 85,
+     "scoredCount": 33,
+     "complexity": 5.228338286404127,
+     "bookMoves": 1,
+     "blunderRate": 0.09090909090909091
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 77.93109081059805,
+      "acpl": 62.77777777777778,
+      "scoredCount": 9,
+      "complexity": 4.308225196819325
+     },
+     "middlegame": {
+      "accuracy": 69.5103398410285,
+      "acpl": 93.33333333333333,
+      "scoredCount": 24,
+      "complexity": 5.573380694998427
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 199,
+    "stats": {
+     "accuracy": 61.74017925538872,
+     "acpl": 94.15151515151516,
+     "scoredCount": 33,
+     "complexity": 5.515197385735351,
+     "bookMoves": 0,
+     "blunderRate": 0.09090909090909091
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 68.89293671663171,
+      "acpl": 78,
+      "scoredCount": 10,
+      "complexity": 4.7335125484086
+     },
+     "middlegame": {
+      "accuracy": 59.790297477343714,
+      "acpl": 101.17391304347827,
+      "scoredCount": 23,
+      "complexity": 5.855060358486111
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171164210264",
+  "depth": 12,
+  "timeClass": "blitz",
+  "timeControl": {
+   "base": 180,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 601,
+    "stats": {
+     "accuracy": 61.10927300727913,
+     "acpl": 91.41666666666667,
+     "scoredCount": 12,
+     "complexity": 5.758388899805779,
+     "bookMoves": 3,
+     "blunderRate": 0.08333333333333333
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 76.35572900000255,
+      "acpl": 59.57142857142857,
+      "scoredCount": 7,
+      "complexity": 4.5347407307279655
+     },
+     "middlegame": {
+      "accuracy": 51.12711838178497,
+      "acpl": 136,
+      "scoredCount": 5,
+      "complexity": 7.4714963365147185
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 591,
+    "stats": {
+     "accuracy": 43.952719128183176,
+     "acpl": 171,
+     "scoredCount": 12,
+     "complexity": 5.865885574449623,
+     "bookMoves": 2,
+     "blunderRate": 0.16666666666666666
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 79.6755293311582,
+      "acpl": 46.75,
+      "scoredCount": 8,
+      "complexity": 4.098368231562552
+     },
+     "middlegame": {
+      "accuracy": 22.104560897798972,
+      "acpl": 419.5,
+      "scoredCount": 4,
+      "complexity": 9.400920260223765
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171215642314",
+  "depth": 12,
+  "timeClass": "blitz",
+  "timeControl": {
+   "base": 180,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 1012,
+    "stats": {
+     "accuracy": 70.34767811367567,
+     "acpl": 92.10714285714286,
+     "scoredCount": 28,
+     "complexity": 5.883845173249507,
+     "bookMoves": 2,
+     "blunderRate": 0.07142857142857142
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 84.66023681646004,
+      "acpl": 35.75,
+      "scoredCount": 8,
+      "complexity": 2.133696301600629
+     },
+     "middlegame": {
+      "accuracy": 67.09202588782773,
+      "acpl": 114.65,
+      "scoredCount": 20,
+      "complexity": 7.38390472190906
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 1043,
+    "stats": {
+     "accuracy": 80.45103332173997,
+     "acpl": 51.793103448275865,
+     "scoredCount": 29,
+     "complexity": 6.003742515093939,
+     "bookMoves": 2,
+     "blunderRate": 0.06896551724137931
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 86.36419975672418,
+      "acpl": 30.375,
+      "scoredCount": 8,
+      "complexity": 2.192430873578145
+     },
+     "middlegame": {
+      "accuracy": 78.68376926266839,
+      "acpl": 59.95238095238095,
+      "scoredCount": 21,
+      "complexity": 7.455670759480908
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171231954642",
+  "depth": 12,
+  "timeClass": "rapid",
+  "timeControl": {
+   "base": 600,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 564,
+    "stats": {
+     "accuracy": 73.71955958100968,
+     "acpl": 80.07692307692308,
+     "scoredCount": 13,
+     "complexity": 5.257766760004188,
+     "bookMoves": 4,
+     "blunderRate": 0.07692307692307693
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 68.65515138540502,
+      "acpl": 84.66666666666667,
+      "scoredCount": 6,
+      "complexity": 5.514581840126574
+     },
+     "middlegame": {
+      "accuracy": 78.544212283688,
+      "acpl": 76.14285714285714,
+      "scoredCount": 7,
+      "complexity": 5.037639548470714
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 535,
+    "stats": {
+     "accuracy": 61.554350916006264,
+     "acpl": 115,
+     "scoredCount": 12,
+     "complexity": 5.926436254915401,
+     "bookMoves": 4,
+     "blunderRate": 0.08333333333333333
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 53.14599063568845,
+      "acpl": 131.33333333333334,
+      "scoredCount": 6,
+      "complexity": 6.0398085178424905
+     },
+     "middlegame": {
+      "accuracy": 72.02575521017,
+      "acpl": 98.66666666666667,
+      "scoredCount": 6,
+      "complexity": 5.813063991988309
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171208122850",
+  "depth": 12,
+  "timeClass": "rapid",
+  "timeControl": {
+   "base": 600,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 100,
+    "stats": {
+     "accuracy": 76.86128784445553,
+     "acpl": 77.55882352941177,
+     "scoredCount": 34,
+     "complexity": 3.178502558957918,
+     "bookMoves": 1,
+     "blunderRate": 0.08823529411764706
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 57.422177864691164,
+      "acpl": 161.55555555555554,
+      "scoredCount": 9,
+      "complexity": 7.10628949286402
+     },
+     "middlegame": {
+      "accuracy": 95.06799225561294,
+      "acpl": 43.07142857142857,
+      "scoredCount": 14,
+      "complexity": 1.8629131087498738
+     },
+     "endgame": {
+      "accuracy": 94.37192338997366,
+      "acpl": 52.72727272727273,
+      "scoredCount": 11,
+      "complexity": 1.6392452769358934
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 178,
+    "stats": {
+     "accuracy": 86.91242932769659,
+     "acpl": 57.142857142857146,
+     "scoredCount": 35,
+     "complexity": 3.1500973690563283,
+     "bookMoves": 0,
+     "blunderRate": 0.02857142857142857
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 76.98818577448722,
+      "acpl": 76.8,
+      "scoredCount": 10,
+      "complexity": 6.6824412615383935
+     },
+     "middlegame": {
+      "accuracy": 95.77574871088007,
+      "acpl": 40.15384615384615,
+      "scoredCount": 13,
+      "complexity": 1.9357424132540086
+     },
+     "endgame": {
+      "accuracy": 93.12520895284445,
+      "acpl": 59.166666666666664,
+      "scoredCount": 12,
+      "complexity": 1.522028660773788
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/169114727810",
+  "depth": 12,
+  "timeClass": "rapid",
+  "timeControl": {
+   "base": 600,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 445,
+    "stats": {
+     "accuracy": 64.6825613707552,
+     "acpl": 174.92105263157896,
+     "scoredCount": 38,
+     "complexity": 7.6132125743243195,
+     "bookMoves": 1,
+     "blunderRate": 0.13157894736842105
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 72.65450706676148,
+      "acpl": 77.33333333333333,
+      "scoredCount": 9,
+      "complexity": 5.759032793746576
+     },
+     "middlegame": {
+      "accuracy": 62.75441637973033,
+      "acpl": 205.20689655172413,
+      "scoredCount": 29,
+      "complexity": 8.188647678641546
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 252,
+    "stats": {
+     "accuracy": 56.39859637209698,
+     "acpl": 198.27027027027026,
+     "scoredCount": 37,
+     "complexity": 7.751723799763623,
+     "bookMoves": 1,
+     "blunderRate": 0.13513513513513514
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 54.99845710019585,
+      "acpl": 143.77777777777777,
+      "scoredCount": 9,
+      "complexity": 6.701843404002428
+     },
+     "middlegame": {
+      "accuracy": 56.72622548574736,
+      "acpl": 215.78571428571428,
+      "scoredCount": 28,
+      "complexity": 8.089185355544005
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/170279773714",
+  "depth": 12,
+  "timeClass": "rapid",
+  "timeControl": {
+   "base": 600,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 259,
+    "stats": {
+     "accuracy": 85.41598058343418,
+     "acpl": 81.90243902439025,
+     "scoredCount": 41,
+     "complexity": 4.179608469947945,
+     "bookMoves": 2,
+     "blunderRate": 0
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 69.64750685188369,
+      "acpl": 93.25,
+      "scoredCount": 8,
+      "complexity": 6.608469117274059
+     },
+     "middlegame": {
+      "accuracy": 93.10913719973536,
+      "acpl": 77.61111111111111,
+      "scoredCount": 18,
+      "complexity": 4.095616343135424
+     },
+     "endgame": {
+      "accuracy": 89.0092001026596,
+      "acpl": 81,
+      "scoredCount": 15,
+      "complexity": 2.985006676882381
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 248,
+    "stats": {
+     "accuracy": 76.06840844462377,
+     "acpl": 117.88571428571429,
+     "scoredCount": 35,
+     "complexity": 4.67705220390056,
+     "bookMoves": 2,
+     "blunderRate": 0.05714285714285714
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 60.53268010378199,
+      "acpl": 112.625,
+      "scoredCount": 8,
+      "complexity": 7.098545398745225
+     },
+     "middlegame": {
+      "accuracy": 83.75122692324206,
+      "acpl": 112.5625,
+      "scoredCount": 16,
+      "complexity": 4.563907064245519
+     },
+     "endgame": {
+      "accuracy": 83.46351580589366,
+      "acpl": 129.45454545454547,
+      "scoredCount": 11,
+      "complexity": 3.0805409926026814
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171231765208",
+  "depth": 12,
+  "timeClass": "blitz",
+  "timeControl": {
+   "base": 180,
+   "inc": 2
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 1436,
+    "stats": {
+     "accuracy": 80.50738355159572,
+     "acpl": 52.25806451612903,
+     "scoredCount": 31,
+     "complexity": 4.930892552445713,
+     "bookMoves": 2,
+     "blunderRate": 0.03225806451612903
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 81.60675641189142,
+      "acpl": 49.75,
+      "scoredCount": 8,
+      "complexity": 3.4875293303117725
+     },
+     "middlegame": {
+      "accuracy": 88.16515810512054,
+      "acpl": 31.09090909090909,
+      "scoredCount": 11,
+      "complexity": 5.126346188442205
+     },
+     "endgame": {
+      "accuracy": 73.79090509660082,
+      "acpl": 73.33333333333333,
+      "scoredCount": 12,
+      "complexity": 5.71396886753822
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 1405,
+    "stats": {
+     "accuracy": 51.70539760975521,
+     "acpl": 69.83870967741936,
+     "scoredCount": 31,
+     "complexity": 4.848584679822582,
+     "bookMoves": 1,
+     "blunderRate": 0.06451612903225806
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 88.99753843505997,
+      "acpl": 33.888888888888886,
+      "scoredCount": 9,
+      "complexity": 3.5112263819200376
+     },
+     "middlegame": {
+      "accuracy": 90.9848872016397,
+      "acpl": 25.454545454545453,
+      "scoredCount": 11,
+      "complexity": 5.0657904160408345
+     },
+     "endgame": {
+      "accuracy": 37.44917197880559,
+      "acpl": 143.63636363636363,
+      "scoredCount": 11,
+      "complexity": 5.725581187342774
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171211844134",
+  "depth": 12,
+  "timeClass": "rapid",
+  "timeControl": {
+   "base": 600,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 1428,
+    "stats": {
+     "accuracy": 88.4935647865118,
+     "acpl": 33.82051282051282,
+     "scoredCount": 39,
+     "complexity": 4.271527756432705,
+     "bookMoves": 2,
+     "blunderRate": 0.02564102564102564
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 84.18864425113523,
+      "acpl": 43.125,
+      "scoredCount": 8,
+      "complexity": 3.482110306482024
+     },
+     "middlegame": {
+      "accuracy": 84.90511925960874,
+      "acpl": 38.095238095238095,
+      "scoredCount": 21,
+      "complexity": 3.5700369946370873
+     },
+     "endgame": {
+      "accuracy": 96.8533437433494,
+      "acpl": 17.4,
+      "scoredCount": 10,
+      "complexity": 6.376192316164048
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 1413,
+    "stats": {
+     "accuracy": 75.70486825898963,
+     "acpl": 61.10526315789474,
+     "scoredCount": 38,
+     "complexity": 3.7921863421892814,
+     "bookMoves": 1,
+     "blunderRate": 0.05263157894736842
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 87.07065788918467,
+      "acpl": 35.44444444444444,
+      "scoredCount": 9,
+      "complexity": 3.146551454839914
+     },
+     "middlegame": {
+      "accuracy": 92.97876153128112,
+      "acpl": 22.142857142857142,
+      "scoredCount": 21,
+      "complexity": 3.29329822403742
+     },
+     "endgame": {
+      "accuracy": 48.95093301209689,
+      "acpl": 192.25,
+      "scoredCount": 8,
+      "complexity": 5.828106900605953
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171214305890",
+  "depth": 12,
+  "timeClass": "blitz",
+  "timeControl": {
+   "base": 180,
+   "inc": 2
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 1176,
+    "stats": {
+     "accuracy": 92.889090844331,
+     "acpl": 31.928571428571427,
+     "scoredCount": 28,
+     "complexity": 2.3676458967779266,
+     "bookMoves": 2,
+     "blunderRate": 0
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 93.10860187680748,
+      "acpl": 16.875,
+      "scoredCount": 8,
+      "complexity": 1.513768581532886
+     },
+     "middlegame": {
+      "accuracy": 93.25877078849703,
+      "acpl": 31.41176470588235,
+      "scoredCount": 17,
+      "complexity": 2.966757873754899
+     },
+     "endgame": {
+      "accuracy": 88.23428342280174,
+      "acpl": 75,
+      "scoredCount": 3,
+      "complexity": 1.2496842012285203
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 1132,
+    "stats": {
+     "accuracy": 86.13360741578893,
+     "acpl": 53.75,
+     "scoredCount": 24,
+     "complexity": 2.6992940283720226,
+     "bookMoves": 1,
+     "blunderRate": 0
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 93.68977903018148,
+      "acpl": 16.444444444444443,
+      "scoredCount": 9,
+      "complexity": 1.633786679567843
+     },
+     "middlegame": {
+      "accuracy": 82.7903174189154,
+      "acpl": 72.92307692307692,
+      "scoredCount": 13,
+      "complexity": 3.6684711026322736
+     },
+     "endgame": {
+      "accuracy": 85.3872543023152,
+      "acpl": 97,
+      "scoredCount": 2,
+      "complexity": 1.1944261152991964
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171232055950",
+  "depth": 12,
+  "timeClass": "rapid",
+  "timeControl": {
+   "base": 3600,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 375,
+    "stats": {
+     "accuracy": 73.09476015351524,
+     "acpl": 78.77777777777777,
+     "scoredCount": 54,
+     "complexity": 6.590651199779196,
+     "bookMoves": 1,
+     "blunderRate": 0.09259259259259259
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 85.94496559393494,
+      "acpl": 41.875,
+      "scoredCount": 8,
+      "complexity": 3.6984656588789235
+     },
+     "middlegame": {
+      "accuracy": 98.45380409786074,
+      "acpl": 3.8,
+      "scoredCount": 5,
+      "complexity": 6.154472077185272
+     },
+     "endgame": {
+      "accuracy": 69.1925985375523,
+      "acpl": 95.1219512195122,
+      "scoredCount": 41,
+      "complexity": 7.208172661734604
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 358,
+    "stats": {
+     "accuracy": 72.29056638053751,
+     "acpl": 75.71929824561404,
+     "scoredCount": 57,
+     "complexity": 6.372894652020792,
+     "bookMoves": 1,
+     "blunderRate": 0.08771929824561403
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 74.40875098209389,
+      "acpl": 66.75,
+      "scoredCount": 8,
+      "complexity": 4.28644154862835
+     },
+     "middlegame": {
+      "accuracy": 86.66735112379851,
+      "acpl": 35,
+      "scoredCount": 5,
+      "complexity": 6.131882744486974
+     },
+     "endgame": {
+      "accuracy": 70.66468354026043,
+      "acpl": 81.97727272727273,
+      "scoredCount": 44,
+      "complexity": 6.779637478493715
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171197044130",
+  "depth": 12,
+  "timeClass": "blitz",
+  "timeControl": {
+   "base": 180,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 653,
+    "stats": {
+     "accuracy": 69.96689424221887,
+     "acpl": 95.11764705882354,
+     "scoredCount": 34,
+     "complexity": 6.772724123483186,
+     "bookMoves": 2,
+     "blunderRate": 0.11764705882352941
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 81.5356402139593,
+      "acpl": 51.125,
+      "scoredCount": 8,
+      "complexity": 3.167628157543677
+     },
+     "middlegame": {
+      "accuracy": 66.69935720408984,
+      "acpl": 103.5,
+      "scoredCount": 14,
+      "complexity": 8.409029896592862
+     },
+     "endgame": {
+      "accuracy": 69.03616404514764,
+      "acpl": 114.66666666666667,
+      "scoredCount": 12,
+      "complexity": 7.267098032148237
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 677,
+    "stats": {
+     "accuracy": 78.51070791762768,
+     "acpl": 67.76470588235294,
+     "scoredCount": 34,
+     "complexity": 6.69277571109739,
+     "bookMoves": 2,
+     "blunderRate": 0
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 69.45392446666872,
+      "acpl": 77.875,
+      "scoredCount": 8,
+      "complexity": 3.7790306305530814
+     },
+     "middlegame": {
+      "accuracy": 79.83704032192443,
+      "acpl": 64,
+      "scoredCount": 14,
+      "complexity": 7.920988212275498
+     },
+     "endgame": {
+      "accuracy": 81.16431478327054,
+      "acpl": 65.41666666666667,
+      "scoredCount": 12,
+      "complexity": 7.20235784675247
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171235358664",
+  "depth": 12,
+  "timeClass": "bullet",
+  "timeControl": {
+   "base": 60,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 306,
+    "stats": {
+     "accuracy": 48.20287086527108,
+     "acpl": 102.5,
+     "scoredCount": 24,
+     "complexity": 4.767865471064838,
+     "bookMoves": 2,
+     "blunderRate": 0.08333333333333333
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 98.80044508052359,
+      "acpl": 14,
+      "scoredCount": 8,
+      "complexity": 4.511229621705479
+     },
+     "middlegame": {
+      "accuracy": 82.25627226498878,
+      "acpl": 69.64285714285714,
+      "scoredCount": 14,
+      "complexity": 3.8813524522794496
+     },
+     "endgame": {
+      "accuracy": 18.026675121076607,
+      "acpl": 686.5,
+      "scoredCount": 2,
+      "complexity": 12
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 330,
+    "stats": {
+     "accuracy": 77.83131164173616,
+     "acpl": 86.11538461538461,
+     "scoredCount": 26,
+     "complexity": 4.892399064788663,
+     "bookMoves": 1,
+     "blunderRate": 0.07692307692307693
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 70.09529831023521,
+      "acpl": 97.88888888888889,
+      "scoredCount": 9,
+      "complexity": 5.110135103027741
+     },
+     "middlegame": {
+      "accuracy": 81.2266502453532,
+      "acpl": 70.35714285714286,
+      "scoredCount": 14,
+      "complexity": 3.8458467781350225
+     },
+     "endgame": {
+      "accuracy": 85.9256557552534,
+      "acpl": 124.33333333333333,
+      "scoredCount": 3,
+      "complexity": 9.123101621121746
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171162821104",
+  "depth": 12,
+  "timeClass": "rapid",
+  "timeControl": {
+   "base": 600,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 389,
+    "stats": {
+     "accuracy": 75.1720286887086,
+     "acpl": 121.17647058823529,
+     "scoredCount": 34,
+     "complexity": 4.065003517730799,
+     "bookMoves": 2,
+     "blunderRate": 0.058823529411764705
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 55.22090759306518,
+      "acpl": 206,
+      "scoredCount": 8,
+      "complexity": 8.830229714381847
+     },
+     "middlegame": {
+      "accuracy": 93.8796125346212,
+      "acpl": 81.75,
+      "scoredCount": 20,
+      "complexity": 2.187816652411428
+     },
+     "endgame": {
+      "accuracy": 81.15986841182567,
+      "acpl": 139.5,
+      "scoredCount": 6,
+      "complexity": 3.9686581399273035
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 466,
+    "stats": {
+     "accuracy": 83.41633661530648,
+     "acpl": 94.41025641025641,
+     "scoredCount": 39,
+     "complexity": 3.5263259692309874,
+     "bookMoves": 2,
+     "blunderRate": 0.02564102564102564
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 67.96185728202988,
+      "acpl": 121.85714285714286,
+      "scoredCount": 7,
+      "complexity": 8.647003160374457
+     },
+     "middlegame": {
+      "accuracy": 92.27227025500903,
+      "acpl": 87.3,
+      "scoredCount": 20,
+      "complexity": 1.6601846770661748
+     },
+     "endgame": {
+      "accuracy": 88.19434396276274,
+      "acpl": 90.25,
+      "scoredCount": 12,
+      "complexity": 3.6494997613386517
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/78933050927",
+  "depth": 12,
+  "timeClass": "blitz",
+  "timeControl": {
+   "base": 300,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 624,
+    "stats": {
+     "accuracy": 59.11692629090041,
+     "acpl": 101.96551724137932,
+     "scoredCount": 29,
+     "complexity": 5.984730181036613,
+     "bookMoves": 2,
+     "blunderRate": 0.06896551724137931
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 78.79452982538791,
+      "acpl": 61.375,
+      "scoredCount": 8,
+      "complexity": 5.861067821719082
+     },
+     "middlegame": {
+      "accuracy": 42.189483768527225,
+      "acpl": 186.6,
+      "scoredCount": 10,
+      "complexity": 7.771245267999855
+     },
+     "endgame": {
+      "accuracy": 87.78503665552296,
+      "acpl": 54.54545454545455,
+      "scoredCount": 11,
+      "complexity": 4.450561817846416
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 420,
+    "stats": {
+     "accuracy": 65.05966813689953,
+     "acpl": 89.74074074074075,
+     "scoredCount": 27,
+     "complexity": 6.062205719233312,
+     "bookMoves": 1,
+     "blunderRate": 0.07407407407407407
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 96.01861644113175,
+      "acpl": 12.777777777777779,
+      "scoredCount": 9,
+      "complexity": 5.4819377668596125
+     },
+     "middlegame": {
+      "accuracy": 40.86948307195608,
+      "acpl": 207.5,
+      "scoredCount": 8,
+      "complexity": 7.840634407160356
+     },
+     "endgame": {
+      "accuracy": 86.62633247266626,
+      "acpl": 64.8,
+      "scoredCount": 10,
+      "complexity": 5.161703926028012
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171230419794",
+  "depth": 12,
+  "timeClass": "rapid",
+  "timeControl": {
+   "base": 600,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 968,
+    "stats": {
+     "accuracy": 78.74429392387768,
+     "acpl": 76.77777777777777,
+     "scoredCount": 18,
+     "complexity": 4.193688372920031,
+     "bookMoves": 2,
+     "blunderRate": 0.05555555555555555
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 91.37579516723905,
+      "acpl": 21.375,
+      "scoredCount": 8,
+      "complexity": 1.7704263905292532
+     },
+     "middlegame": {
+      "accuracy": 73.37068160773475,
+      "acpl": 121.1,
+      "scoredCount": 10,
+      "complexity": 6.132297958832653
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 970,
+    "stats": {
+     "accuracy": 65.65635042688064,
+     "acpl": 140.1764705882353,
+     "scoredCount": 17,
+     "complexity": 4.727556529335406,
+     "bookMoves": 1,
+     "blunderRate": 0.11764705882352941
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 90.44920640652813,
+      "acpl": 24.88888888888889,
+      "scoredCount": 9,
+      "complexity": 1.8215097518430794
+     },
+     "middlegame": {
+      "accuracy": 54.775891541561265,
+      "acpl": 269.875,
+      "scoredCount": 8,
+      "complexity": 7.99685915401427
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171167845008",
+  "depth": 12,
+  "timeClass": "rapid",
+  "timeControl": {
+   "base": 1200,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 1090,
+    "stats": {
+     "accuracy": 75.6802864523149,
+     "acpl": 63.86666666666667,
+     "scoredCount": 45,
+     "complexity": 5.80033447024935,
+     "bookMoves": 4,
+     "blunderRate": 0.022222222222222223
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 46.77958387579184,
+      "acpl": 194.16666666666666,
+      "scoredCount": 6,
+      "complexity": 9.517783636044305
+     },
+     "middlegame": {
+      "accuracy": 79.129851557946,
+      "acpl": 57.77777777777778,
+      "scoredCount": 18,
+      "complexity": 5.691000600838383
+     },
+     "endgame": {
+      "accuracy": 88.53010932360651,
+      "acpl": 31.857142857142858,
+      "scoredCount": 21,
+      "complexity": 4.831920882374481
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 1084,
+    "stats": {
+     "accuracy": 74.3916926401431,
+     "acpl": 73.20454545454545,
+     "scoredCount": 44,
+     "complexity": 6.104561887883946,
+     "bookMoves": 3,
+     "blunderRate": 0.09090909090909091
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 52.09439172248926,
+      "acpl": 165.42857142857142,
+      "scoredCount": 7,
+      "complexity": 8.836701859812823
+     },
+     "middlegame": {
+      "accuracy": 78.06823373246417,
+      "acpl": 56.705882352941174,
+      "scoredCount": 17,
+      "complexity": 5.546679559674377
+     },
+     "endgame": {
+      "accuracy": 83.58374936008707,
+      "acpl": 54.95,
+      "scoredCount": 20,
+      "complexity": 5.6225128766869705
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171200556670",
+  "depth": 12,
+  "timeClass": "rapid",
+  "timeControl": {
+   "base": 600,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 1801,
+    "stats": {
+     "accuracy": 69.39316430493116,
+     "acpl": 75.16666666666667,
+     "scoredCount": 30,
+     "complexity": 4.745898230278966,
+     "bookMoves": 3,
+     "blunderRate": 0.06666666666666667
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 86.98413725676284,
+      "acpl": 31.285714285714285,
+      "scoredCount": 7,
+      "complexity": 2.298129027096248
+     },
+     "middlegame": {
+      "accuracy": 66.25308045522985,
+      "acpl": 88.52173913043478,
+      "scoredCount": 23,
+      "complexity": 5.490871466030228
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 1833,
+    "stats": {
+     "accuracy": 86.49866566092538,
+     "acpl": 38.4,
+     "scoredCount": 30,
+     "complexity": 4.964810339307414,
+     "bookMoves": 3,
+     "blunderRate": 0.03333333333333333
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 94.98603687893865,
+      "acpl": 15.857142857142858,
+      "scoredCount": 7,
+      "complexity": 2.4382726112156514
+     },
+     "middlegame": {
+      "accuracy": 84.70133101082503,
+      "acpl": 45.26086956521739,
+      "scoredCount": 23,
+      "complexity": 5.733756604378819
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171206054402",
+  "depth": 12,
+  "timeClass": "rapid",
+  "timeControl": {
+   "base": 600,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 974,
+    "stats": {
+     "accuracy": 74.66089333446297,
+     "acpl": 82.16666666666667,
+     "scoredCount": 12,
+     "complexity": 2.6291421976572513,
+     "bookMoves": 2,
+     "blunderRate": 0
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 78.50784695211102,
+      "acpl": 54.375,
+      "scoredCount": 8,
+      "complexity": 2.2304014821970806
+     },
+     "middlegame": {
+      "accuracy": 68.8513597532229,
+      "acpl": 137.75,
+      "scoredCount": 4,
+      "complexity": 3.426623628577593
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 981,
+    "stats": {
+     "accuracy": 93.18307234215881,
+     "acpl": 23.692307692307693,
+     "scoredCount": 13,
+     "complexity": 2.631032828110922,
+     "bookMoves": 1,
+     "blunderRate": 0
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 93.34251600505597,
+      "acpl": 21.22222222222222,
+      "scoredCount": 9,
+      "complexity": 2.3555305835610376
+     },
+     "middlegame": {
+      "accuracy": 92.86114080472379,
+      "acpl": 29.25,
+      "scoredCount": 4,
+      "complexity": 3.250912878348162
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171223414802",
+  "depth": 12,
+  "timeClass": "blitz",
+  "timeControl": {
+   "base": 180,
+   "inc": 2
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 876,
+    "stats": {
+     "accuracy": 88.22049755622825,
+     "acpl": 37.875,
+     "scoredCount": 40,
+     "complexity": 4.241378536007429,
+     "bookMoves": 1,
+     "blunderRate": 0
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 86.7880129079316,
+      "acpl": 34,
+      "scoredCount": 9,
+      "complexity": 2.179043361764866
+     },
+     "middlegame": {
+      "accuracy": 86.39273225128355,
+      "acpl": 38.411764705882355,
+      "scoredCount": 17,
+      "complexity": 5.1626036705483
+     },
+     "endgame": {
+      "accuracy": 91.12724454923602,
+      "acpl": 39.714285714285715,
+      "scoredCount": 14,
+      "complexity": 4.448534913220875
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 869,
+    "stats": {
+     "accuracy": 84.5131460053502,
+     "acpl": 59.36842105263158,
+     "scoredCount": 38,
+     "complexity": 4.435926940106588,
+     "bookMoves": 1,
+     "blunderRate": 0
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 86.98808317101737,
+      "acpl": 33.333333333333336,
+      "scoredCount": 9,
+      "complexity": 2.2649395671652237
+     },
+     "middlegame": {
+      "accuracy": 84.47953781692979,
+      "acpl": 47.94117647058823,
+      "scoredCount": 17,
+      "complexity": 5.4506888949330365
+     },
+     "endgame": {
+      "accuracy": 82.88877229413144,
+      "acpl": 95.08333333333333,
+      "scoredCount": 12,
+      "complexity": 4.626588033808478
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171222101112",
+  "depth": 12,
+  "timeClass": "blitz",
+  "timeControl": {
+   "base": 300,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 922,
+    "stats": {
+     "accuracy": 79.33446622193804,
+     "acpl": 45.1875,
+     "scoredCount": 16,
+     "complexity": 3.8530792608139937,
+     "bookMoves": 2,
+     "blunderRate": 0.0625
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 74.8269695266342,
+      "acpl": 51.25,
+      "scoredCount": 8,
+      "complexity": 2.5651265415405646
+     },
+     "middlegame": {
+      "accuracy": 81.83864320725758,
+      "acpl": 39.125,
+      "scoredCount": 8,
+      "complexity": 5.141031980087423
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 814,
+    "stats": {
+     "accuracy": 45.19895038437315,
+     "acpl": 95.4,
+     "scoredCount": 15,
+     "complexity": 3.7006045835571113,
+     "bookMoves": 1,
+     "blunderRate": 0.06666666666666667
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 76.91802145883196,
+      "acpl": 38.666666666666664,
+      "scoredCount": 9,
+      "complexity": 2.8416719345846997
+     },
+     "middlegame": {
+      "accuracy": 35.28265312436279,
+      "acpl": 180.5,
+      "scoredCount": 6,
+      "complexity": 4.989003557015729
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171227349188",
+  "depth": 12,
+  "timeClass": "rapid",
+  "timeControl": {
+   "base": 600,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 881,
+    "stats": {
+     "accuracy": 86.00038301693371,
+     "acpl": 43.604651162790695,
+     "scoredCount": 43,
+     "complexity": 3.736491608475498,
+     "bookMoves": 2,
+     "blunderRate": 0.046511627906976744
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 85.4317318544221,
+      "acpl": 39.375,
+      "scoredCount": 8,
+      "complexity": 4.409673825884034
+     },
+     "middlegame": {
+      "accuracy": 83.70308149655006,
+      "acpl": 51.375,
+      "scoredCount": 8,
+      "complexity": 4.608067734256111
+     },
+     "endgame": {
+      "accuracy": 86.96583088835678,
+      "acpl": 42.55555555555556,
+      "scoredCount": 27,
+      "complexity": 3.27878543271575
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 886,
+    "stats": {
+     "accuracy": 92.19715362967088,
+     "acpl": 25.613636363636363,
+     "scoredCount": 44,
+     "complexity": 3.4612123097374425,
+     "bookMoves": 1,
+     "blunderRate": 0
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 91.3915213168987,
+      "acpl": 26.77777777777778,
+      "scoredCount": 9,
+      "complexity": 3.9072315711564602
+     },
+     "middlegame": {
+      "accuracy": 94.2872467004827,
+      "acpl": 22.857142857142858,
+      "scoredCount": 7,
+      "complexity": 4.434292319131601
+     },
+     "endgame": {
+      "accuracy": 91.78681330462734,
+      "acpl": 25.928571428571427,
+      "scoredCount": 28,
+      "complexity": 3.0745789733613593
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171209249632",
+  "depth": 12,
+  "timeClass": "rapid",
+  "timeControl": {
+   "base": 600,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 1125,
+    "stats": {
+     "accuracy": 70.61894098023146,
+     "acpl": 91.10526315789474,
+     "scoredCount": 38,
+     "complexity": 6.680877424693705,
+     "bookMoves": 2,
+     "blunderRate": 0.13157894736842105
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 95.59092131752794,
+      "acpl": 12.875,
+      "scoredCount": 8,
+      "complexity": 3.346958655503052
+     },
+     "middlegame": {
+      "accuracy": 66.88535919790544,
+      "acpl": 111.96666666666667,
+      "scoredCount": 30,
+      "complexity": 7.569922429811211
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 1128,
+    "stats": {
+     "accuracy": 71.03944793626763,
+     "acpl": 91.9,
+     "scoredCount": 40,
+     "complexity": 6.834535435038896,
+     "bookMoves": 1,
+     "blunderRate": 0.1
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 86.04450670398037,
+      "acpl": 44.55555555555556,
+      "scoredCount": 9,
+      "complexity": 3.7309170158239726
+     },
+     "middlegame": {
+      "accuracy": 68.26766509710211,
+      "acpl": 105.64516129032258,
+      "scoredCount": 31,
+      "complexity": 7.735585943843229
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171234751408",
+  "depth": 12,
+  "timeClass": "rapid",
+  "timeControl": {
+   "base": 600,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 922,
+    "stats": {
+     "accuracy": 54.64841648138746,
+     "acpl": 115.18604651162791,
+     "scoredCount": 43,
+     "complexity": 6.968747452632342,
+     "bookMoves": 2,
+     "blunderRate": 0.09302325581395349
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 82.723241709548,
+      "acpl": 52.5,
+      "scoredCount": 8,
+      "complexity": 6.54180757158639
+     },
+     "middlegame": {
+      "accuracy": 66.8528052767262,
+      "acpl": 143.72727272727272,
+      "scoredCount": 22,
+      "complexity": 8.411129125081043
+     },
+     "endgame": {
+      "accuracy": 47.45189923514548,
+      "acpl": 105.46153846153847,
+      "scoredCount": 13,
+      "complexity": 4.79052608759359
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 910,
+    "stats": {
+     "accuracy": 49.044286464551945,
+     "acpl": 141.609756097561,
+     "scoredCount": 41,
+     "complexity": 7.2797016180043475,
+     "bookMoves": 2,
+     "blunderRate": 0.0975609756097561
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 85.1510308743577,
+      "acpl": 45.625,
+      "scoredCount": 8,
+      "complexity": 6.378644663315508
+     },
+     "middlegame": {
+      "accuracy": 55.62820444563383,
+      "acpl": 186.76190476190476,
+      "scoredCount": 21,
+      "complexity": 8.410489912137388
+     },
+     "endgame": {
+      "accuracy": 45.743718671202515,
+      "acpl": 126.58333333333333,
+      "scoredCount": 12,
+      "complexity": 5.901526739730756
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171163552848",
+  "depth": 12,
+  "timeClass": "rapid",
+  "timeControl": {
+   "base": 600,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 1536,
+    "stats": {
+     "accuracy": 89.44412192545393,
+     "acpl": 27.375,
+     "scoredCount": 24,
+     "complexity": 3.329240829158079,
+     "bookMoves": 3,
+     "blunderRate": 0
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 93.22775161515966,
+      "acpl": 18.714285714285715,
+      "scoredCount": 7,
+      "complexity": 1.8520809967036453
+     },
+     "middlegame": {
+      "accuracy": 88.32575119388525,
+      "acpl": 30.941176470588236,
+      "scoredCount": 17,
+      "complexity": 3.9374831131099057
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 1520,
+    "stats": {
+     "accuracy": 86.63443445809068,
+     "acpl": 34.708333333333336,
+     "scoredCount": 24,
+     "complexity": 3.43017004547962,
+     "bookMoves": 2,
+     "blunderRate": 0
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 93.38854693123002,
+      "acpl": 17,
+      "scoredCount": 8,
+      "complexity": 1.638078723713262
+     },
+     "middlegame": {
+      "accuracy": 84.49971391100408,
+      "acpl": 43.5625,
+      "scoredCount": 16,
+      "complexity": 4.326215706362798
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171179948496",
+  "depth": 12,
+  "timeClass": "rapid",
+  "timeControl": {
+   "base": 600,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 1956,
+    "stats": {
+     "accuracy": 70.313694004048,
+     "acpl": 53.45454545454545,
+     "scoredCount": 33,
+     "complexity": 5.306522684651706,
+     "bookMoves": 6,
+     "blunderRate": 0.06060606060606061
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 95.95286424137598,
+      "acpl": 10.5,
+      "scoredCount": 4,
+      "complexity": 0.8859422752006174
+     },
+     "middlegame": {
+      "accuracy": 66.60087264266882,
+      "acpl": 63.77777777777778,
+      "scoredCount": 27,
+      "complexity": 5.465610351581623
+     },
+     "endgame": {
+      "accuracy": 100,
+      "acpl": 0,
+      "scoredCount": 2,
+      "complexity": 12
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 1949,
+    "stats": {
+     "accuracy": 57.00535418679234,
+     "acpl": 77.125,
+     "scoredCount": 32,
+     "complexity": 5.246006634837187,
+     "bookMoves": 6,
+     "blunderRate": 0.0625
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 100,
+      "acpl": 0,
+      "scoredCount": 4,
+      "complexity": 0.9228057469797999
+     },
+     "middlegame": {
+      "accuracy": 54.05841106194568,
+      "acpl": 82.46153846153847,
+      "scoredCount": 26,
+      "complexity": 5.391576512571953
+     },
+     "endgame": {
+      "accuracy": 85.04235790578369,
+      "acpl": 162,
+      "scoredCount": 2,
+      "complexity": 12
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/170995024124",
+  "depth": 12,
+  "timeClass": "blitz",
+  "timeControl": {
+   "base": 180,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 745,
+    "stats": {
+     "accuracy": 89.86748276671534,
+     "acpl": 34.97560975609756,
+     "scoredCount": 41,
+     "complexity": 2.6930193440009718,
+     "bookMoves": 2,
+     "blunderRate": 0.024390243902439025
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 74.9918115961804,
+      "acpl": 64.25,
+      "scoredCount": 8,
+      "complexity": 4.332599561674689
+     },
+     "middlegame": {
+      "accuracy": 94.10726511166877,
+      "acpl": 43.05555555555556,
+      "scoredCount": 18,
+      "complexity": 2.9670587786944327
+     },
+     "endgame": {
+      "accuracy": 97.80412876006659,
+      "acpl": 9.666666666666666,
+      "scoredCount": 15,
+      "complexity": 1.4897292396094997
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 930,
+    "stats": {
+     "accuracy": 84.10209885803725,
+     "acpl": 58.75,
+     "scoredCount": 40,
+     "complexity": 3.024897586359248,
+     "bookMoves": 1,
+     "blunderRate": 0.025
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 63.79611941941688,
+      "acpl": 112.88888888888889,
+      "scoredCount": 9,
+      "complexity": 4.881582284693709
+     },
+     "middlegame": {
+      "accuracy": 93.59270210337559,
+      "acpl": 47.6,
+      "scoredCount": 15,
+      "complexity": 3.468259423606233
+     },
+     "endgame": {
+      "accuracy": 95.57861066175187,
+      "acpl": 38.75,
+      "scoredCount": 16,
+      "complexity": 1.564860721127064
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171122885052",
+  "depth": 12,
+  "timeClass": "blitz",
+  "timeControl": {
+   "base": 180,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 855,
+    "stats": {
+     "accuracy": 72.72691460928738,
+     "acpl": 55.96666666666667,
+     "scoredCount": 30,
+     "complexity": 4.531167283876965,
+     "bookMoves": 3,
+     "blunderRate": 0.03333333333333333
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 90.29229974096242,
+      "acpl": 32.714285714285715,
+      "scoredCount": 7,
+      "complexity": 6.399896079771367
+     },
+     "middlegame": {
+      "accuracy": 67.91507145244454,
+      "acpl": 63.04347826086956,
+      "scoredCount": 23,
+      "complexity": 3.9624237373004076
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 769,
+    "stats": {
+     "accuracy": 69.64280657775477,
+     "acpl": 61.67741935483871,
+     "scoredCount": 31,
+     "complexity": 3.9245556442518126,
+     "bookMoves": 2,
+     "blunderRate": 0.06451612903225806
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 72.69582606093677,
+      "acpl": 57.75,
+      "scoredCount": 8,
+      "complexity": 4.914863277199721
+     },
+     "middlegame": {
+      "accuracy": 68.59549802289689,
+      "acpl": 63.04347826086956,
+      "scoredCount": 23,
+      "complexity": 3.580100815400366
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171234340882",
+  "depth": 12,
+  "timeClass": "rapid",
+  "timeControl": {
+   "base": 600,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 1282,
+    "stats": {
+     "accuracy": 70.60607179227448,
+     "acpl": 79.33333333333333,
+     "scoredCount": 24,
+     "complexity": 4.968010279093076,
+     "bookMoves": 3,
+     "blunderRate": 0.08333333333333333
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 93.72509995741852,
+      "acpl": 18.285714285714285,
+      "scoredCount": 7,
+      "complexity": 2.2023633737618207
+     },
+     "middlegame": {
+      "accuracy": 65.64929001751419,
+      "acpl": 104.47058823529412,
+      "scoredCount": 17,
+      "complexity": 6.106806063641241
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 1304,
+    "stats": {
+     "accuracy": 87.0281788020734,
+     "acpl": 37.23076923076923,
+     "scoredCount": 26,
+     "complexity": 4.925397753915347,
+     "bookMoves": 2,
+     "blunderRate": 0
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 91.08263335236542,
+      "acpl": 24.25,
+      "scoredCount": 8,
+      "complexity": 2.1989087344360843
+     },
+     "middlegame": {
+      "accuracy": 85.70826235827695,
+      "acpl": 43,
+      "scoredCount": 18,
+      "complexity": 6.137170651461686
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171154094638",
+  "depth": 12,
+  "timeClass": "rapid",
+  "timeControl": {
+   "base": 600,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 1029,
+    "stats": {
+     "accuracy": 79.0704636115176,
+     "acpl": 56.46153846153846,
+     "scoredCount": 39,
+     "complexity": 4.43127759708275,
+     "bookMoves": 3,
+     "blunderRate": 0.02564102564102564
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 88.31577403370643,
+      "acpl": 33.57142857142857,
+      "scoredCount": 7,
+      "complexity": 4.679718066079881
+     },
+     "middlegame": {
+      "accuracy": 70.65054920647695,
+      "acpl": 94.5,
+      "scoredCount": 18,
+      "complexity": 7.04341036909807
+     },
+     "endgame": {
+      "accuracy": 96.07297539990995,
+      "acpl": 19,
+      "scoredCount": 14,
+      "complexity": 0.9486009414216298
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 1023,
+    "stats": {
+     "accuracy": 90.4191451096849,
+     "acpl": 26.772727272727273,
+     "scoredCount": 44,
+     "complexity": 3.9006191156075656,
+     "bookMoves": 2,
+     "blunderRate": 0.022727272727272728
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 87.5538946440686,
+      "acpl": 34.75,
+      "scoredCount": 8,
+      "complexity": 4.645012287166272
+     },
+     "middlegame": {
+      "accuracy": 87.32348764180338,
+      "acpl": 44.166666666666664,
+      "scoredCount": 18,
+      "complexity": 6.640927005078776
+     },
+     "endgame": {
+      "accuracy": 98.17388925069606,
+      "acpl": 5.833333333333333,
+      "scoredCount": 18,
+      "complexity": 0.8294698165547056
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/177438471327",
+  "depth": 12,
+  "timeClass": "blitz",
+  "timeControl": {
+   "base": 180,
+   "inc": 2
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 1804,
+    "stats": {
+     "accuracy": 80.6339050739926,
+     "acpl": 60.523809523809526,
+     "scoredCount": 21,
+     "complexity": 4.506699799896106,
+     "bookMoves": 3,
+     "blunderRate": 0
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 92.76749889632617,
+      "acpl": 18.857142857142858,
+      "scoredCount": 7,
+      "complexity": 1.7657397397755095
+     },
+     "middlegame": {
+      "accuracy": 77.19779335393744,
+      "acpl": 81.35714285714286,
+      "scoredCount": 14,
+      "complexity": 5.877179829956405
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 622,
+    "stats": {
+     "accuracy": 69.81624638664032,
+     "acpl": 116,
+     "scoredCount": 19,
+     "complexity": 4.304051691174861,
+     "bookMoves": 3,
+     "blunderRate": 0.05263157894736842
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 86.77645568273326,
+      "acpl": 35.714285714285715,
+      "scoredCount": 7,
+      "complexity": 1.9724173914198155
+     },
+     "middlegame": {
+      "accuracy": 64.52787253218676,
+      "acpl": 162.83333333333334,
+      "scoredCount": 12,
+      "complexity": 5.664171699365305
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171202969680",
+  "depth": 12,
+  "timeClass": "rapid",
+  "timeControl": {
+   "base": 600,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 835,
+    "stats": {
+     "accuracy": 93.62399110272874,
+     "acpl": 22.444444444444443,
+     "scoredCount": 18,
+     "complexity": 3.595251911304205,
+     "bookMoves": 4,
+     "blunderRate": 0
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 85.88884461189275,
+      "acpl": 33.833333333333336,
+      "scoredCount": 6,
+      "complexity": 2.507351645345181
+     },
+     "middlegame": {
+      "accuracy": 96.87287968636852,
+      "acpl": 16.75,
+      "scoredCount": 12,
+      "complexity": 4.139202044283718
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 827,
+    "stats": {
+     "accuracy": 74.29006999222075,
+     "acpl": 78.66666666666667,
+     "scoredCount": 18,
+     "complexity": 3.501730720206302,
+     "bookMoves": 3,
+     "blunderRate": 0.05555555555555555
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 97.03236245116219,
+      "acpl": 9.142857142857142,
+      "scoredCount": 7,
+      "complexity": 2.3220399198771524
+     },
+     "middlegame": {
+      "accuracy": 65.36626771155925,
+      "acpl": 122.9090909090909,
+      "scoredCount": 11,
+      "complexity": 4.252443047688487
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171168073934",
+  "depth": 12,
+  "timeClass": "rapid",
+  "timeControl": {
+   "base": 600,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 1016,
+    "stats": {
+     "accuracy": 65.80492555752444,
+     "acpl": 62,
+     "scoredCount": 54,
+     "complexity": 5.70762999403782,
+     "bookMoves": 2,
+     "blunderRate": 0.07407407407407407
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 64.15222771398759,
+      "acpl": 66.42857142857143,
+      "scoredCount": 7,
+      "complexity": 2.539172398341701
+     },
+     "middlegame": {
+      "accuracy": 78.14712328667125,
+      "acpl": 60.05555555555556,
+      "scoredCount": 18,
+      "complexity": 6.134380280558829
+     },
+     "endgame": {
+      "accuracy": 61.926050179353034,
+      "acpl": 62.13793103448276,
+      "scoredCount": 29,
+      "complexity": 6.207550615158328
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 982,
+    "stats": {
+     "accuracy": 69.29953372163232,
+     "acpl": 81.73584905660377,
+     "scoredCount": 53,
+     "complexity": 5.589819643176368,
+     "bookMoves": 1,
+     "blunderRate": 0.11320754716981132
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 71.42644390349173,
+      "acpl": 67.5,
+      "scoredCount": 8,
+      "complexity": 3.467825748456905
+     },
+     "middlegame": {
+      "accuracy": 81.60904403379487,
+      "acpl": 51.27777777777778,
+      "scoredCount": 18,
+      "complexity": 5.9079976459431345
+     },
+     "endgame": {
+      "accuracy": 62.14186843226144,
+      "acpl": 106.25925925925925,
+      "scoredCount": 27,
+      "complexity": 6.006439906433922
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171225966202",
+  "depth": 12,
+  "timeClass": "rapid",
+  "timeControl": {
+   "base": 600,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 967,
+    "stats": {
+     "accuracy": 74.98676100048509,
+     "acpl": 66.5,
+     "scoredCount": 28,
+     "complexity": 3.7706877443149645,
+     "bookMoves": 2,
+     "blunderRate": 0.03571428571428571
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 89.82773248463215,
+      "acpl": 23.125,
+      "scoredCount": 8,
+      "complexity": 2.1252110333336245
+     },
+     "middlegame": {
+      "accuracy": 72.69176975739646,
+      "acpl": 59.94444444444444,
+      "scoredCount": 18,
+      "complexity": 3.808577962661832
+     },
+     "endgame": {
+      "accuracy": 63.66182379219343,
+      "acpl": 299,
+      "scoredCount": 2,
+      "complexity": 10.011582623118516
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 970,
+    "stats": {
+     "accuracy": 90.70715695021599,
+     "acpl": 29.17241379310345,
+     "scoredCount": 29,
+     "complexity": 4.054730932805655,
+     "bookMoves": 2,
+     "blunderRate": 0
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 85.02654923019773,
+      "acpl": 37.875,
+      "scoredCount": 8,
+      "complexity": 2.823216294624023
+     },
+     "middlegame": {
+      "accuracy": 89.32329590822047,
+      "acpl": 31.941176470588236,
+      "scoredCount": 17,
+      "complexity": 3.272848537653653
+     },
+     "endgame": {
+      "accuracy": 100,
+      "acpl": 0,
+      "scoredCount": 4,
+      "complexity": 9.840760388564927
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/169240004816",
+  "depth": 12,
+  "timeClass": "blitz",
+  "timeControl": {
+   "base": 300,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 1074,
+    "stats": {
+     "accuracy": 73.83469243884618,
+     "acpl": 92.56521739130434,
+     "scoredCount": 23,
+     "complexity": 4.576227399939475,
+     "bookMoves": 3,
+     "blunderRate": 0.043478260869565216
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 81.58039931822188,
+      "acpl": 53,
+      "scoredCount": 7,
+      "complexity": 4.4045744481518465
+     },
+     "middlegame": {
+      "accuracy": 70.81219325546694,
+      "acpl": 109.875,
+      "scoredCount": 16,
+      "complexity": 4.651325566346563
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 1161,
+    "stats": {
+     "accuracy": 85.64214175788882,
+     "acpl": 48,
+     "scoredCount": 24,
+     "complexity": 3.97711565034662,
+     "bookMoves": 3,
+     "blunderRate": 0
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 76.03081836846596,
+      "acpl": 60.857142857142854,
+      "scoredCount": 7,
+      "complexity": 4.6676962545314185
+     },
+     "middlegame": {
+      "accuracy": 90.49509873090403,
+      "acpl": 42.705882352941174,
+      "scoredCount": 17,
+      "complexity": 3.6927589309764097
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171216294778",
+  "depth": 12,
+  "timeClass": "bullet",
+  "timeControl": {
+   "base": 60,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 1924,
+    "stats": {
+     "accuracy": 79.7268909661498,
+     "acpl": 52.3,
+     "scoredCount": 20,
+     "complexity": 3.3307309386768607,
+     "bookMoves": 5,
+     "blunderRate": 0.05
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 87.77310869609117,
+      "acpl": 28.6,
+      "scoredCount": 5,
+      "complexity": 2.0422908011401604
+     },
+     "middlegame": {
+      "accuracy": 77.7963643534507,
+      "acpl": 60.2,
+      "scoredCount": 15,
+      "complexity": 3.7602109845224283
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 1902,
+    "stats": {
+     "accuracy": 91.99408286431351,
+     "acpl": 27.42105263157895,
+     "scoredCount": 19,
+     "complexity": 3.473825596834777,
+     "bookMoves": 5,
+     "blunderRate": 0
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 92.12560430324908,
+      "acpl": 18,
+      "scoredCount": 5,
+      "complexity": 1.9408261040432702
+     },
+     "middlegame": {
+      "accuracy": 91.75914544357454,
+      "acpl": 30.785714285714285,
+      "scoredCount": 14,
+      "complexity": 4.021325415688887
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171000450068",
+  "depth": 12,
+  "timeClass": "rapid",
+  "timeControl": {
+   "base": 600,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 1343,
+    "stats": {
+     "accuracy": 81.06307207698671,
+     "acpl": 54.75,
+     "scoredCount": 24,
+     "complexity": 4.329971581229695,
+     "bookMoves": 3,
+     "blunderRate": 0.041666666666666664
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 78.17570708196105,
+      "acpl": 64.42857142857143,
+      "scoredCount": 7,
+      "complexity": 4.802557985731435
+     },
+     "middlegame": {
+      "accuracy": 76.27016147739243,
+      "acpl": 70.77777777777777,
+      "scoredCount": 9,
+      "complexity": 6.394095752261481
+     },
+     "endgame": {
+      "accuracy": 95.10982150841488,
+      "acpl": 28.25,
+      "scoredCount": 8,
+      "complexity": 1.594318784879918
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 1347,
+    "stats": {
+     "accuracy": 89.69707893570168,
+     "acpl": 32,
+     "scoredCount": 24,
+     "complexity": 3.7685794131137125,
+     "bookMoves": 3,
+     "blunderRate": 0.041666666666666664
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 81.21548062935933,
+      "acpl": 49.142857142857146,
+      "scoredCount": 7,
+      "complexity": 4.78347351456478
+     },
+     "middlegame": {
+      "accuracy": 93.52191873204096,
+      "acpl": 25.88888888888889,
+      "scoredCount": 9,
+      "complexity": 4.9864988242187325
+     },
+     "endgame": {
+      "accuracy": 94.54486545114085,
+      "acpl": 23.875,
+      "scoredCount": 8,
+      "complexity": 1.5103877368508798
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171196917962",
+  "depth": 12,
+  "timeClass": "blitz",
+  "timeControl": {
+   "base": 180,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 1966,
+    "stats": {
+     "accuracy": 89.18822233837257,
+     "acpl": 26.52173913043478,
+     "scoredCount": 46,
+     "complexity": 2.8790498819303356,
+     "bookMoves": 2,
+     "blunderRate": 0.021739130434782608
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 89.30481412666143,
+      "acpl": 28.25,
+      "scoredCount": 8,
+      "complexity": 2.3292213819063012
+     },
+     "middlegame": {
+      "accuracy": 97.69069057162514,
+      "acpl": 6.833333333333333,
+      "scoredCount": 12,
+      "complexity": 1.7582409359388542
+     },
+     "endgame": {
+      "accuracy": 86.59405624863236,
+      "acpl": 35.07692307692308,
+      "scoredCount": 26,
+      "complexity": 3.5655243185491825
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 2005,
+    "stats": {
+     "accuracy": 94.09783197399301,
+     "acpl": 15.044444444444444,
+     "scoredCount": 45,
+     "complexity": 2.6236429179656278,
+     "bookMoves": 2,
+     "blunderRate": 0
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 93.20432422168437,
+      "acpl": 17.5,
+      "scoredCount": 8,
+      "complexity": 1.9889277998182298
+     },
+     "middlegame": {
+      "accuracy": 92.23060443825248,
+      "acpl": 19.181818181818183,
+      "scoredCount": 11,
+      "complexity": 1.8659571897641003
+     },
+     "endgame": {
+      "accuracy": 94.87212181558198,
+      "acpl": 12.538461538461538,
+      "scoredCount": 26,
+      "complexity": 3.1394992239423964
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171034089000",
+  "depth": 12,
+  "timeClass": "bullet",
+  "timeControl": {
+   "base": 60,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 1247,
+    "stats": {
+     "accuracy": 77.68604501426665,
+     "acpl": 89.56818181818181,
+     "scoredCount": 44,
+     "complexity": 3.2273706891511953,
+     "bookMoves": 3,
+     "blunderRate": 0.045454545454545456
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 95.40868770285135,
+      "acpl": 12.142857142857142,
+      "scoredCount": 7,
+      "complexity": 1.2967179637739938
+     },
+     "middlegame": {
+      "accuracy": 75.54293997975006,
+      "acpl": 79.8,
+      "scoredCount": 15,
+      "complexity": 5.740825245336092
+     },
+     "endgame": {
+      "accuracy": 74.3307350481829,
+      "acpl": 120.86363636363636,
+      "scoredCount": 22,
+      "complexity": 2.1279502680087865
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 1221,
+    "stats": {
+     "accuracy": 76.52666153573094,
+     "acpl": 74.93023255813954,
+     "scoredCount": 43,
+     "complexity": 3.198149707756403,
+     "bookMoves": 3,
+     "blunderRate": 0.046511627906976744
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 98.39105568264347,
+      "acpl": 5.428571428571429,
+      "scoredCount": 7,
+      "complexity": 1.1353370992044236
+     },
+     "middlegame": {
+      "accuracy": 61.75804569615276,
+      "acpl": 125.73333333333333,
+      "scoredCount": 15,
+      "complexity": 6.243722168126239
+     },
+     "endgame": {
+      "accuracy": 94.94303740971745,
+      "acpl": 61.80952380952381,
+      "scoredCount": 21,
+      "complexity": 1.7103450103428952
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171149647680",
+  "depth": 12,
+  "timeClass": "blitz",
+  "timeControl": {
+   "base": 180,
+   "inc": 2
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 1259,
+    "stats": {
+     "accuracy": 77.98805243811617,
+     "acpl": 47.3,
+     "scoredCount": 20,
+     "complexity": 2.8836973455026698,
+     "bookMoves": 4,
+     "blunderRate": 0.05
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 98.01103916476251,
+      "acpl": 7.166666666666667,
+      "scoredCount": 6,
+      "complexity": 1.6273531271275214
+     },
+     "middlegame": {
+      "accuracy": 72.87331073720276,
+      "acpl": 64.5,
+      "scoredCount": 14,
+      "complexity": 3.4221305819491614
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 1290,
+    "stats": {
+     "accuracy": 93.0901274693882,
+     "acpl": 26.105263157894736,
+     "scoredCount": 19,
+     "complexity": 2.9149323056843657,
+     "bookMoves": 4,
+     "blunderRate": 0
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 89.87538925963392,
+      "acpl": 25.6,
+      "scoredCount": 5,
+      "complexity": 1.6770327925363269
+     },
+     "middlegame": {
+      "accuracy": 93.79552876397145,
+      "acpl": 26.285714285714285,
+      "scoredCount": 14,
+      "complexity": 3.357039274665808
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171183637836",
+  "depth": 12,
+  "timeClass": "blitz",
+  "timeControl": {
+   "base": 180,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 1192,
+    "stats": {
+     "accuracy": 75.7084604151076,
+     "acpl": 71.10526315789474,
+     "scoredCount": 19,
+     "complexity": 3.419004405441191,
+     "bookMoves": 2,
+     "blunderRate": 0.10526315789473684
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 68.58185020077347,
+      "acpl": 57.5,
+      "scoredCount": 8,
+      "complexity": 2.3917242082970374
+     },
+     "middlegame": {
+      "accuracy": 79.13104895491747,
+      "acpl": 81,
+      "scoredCount": 11,
+      "complexity": 4.166117276091485
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 1225,
+    "stats": {
+     "accuracy": 88.81027396224678,
+     "acpl": 35.31578947368421,
+     "scoredCount": 19,
+     "complexity": 3.3962483114909987,
+     "bookMoves": 2,
+     "blunderRate": 0
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 75.54479798099347,
+      "acpl": 40.625,
+      "scoredCount": 8,
+      "complexity": 2.287527194326967
+     },
+     "middlegame": {
+      "accuracy": 95.48457183908313,
+      "acpl": 31.454545454545453,
+      "scoredCount": 11,
+      "complexity": 4.202590942155751
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171230914070",
+  "depth": 12,
+  "timeClass": "blitz",
+  "timeControl": {
+   "base": 180,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 1355,
+    "stats": {
+     "accuracy": 81.92457494236305,
+     "acpl": 82.72,
+     "scoredCount": 25,
+     "complexity": 3.610012134469643,
+     "bookMoves": 2,
+     "blunderRate": 0.08
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 68.34799869543815,
+      "acpl": 105.125,
+      "scoredCount": 8,
+      "complexity": 5.450231829270297
+     },
+     "middlegame": {
+      "accuracy": 92.45087079022301,
+      "acpl": 72.17647058823529,
+      "scoredCount": 17,
+      "complexity": 2.744026395739922
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 1384,
+    "stats": {
+     "accuracy": 90.71510408881159,
+     "acpl": 41.72,
+     "scoredCount": 25,
+     "complexity": 3.0450508734845054,
+     "bookMoves": 2,
+     "blunderRate": 0
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 84.97956244884355,
+      "acpl": 39.875,
+      "scoredCount": 8,
+      "complexity": 4.645576954378941
+     },
+     "middlegame": {
+      "accuracy": 94.549833961696,
+      "acpl": 42.588235294117645,
+      "scoredCount": 17,
+      "complexity": 2.291862129534183
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171234962904",
+  "depth": 12,
+  "timeClass": "rapid",
+  "timeControl": {
+   "base": 600,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 1340,
+    "stats": {
+     "accuracy": 72.12959205725308,
+     "acpl": 69.26315789473684,
+     "scoredCount": 38,
+     "complexity": 5.580076662600856,
+     "bookMoves": 2,
+     "blunderRate": 0.05263157894736842
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 84.74052151264237,
+      "acpl": 45.333333333333336,
+      "scoredCount": 6,
+      "complexity": 3.7003379618481476
+     },
+     "middlegame": {
+      "accuracy": 84.40604948817592,
+      "acpl": 44.4,
+      "scoredCount": 10,
+      "complexity": 4.26182398971598
+     },
+     "endgame": {
+      "accuracy": 66.23542899783264,
+      "acpl": 87.0909090909091,
+      "scoredCount": 22,
+      "complexity": 6.691938432299266
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 1316,
+    "stats": {
+     "accuracy": 62.846462028189535,
+     "acpl": 78.37837837837837,
+     "scoredCount": 37,
+     "complexity": 5.484194785431152,
+     "bookMoves": 2,
+     "blunderRate": 0.08108108108108109
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 90.87757263934144,
+      "acpl": 26,
+      "scoredCount": 6,
+      "complexity": 3.5417977642410308
+     },
+     "middlegame": {
+      "accuracy": 91.1436204203248,
+      "acpl": 26.4,
+      "scoredCount": 10,
+      "complexity": 4.097485091351686
+     },
+     "endgame": {
+      "accuracy": 53.56344856300839,
+      "acpl": 118.0952380952381,
+      "scoredCount": 21,
+      "complexity": 6.699503312475694
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171190094986",
+  "depth": 12,
+  "timeClass": "rapid",
+  "timeControl": {
+   "base": 600,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 1754,
+    "stats": {
+     "accuracy": 84.94790923497993,
+     "acpl": 46.45454545454545,
+     "scoredCount": 33,
+     "complexity": 3.0661959705425184,
+     "bookMoves": 4,
+     "blunderRate": 0
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 95.66484552693623,
+      "acpl": 11.666666666666666,
+      "scoredCount": 6,
+      "complexity": 1.0621476156483982
+     },
+     "middlegame": {
+      "accuracy": 77.51560925837165,
+      "acpl": 62.92307692307692,
+      "scoredCount": 13,
+      "complexity": 4.842018283491194
+     },
+     "endgame": {
+      "accuracy": 92.66433370998783,
+      "acpl": 46.07142857142857,
+      "scoredCount": 14,
+      "complexity": 2.2760959749019425
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 1835,
+    "stats": {
+     "accuracy": 93.45124635903767,
+     "acpl": 21.735294117647058,
+     "scoredCount": 34,
+     "complexity": 2.7778769211701317,
+     "bookMoves": 3,
+     "blunderRate": 0
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 97.86367408161968,
+      "acpl": 5.714285714285714,
+      "scoredCount": 7,
+      "complexity": 0.9413209119952558
+     },
+     "middlegame": {
+      "accuracy": 88.85618601888088,
+      "acpl": 40.333333333333336,
+      "scoredCount": 12,
+      "complexity": 4.493792711741829
+     },
+     "endgame": {
+      "accuracy": 97.3130086788385,
+      "acpl": 14.333333333333334,
+      "scoredCount": 15,
+      "complexity": 2.2622037596610505
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171110981480",
+  "depth": 12,
+  "timeClass": "blitz",
+  "timeControl": {
+   "base": 180,
+   "inc": 2
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 1550,
+    "stats": {
+     "accuracy": 80.33893397183323,
+     "acpl": 60.30555555555556,
+     "scoredCount": 36,
+     "complexity": 5.184788468516776,
+     "bookMoves": 2,
+     "blunderRate": 0.05555555555555555
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 90.20024310731753,
+      "acpl": 22.375,
+      "scoredCount": 8,
+      "complexity": 2.276548906247394
+     },
+     "middlegame": {
+      "accuracy": 77.89733943591682,
+      "acpl": 56.083333333333336,
+      "scoredCount": 24,
+      "complexity": 5.285486613671238
+     },
+     "endgame": {
+      "accuracy": 80.94291596015196,
+      "acpl": 161.5,
+      "scoredCount": 4,
+      "complexity": 10.397078722128768
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 1659,
+    "stats": {
+     "accuracy": 89.55945826086473,
+     "acpl": 32.44117647058823,
+     "scoredCount": 34,
+     "complexity": 4.773264657461038,
+     "bookMoves": 2,
+     "blunderRate": 0
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 98.999337537895,
+      "acpl": 2.375,
+      "scoredCount": 8,
+      "complexity": 2.2644510094268187
+     },
+     "middlegame": {
+      "accuracy": 86.38090019880735,
+      "acpl": 45.166666666666664,
+      "scoredCount": 24,
+      "complexity": 5.265629944827871
+     },
+     "endgame": {
+      "accuracy": 100,
+      "acpl": 0,
+      "scoredCount": 2,
+      "complexity": 8.900135801195951
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171233206780",
+  "depth": 12,
+  "timeClass": "rapid",
+  "timeControl": {
+   "base": 600,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 1734,
+    "stats": {
+     "accuracy": 64.3223290644917,
+     "acpl": 111.5909090909091,
+     "scoredCount": 22,
+     "complexity": 6.796935267622817,
+     "bookMoves": 3,
+     "blunderRate": 0.22727272727272727
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 57.48336240428334,
+      "acpl": 112,
+      "scoredCount": 7,
+      "complexity": 6.133564280033528
+     },
+     "middlegame": {
+      "accuracy": 65.52009608326406,
+      "acpl": 86.41666666666667,
+      "scoredCount": 12,
+      "complexity": 6.156594999565186
+     },
+     "endgame": {
+      "accuracy": 72.23972029214335,
+      "acpl": 211.33333333333334,
+      "scoredCount": 3,
+      "complexity": 10.906161977561675
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 1762,
+    "stats": {
+     "accuracy": 70.53956029709568,
+     "acpl": 74.54545454545455,
+     "scoredCount": 22,
+     "complexity": 6.46840028939165,
+     "bookMoves": 3,
+     "blunderRate": 0.18181818181818182
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 60.17598106123586,
+      "acpl": 98.14285714285714,
+      "scoredCount": 7,
+      "complexity": 5.848181216282756
+     },
+     "middlegame": {
+      "accuracy": 68.79355103889404,
+      "acpl": 79.41666666666667,
+      "scoredCount": 12,
+      "complexity": 6.001553395338483
+     },
+     "endgame": {
+      "accuracy": 100,
+      "acpl": 0,
+      "scoredCount": 3,
+      "complexity": 9.782965702858398
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171211929390",
+  "depth": 12,
+  "timeClass": "bullet",
+  "timeControl": {
+   "base": 60,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 1799,
+    "stats": {
+     "accuracy": 87.51331147744683,
+     "acpl": 41.391304347826086,
+     "scoredCount": 46,
+     "complexity": 3.1224497992323914,
+     "bookMoves": 3,
+     "blunderRate": 0
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 89.1188000991074,
+      "acpl": 24.6,
+      "scoredCount": 5,
+      "complexity": 2.10148362297258
+     },
+     "middlegame": {
+      "accuracy": 87.3676613327303,
+      "acpl": 34.166666666666664,
+      "scoredCount": 12,
+      "complexity": 4.302191434540517
+     },
+     "endgame": {
+      "accuracy": 87.13300661075293,
+      "acpl": 47.275862068965516,
+      "scoredCount": 29,
+      "complexity": 2.810309497770377
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 1800,
+    "stats": {
+     "accuracy": 93.77055285989788,
+     "acpl": 24.897959183673468,
+     "scoredCount": 49,
+     "complexity": 2.809295197709268,
+     "bookMoves": 2,
+     "blunderRate": 0
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 96.14757024039127,
+      "acpl": 12.333333333333334,
+      "scoredCount": 6,
+      "complexity": 2.2622589750549227
+     },
+     "middlegame": {
+      "accuracy": 89.07695774014636,
+      "acpl": 28.454545454545453,
+      "scoredCount": 11,
+      "complexity": 4.2622153396641
+     },
+     "endgame": {
+      "accuracy": 95.48387120149367,
+      "acpl": 26.03125,
+      "scoredCount": 32,
+      "complexity": 2.4124231906599847
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/177152812555",
+  "depth": 12,
+  "timeClass": "blitz",
+  "timeControl": {
+   "base": 300,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 2475,
+    "stats": {
+     "accuracy": 93.48669238325871,
+     "acpl": 18.09090909090909,
+     "scoredCount": 44,
+     "complexity": 3.073947444125227,
+     "bookMoves": 2,
+     "blunderRate": 0.022727272727272728
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 95.13450904295834,
+      "acpl": 10.625,
+      "scoredCount": 8,
+      "complexity": 1.195968404585372
+     },
+     "middlegame": {
+      "accuracy": 86.19268341843267,
+      "acpl": 33.36363636363637,
+      "scoredCount": 11,
+      "complexity": 3.816935539166067
+     },
+     "endgame": {
+      "accuracy": 96.69162372059839,
+      "acpl": 13.76,
+      "scoredCount": 25,
+      "complexity": 3.3479859749600105
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 2349,
+    "stats": {
+     "accuracy": 85.03776449098233,
+     "acpl": 39.82222222222222,
+     "scoredCount": 45,
+     "complexity": 3.2143577376373575,
+     "bookMoves": 1,
+     "blunderRate": 0.022222222222222223
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 99.86247453085304,
+      "acpl": 0.875,
+      "scoredCount": 8,
+      "complexity": 0.9871515431674376
+     },
+     "middlegame": {
+      "accuracy": 86.4118775201986,
+      "acpl": 34.666666666666664,
+      "scoredCount": 12,
+      "complexity": 3.732305220079301
+     },
+     "endgame": {
+      "accuracy": 81.85912211288132,
+      "acpl": 54.76,
+      "scoredCount": 25,
+      "complexity": 3.6784489282955968
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171237438518",
+  "depth": 12,
+  "timeClass": "blitz",
+  "timeControl": {
+   "base": 180,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 2987,
+    "stats": {
+     "accuracy": 91.1642044132047,
+     "acpl": 16.176470588235293,
+     "scoredCount": 34,
+     "complexity": 1.5677023265460004,
+     "bookMoves": 3,
+     "blunderRate": 0
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 96.97173253703933,
+      "acpl": 6.571428571428571,
+      "scoredCount": 7,
+      "complexity": 1.1114868363774926
+     },
+     "middlegame": {
+      "accuracy": 95.10966852105616,
+      "acpl": 10.31578947368421,
+      "scoredCount": 19,
+      "complexity": 1.2699056997438944
+     },
+     "endgame": {
+      "accuracy": 82.28544809826934,
+      "acpl": 38.5,
+      "scoredCount": 8,
+      "complexity": 2.674157869098445
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 3007,
+    "stats": {
+     "accuracy": 98.72058275322686,
+     "acpl": 4,
+     "scoredCount": 34,
+     "complexity": 1.582093752454872,
+     "bookMoves": 3,
+     "blunderRate": 0
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 99.88308782377615,
+      "acpl": 0.7142857142857143,
+      "scoredCount": 7,
+      "complexity": 0.9453130280274796
+     },
+     "middlegame": {
+      "accuracy": 97.66938400974016,
+      "acpl": 6,
+      "scoredCount": 18,
+      "complexity": 1.2029689701195634
+     },
+     "endgame": {
+      "accuracy": 99.4177827532464,
+      "acpl": 2.5555555555555554,
+      "scoredCount": 9,
+      "complexity": 2.83561721390235
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/143553517696",
+  "depth": 12,
+  "timeClass": "blitz",
+  "timeControl": {
+   "base": 180,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 2718,
+    "stats": {
+     "accuracy": 81.893433871166,
+     "acpl": 48.08,
+     "scoredCount": 25,
+     "complexity": 3.808886202045285,
+     "bookMoves": 3,
+     "blunderRate": 0.04
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 93.4653301875708,
+      "acpl": 15.857142857142858,
+      "scoredCount": 7,
+      "complexity": 1.185697166778832
+     },
+     "middlegame": {
+      "accuracy": 79.30360676420423,
+      "acpl": 60.611111111111114,
+      "scoredCount": 18,
+      "complexity": 4.829015271315573
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 2755,
+    "stats": {
+     "accuracy": 79.07202645039547,
+     "acpl": 44.61538461538461,
+     "scoredCount": 26,
+     "complexity": 3.798906040562071,
+     "bookMoves": 2,
+     "blunderRate": 0.038461538461538464
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 94.90443427326382,
+      "acpl": 13.625,
+      "scoredCount": 8,
+      "complexity": 1.3802192451099482
+     },
+     "middlegame": {
+      "accuracy": 75.51926056762923,
+      "acpl": 58.388888888888886,
+      "scoredCount": 18,
+      "complexity": 4.873877949651903
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/169974512280",
+  "depth": 12,
+  "timeClass": "bullet",
+  "timeControl": {
+   "base": 60,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 2562,
+    "stats": {
+     "accuracy": 58.61370074374783,
+     "acpl": 89.1304347826087,
+     "scoredCount": 46,
+     "complexity": 4.179283745411952,
+     "bookMoves": 3,
+     "blunderRate": 0.06521739130434782
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 99.24003483207397,
+      "acpl": 2.4285714285714284,
+      "scoredCount": 7,
+      "complexity": 1.1553683523086034
+     },
+     "middlegame": {
+      "accuracy": 50.91131685516264,
+      "acpl": 81.9375,
+      "scoredCount": 16,
+      "complexity": 4.032773479448288
+     },
+     "endgame": {
+      "accuracy": 67.28125527473662,
+      "acpl": 120.52173913043478,
+      "scoredCount": 23,
+      "complexity": 5.20152600659204
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 2529,
+    "stats": {
+     "accuracy": 77.62109367742549,
+     "acpl": 78.02173913043478,
+     "scoredCount": 46,
+     "complexity": 4.121533708682122,
+     "bookMoves": 2,
+     "blunderRate": 0.043478260869565216
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 83.67236914008141,
+      "acpl": 31.75,
+      "scoredCount": 8,
+      "complexity": 1.6942596237868894
+     },
+     "middlegame": {
+      "accuracy": 89.28638809571672,
+      "acpl": 64.26666666666667,
+      "scoredCount": 15,
+      "complexity": 4.048493165607268
+     },
+     "endgame": {
+      "accuracy": 70.14000491962061,
+      "acpl": 103.08695652173913,
+      "scoredCount": 23,
+      "complexity": 5.013438092390153
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171170135592",
+  "depth": 12,
+  "timeClass": "blitz",
+  "timeControl": {
+   "base": 180,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 2813,
+    "stats": {
+     "accuracy": 87.72858335230862,
+     "acpl": 43.32142857142857,
+     "scoredCount": 28,
+     "complexity": 4.276572336102158,
+     "bookMoves": 7,
+     "blunderRate": 0.03571428571428571
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 95.11664357039353,
+      "acpl": 12.666666666666666,
+      "scoredCount": 3,
+      "complexity": 0.7758028844109862
+     },
+     "middlegame": {
+      "accuracy": 87.19424234619581,
+      "acpl": 47,
+      "scoredCount": 25,
+      "complexity": 4.696664670305099
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 2837,
+    "stats": {
+     "accuracy": 60.3585529329075,
+     "acpl": 64.62962962962963,
+     "scoredCount": 27,
+     "complexity": 4.3471104655305846,
+     "bookMoves": 6,
+     "blunderRate": 0.037037037037037035
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 93.95583014440004,
+      "acpl": 15.75,
+      "scoredCount": 4,
+      "complexity": 0.9133320787100758
+     },
+     "middlegame": {
+      "accuracy": 58.5938055986572,
+      "acpl": 73.1304347826087,
+      "scoredCount": 23,
+      "complexity": 4.944289315412412
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/25153228399",
+  "depth": 12,
+  "timeClass": "blitz",
+  "timeControl": {
+   "base": 180,
+   "inc": 2
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 2344,
+    "stats": {
+     "accuracy": 49.60984830303862,
+     "acpl": 87.36842105263158,
+     "scoredCount": 19,
+     "complexity": 4.977574803539173,
+     "bookMoves": 2,
+     "blunderRate": 0.05263157894736842
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 74.06833806980104,
+      "acpl": 45.75,
+      "scoredCount": 8,
+      "complexity": 3.118311071203148
+     },
+     "middlegame": {
+      "accuracy": 47.334655050979684,
+      "acpl": 117.63636363636364,
+      "scoredCount": 11,
+      "complexity": 6.329766608874464
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 2304,
+    "stats": {
+     "accuracy": 43.930396601176554,
+     "acpl": 128.16666666666666,
+     "scoredCount": 18,
+     "complexity": 4.434412449877531,
+     "bookMoves": 1,
+     "blunderRate": 0.1111111111111111
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 97.00677483160092,
+      "acpl": 10.666666666666666,
+      "scoredCount": 9,
+      "complexity": 2.908810164021116
+     },
+     "middlegame": {
+      "accuracy": 30.95098693200365,
+      "acpl": 245.66666666666666,
+      "scoredCount": 9,
+      "complexity": 5.960014735733945
+     },
+     "endgame": {
+      "accuracy": null,
+      "acpl": null,
+      "scoredCount": 0,
+      "complexity": 4.5
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/171229393538",
+  "depth": 12,
+  "timeClass": "blitz",
+  "timeControl": {
+   "base": 180,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 2625,
+    "stats": {
+     "accuracy": 85.04718130623493,
+     "acpl": 42.52777777777778,
+     "scoredCount": 36,
+     "complexity": 5.654880838111574,
+     "bookMoves": 6,
+     "blunderRate": 0
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 100,
+      "acpl": 0,
+      "scoredCount": 4,
+      "complexity": 5.1788085386659795
+     },
+     "middlegame": {
+      "accuracy": 77.13572725758873,
+      "acpl": 67.25,
+      "scoredCount": 12,
+      "complexity": 8.776760222530633
+     },
+     "endgame": {
+      "accuracy": 89.25646059389388,
+      "acpl": 36.2,
+      "scoredCount": 20,
+      "complexity": 3.876967667349257
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 2613,
+    "stats": {
+     "accuracy": 78.10626896376691,
+     "acpl": 66.02777777777777,
+     "scoredCount": 36,
+     "complexity": 5.577936132198431,
+     "bookMoves": 5,
+     "blunderRate": 0.05555555555555555
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 92.93515790187911,
+      "acpl": 23.6,
+      "scoredCount": 5,
+      "complexity": 4.838996378263774
+     },
+     "middlegame": {
+      "accuracy": 69.87262808456956,
+      "acpl": 85.75,
+      "scoredCount": 12,
+      "complexity": 9.107254029073417
+     },
+     "endgame": {
+      "accuracy": 81.97292844512296,
+      "acpl": 64.73684210526316,
+      "scoredCount": 19,
+      "complexity": 3.543351079944401
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/21556199095",
+  "depth": 12,
+  "timeClass": "bullet",
+  "timeControl": {
+   "base": 60,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 2807,
+    "stats": {
+     "accuracy": 91.1853716356205,
+     "acpl": 25.114285714285714,
+     "scoredCount": 35,
+     "complexity": 3.171308500924894,
+     "bookMoves": 4,
+     "blunderRate": 0
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 93.8975670685293,
+      "acpl": 18.5,
+      "scoredCount": 6,
+      "complexity": 1.625359098141576
+     },
+     "middlegame": {
+      "accuracy": 90.95110374584452,
+      "acpl": 24.636363636363637,
+      "scoredCount": 22,
+      "complexity": 2.3284328435768185
+     },
+     "endgame": {
+      "accuracy": 90.19620056362024,
+      "acpl": 32.285714285714285,
+      "scoredCount": 7,
+      "complexity": 7.145445769261691
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 2551,
+    "stats": {
+     "accuracy": 81.95335330272857,
+     "acpl": 49.8,
+     "scoredCount": 35,
+     "complexity": 3.138924726193232,
+     "bookMoves": 3,
+     "blunderRate": 0.02857142857142857
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 93.62241154659287,
+      "acpl": 17.857142857142858,
+      "scoredCount": 7,
+      "complexity": 1.6091774172295337
+     },
+     "middlegame": {
+      "accuracy": 93.06280535538235,
+      "acpl": 18.40909090909091,
+      "scoredCount": 22,
+      "complexity": 2.3081523315736203
+     },
+     "endgame": {
+      "accuracy": 59.59713405858979,
+      "acpl": 202.16666666666666,
+      "scoredCount": 6,
+      "complexity": 7.969795366922789
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/170378920784",
+  "depth": 12,
+  "timeClass": "blitz",
+  "timeControl": {
+   "base": 180,
+   "inc": 2
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 2204,
+    "stats": {
+     "accuracy": 90.25164092728966,
+     "acpl": 22.962962962962962,
+     "scoredCount": 54,
+     "complexity": 2.597323508022895,
+     "bookMoves": 3,
+     "blunderRate": 0
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 95.99052415353323,
+      "acpl": 10,
+      "scoredCount": 7,
+      "complexity": 1.4613950388699404
+     },
+     "middlegame": {
+      "accuracy": 87.72607092037816,
+      "acpl": 29.473684210526315,
+      "scoredCount": 19,
+      "complexity": 2.9356786907140218
+     },
+     "endgame": {
+      "accuracy": 91.03576829266663,
+      "acpl": 21.785714285714285,
+      "scoredCount": 28,
+      "complexity": 2.6517074656278687
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 2251,
+    "stats": {
+     "accuracy": 91.17156942604859,
+     "acpl": 21.203703703703702,
+     "scoredCount": 54,
+     "complexity": 2.612944766725983,
+     "bookMoves": 3,
+     "blunderRate": 0
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 99.79874170197053,
+      "acpl": 1,
+      "scoredCount": 7,
+      "complexity": 1.4664288463791355
+     },
+     "middlegame": {
+      "accuracy": 85.62642211628264,
+      "acpl": 36.94444444444444,
+      "scoredCount": 18,
+      "complexity": 3.093052298643404
+     },
+     "endgame": {
+      "accuracy": 93.54685254588587,
+      "acpl": 16.310344827586206,
+      "scoredCount": 29,
+      "complexity": 2.5916922104471687
+     }
+    }
+   }
+  ]
+ },
+ {
+  "url": "https://www.chess.com/game/live/4818867225",
+  "depth": 12,
+  "timeClass": "bullet",
+  "timeControl": {
+   "base": 60,
+   "inc": 0
+  },
+  "sides": [
+   {
+    "color": "w",
+    "actual": 2100,
+    "stats": {
+     "accuracy": 80.22778496713516,
+     "acpl": 52.07843137254902,
+     "scoredCount": 51,
+     "complexity": 4.183534700080247,
+     "bookMoves": 1,
+     "blunderRate": 0.0392156862745098
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 94.71986453344641,
+      "acpl": 13.88888888888889,
+      "scoredCount": 9,
+      "complexity": 1.1323115297780109
+     },
+     "middlegame": {
+      "accuracy": 80.09650299480262,
+      "acpl": 55.785714285714285,
+      "scoredCount": 14,
+      "complexity": 3.7536641963375734
+     },
+     "endgame": {
+      "accuracy": 77.70744028136764,
+      "acpl": 62.5,
+      "scoredCount": 28,
+      "complexity": 5.379220256691588
+     }
+    }
+   },
+   {
+    "color": "b",
+    "actual": 2121,
+    "stats": {
+     "accuracy": 77.91050488306021,
+     "acpl": 53.48,
+     "scoredCount": 50,
+     "complexity": 4.260556044359816,
+     "bookMoves": 1,
+     "blunderRate": 0.06
+    },
+    "phases": {
+     "opening": {
+      "accuracy": 92.38439191256873,
+      "acpl": 20,
+      "scoredCount": 9,
+      "complexity": 1.2289051893762017
+     },
+     "middlegame": {
+      "accuracy": 78.7890160542874,
+      "acpl": 53.38461538461539,
+      "scoredCount": 13,
+      "complexity": 3.3696049388654856
+     },
+     "endgame": {
+      "accuracy": 74.84825268356356,
+      "acpl": 64.28571428571429,
+      "scoredCount": 28,
+      "complexity": 5.6486711181554865
+     }
+    }
+   }
+  ]
+ }
+]

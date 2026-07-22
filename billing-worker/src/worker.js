@@ -122,6 +122,89 @@ async function getInstallation(env, installId) {
   return env.DB.prepare('SELECT * FROM installations WHERE install_id = ?').bind(installId).first();
 }
 
+function isValidEmail(value) {
+  return typeof value === 'string' && value.length <= 320 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function clientIp(request) {
+  return request.headers.get('cf-connecting-ip')
+    || (request.headers.get('x-forwarded-for') || '').split(',')[0].trim()
+    || 'unknown';
+}
+
+// Coarse per-IP rate limiting via KV (native 60s TTL). KV is eventually
+// consistent, so the counter is approximate under bursts across POPs — that is
+// acceptable for abuse throttling on Stripe-calling endpoints. If the KV
+// namespace is not bound, this fails open so core billing keeps working.
+async function rateLimited(env, request, bucket, { limit = 10, windowSeconds = 60 } = {}) {
+  if (!env.KV) return false;
+  const key = `rl:${bucket}:${clientIp(request)}`;
+  try {
+    const count = Number(await env.KV.get(key)) || 0;
+    if (count >= limit) return true;
+    await env.KV.put(key, String(count + 1), { expirationTtl: windowSeconds });
+  } catch (_) {
+    return false;
+  }
+  return false;
+}
+
+// Ordering guard for subscription-state events: track the newest Stripe
+// event.created timestamp we have applied per subscription, so a delayed
+// out-of-order webhook cannot overwrite fresher state. Stored in KV because the
+// D1 row's updated_at is write-time, not event-time.
+async function subscriptionStale(env, subscriptionId, eventCreated) {
+  if (!env.KV || !subscriptionId || !eventCreated) return false;
+  try {
+    const prev = Number(await env.KV.get(`sub_ts:${subscriptionId}`));
+    if (Number.isFinite(prev) && prev > eventCreated) return true;
+  } catch (_) {
+    return false;
+  }
+  return false;
+}
+
+async function markSubscriptionTs(env, subscriptionId, eventCreated) {
+  if (!env.KV || !subscriptionId || !eventCreated) return;
+  try {
+    await env.KV.put(`sub_ts:${subscriptionId}`, String(eventCreated), { expirationTtl: 60 * 24 * 60 * 60 });
+  } catch (_) { /* best effort */ }
+}
+
+// Resolve the installation affected by a charge (refund/dispute). Lifetime
+// purchases are keyed by payment_intent; subscription payments by customer.
+async function installIdForCharge(env, { paymentIntentId = '', customerId = '' }) {
+  if (paymentIntentId) {
+    const row = await env.DB.prepare('SELECT install_id FROM installations WHERE stripe_payment_intent_id = ?')
+      .bind(paymentIntentId)
+      .first();
+    if (row?.install_id) return row.install_id;
+  }
+  if (customerId) {
+    const row = await env.DB.prepare('SELECT install_id FROM customer_installations WHERE customer_id = ?')
+      .bind(customerId)
+      .first();
+    if (row?.install_id) return row.install_id;
+  }
+  return '';
+}
+
+// Downgrade an entitlement to free / none (refund, chargeback, or dispute).
+async function revokeEntitlement(env, installId) {
+  if (!isValidInstallId(installId)) return;
+  await env.DB.prepare(`
+    UPDATE installations SET
+      plan = 'free',
+      status = 'none',
+      current_period_end = '',
+      access_until = '',
+      cancel_at_period_end = 0,
+      cancel_at = '',
+      updated_at = ?
+    WHERE install_id = ?
+  `).bind(new Date().toISOString(), installId).run();
+}
+
 async function saveSubscriptionEntitlement(env, { installId, customerId = '', subscriptionId = '', status = 'unknown', currentPeriodEndSeconds = 0, customerEmail = '', cancelAtPeriodEnd = false, cancelAtSeconds = 0 }) {
   if (!isValidInstallId(installId)) return;
 
@@ -319,219 +402,168 @@ function checkoutPageHtml({ monthlyHref, lifetimeHref }) {
 <title>Upgrade to EloGuard Pro</title>
 <style>
   :root{
-    --bg:#262522; --card:#2a2926;
-    --green:#81b64c; --green-bright:#4CAF50; --green-text:#9ed17a; --green-text-2:#a6da84;
-    --blue-text:#7fb0f5; --gold:#f6c453; --gold-soft:#ffe08a; --amber:#e0a93b;
-    --t-primary:#ffffff; --t-soft:#e9edf4; --t-muted:#aaaaaa; --t-dim:#8a93a3;
-    --border:rgba(255,255,255,0.07);
-    --border-blue:rgba(96,165,250,0.32); --border-green:rgba(129,182,76,0.34);
-    --border-gold:rgba(246,196,83,0.40);
-    --shadow:0 8px 24px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,255,255,0.07);
+    --bg:#262522; --card:#2f2d29;
+    --green:#81b64c; --green-text:#9ed17a;
+    --blue:#2a7fd0; --blue-hover:#3a8dda; --blue-text:#7fb0f5;
+    --gold:#f6c453;
+    --t-primary:#f3f1ec; --t-muted:#b7b2a8; --t-dim:#8a857c;
+    --border:rgba(255,255,255,0.10);
     --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{min-height:100%}
   body{
-    font-family:var(--font); color:var(--t-primary);
-    background:
-      radial-gradient(120% 80% at 50% -10%, rgba(59,130,246,0.10), rgba(59,130,246,0) 55%),
-      radial-gradient(90% 60% at 50% 110%, rgba(129,182,76,0.08), rgba(129,182,76,0) 60%),
-      var(--bg);
+    font-family:var(--font); color:var(--t-primary); background:var(--bg);
     min-height:100vh; display:flex; align-items:center; justify-content:center;
-    padding:36px 18px 44px; overflow-x:hidden; position:relative;
-    -webkit-font-smoothing:antialiased;
+    padding:40px 20px 48px; -webkit-font-smoothing:antialiased;
   }
-  .board-texture{
-    position:fixed; inset:0; z-index:0; pointer-events:none;
-    background-image:
-      linear-gradient(45deg, rgba(255,255,255,0.014) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.014) 75%),
-      linear-gradient(45deg, rgba(255,255,255,0.014) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.014) 75%);
-    background-size:104px 104px; background-position:0 0, 52px 52px;
-    -webkit-mask-image:radial-gradient(120% 90% at 50% 20%, #000 0%, transparent 82%);
-    mask-image:radial-gradient(120% 90% at 50% 20%, #000 0%, transparent 82%);
-    opacity:.7;
-  }
-  .stage{position:relative; z-index:10; width:100%; max-width:660px;}
+  .stage{width:100%; max-width:820px;}
 
   .wordmark{
-    display:flex; align-items:center; justify-content:center; gap:11px;
-    margin-bottom:26px; letter-spacing:.2px;
-    animation:riseIn .5s cubic-bezier(.2,.7,.3,1) both;
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    margin-bottom:30px;
   }
-  .wordmark .shield{font-size:24px; filter:drop-shadow(0 1px 3px rgba(0,0,0,.5))}
-  .wordmark .name{font-size:19px; font-weight:800; color:var(--t-soft)}
-  .wordmark .name b{color:var(--green-text-2)}
-  .wordmark .sep{width:1px; height:17px; background:var(--border);}
-  .wordmark .tag{font-size:11px; color:var(--t-dim); font-weight:600; text-transform:uppercase; letter-spacing:1.4px}
+  .wordmark .shield{font-size:26px}
+  .wordmark .name{font-size:24px; font-weight:800; color:var(--t-primary)}
+  .wordmark .name b{color:var(--green-text)}
 
-  .compare{display:grid; grid-template-columns:1fr 1.05fr; gap:16px; align-items:stretch;}
+  .compare{display:grid; grid-template-columns:1fr 1fr; gap:20px; align-items:stretch;}
   .col{
-    position:relative; overflow:hidden; border-radius:16px; padding:22px 20px;
-    display:flex; flex-direction:column; box-shadow:var(--shadow);
-    animation:riseIn .5s cubic-bezier(.2,.7,.3,1) both;
+    border-radius:12px; padding:28px 26px;
+    display:flex; flex-direction:column;
+    background:var(--card); border:1px solid var(--border);
   }
-  .col.free{border:1px solid var(--border); background:linear-gradient(157deg,#2b2a27 0%, #262521 100%); animation-delay:.06s}
-  .col.pro{
-    border:1px solid var(--border-gold); animation-delay:.12s;
-    background:
-      radial-gradient(135% 80% at 100% 0%, rgba(246,196,83,0.16), rgba(246,196,83,0) 58%),
-      linear-gradient(157deg,#31302a 0%, #2a2823 52%, #24221d 100%);
-    box-shadow:var(--shadow), 0 20px 55px rgba(0,0,0,0.45), 0 0 0 1px rgba(246,196,83,0.06);
-  }
-  .col.pro .sheen{
-    position:absolute; top:-60%; left:-45%; width:45%; height:220%;
-    background:linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.09) 50%, rgba(255,255,255,0) 100%);
-    transform:rotate(8deg); pointer-events:none; z-index:1;
-    animation:sheen 6s ease-in-out infinite; animation-delay:1s;
-  }
-  .col-head{display:flex; align-items:center; gap:8px; position:relative; z-index:2; margin-bottom:3px}
-  .col-head .tier{font-size:14px; font-weight:800; letter-spacing:.5px; text-transform:uppercase}
-  .col.free .tier{color:var(--t-dim)}
-  .col.pro .tier{
-    background:linear-gradient(135deg,#ffe08a,#f6c453 60%,#e0a93b);
-    -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; color:transparent;
-  }
-  .col.pro .crown{font-size:15px; filter:drop-shadow(0 1px 2px rgba(0,0,0,.4))}
-  .col .price-tag{position:relative; z-index:2; font-size:11.5px; color:var(--t-dim); margin-bottom:15px}
-  .col.pro .price-tag b{color:var(--gold-soft); font-weight:700}
+  .col.pro{border-color:rgba(246,196,83,0.45)}
+  .col-head{margin-bottom:4px}
+  .col-head .tier{font-size:17px; font-weight:800; letter-spacing:.5px; text-transform:uppercase}
+  .col.free .tier{color:var(--t-muted)}
+  .col.pro .tier{color:var(--gold)}
+  .col .price-tag{font-size:14px; color:var(--t-dim); margin-bottom:20px}
+  .col.pro .price-tag b{color:var(--t-primary); font-weight:700}
 
-  ul.flist{list-style:none; display:flex; flex-direction:column; gap:12px; position:relative; z-index:2}
-  .flist li{display:flex; align-items:flex-start; gap:11px; font-size:13px; line-height:1.4}
-  .flist .mk{flex:0 0 auto; width:18px; height:18px; margin-top:.5px; display:flex; align-items:center; justify-content:center}
-  .flist .mk svg{width:18px; height:18px}
-  .flist .lt{color:var(--t-soft)}
+  ul.flist{list-style:none; display:flex; flex-direction:column; gap:14px}
+  .flist li{display:flex; align-items:flex-start; gap:12px; font-size:15px; line-height:1.45}
+  .flist .mk{flex:0 0 auto; width:20px; height:20px; margin-top:1px; display:flex; align-items:center; justify-content:center}
+  .flist .mk svg{width:20px; height:20px}
+  .flist .lt{color:var(--t-primary)}
   .flist .cap{color:var(--t-muted)}
-  .flist .cap .n{font-size:10px; color:var(--amber); font-weight:700; text-transform:uppercase; letter-spacing:.4px; margin-left:2px; white-space:nowrap}
-  .col.pro .flist .lt{color:var(--t-primary); font-weight:600}
-  .col.pro .flist .lt .win{display:block; font-size:11px; font-weight:500; color:var(--t-dim); margin-top:1px;}
-  .pill-un{
-    display:inline-block; font-size:9.5px; font-weight:800; letter-spacing:.5px; text-transform:uppercase;
-    color:#2a2107; background:linear-gradient(135deg,#ffe08a,#f6c453); border-radius:5px;
-    padding:1px 6px; margin-left:6px; vertical-align:1px; box-shadow:0 1px 3px rgba(246,196,83,.3);
+  .flist .cap .n{font-size:12px; color:var(--t-dim); font-weight:600; margin-left:6px; white-space:nowrap}
+  .free-limit{font-size:12px; color:var(--green-text); font-weight:700; margin-left:6px; white-space:nowrap}
+  .not-included{
+    margin-top:18px; padding-top:15px; border-top:1px solid var(--border);
   }
+  .not-included-title{
+    margin-bottom:12px; font-size:11px; line-height:1; font-weight:800;
+    letter-spacing:.7px; text-transform:uppercase; color:var(--t-dim);
+  }
+  .flist.locked{gap:11px}
+  .flist.locked li{font-size:14px}
+  .flist.locked .cap{color:var(--t-dim)}
+  .flist.locked .mk svg{opacity:.82}
   .col.pro .everything{
-    display:flex; align-items:center; gap:8px; margin-bottom:14px; padding-bottom:13px;
-    border-bottom:1px dashed rgba(246,196,83,0.22);
-    font-size:12.5px; font-weight:700; color:var(--green-text-2); position:relative; z-index:2;
+    display:flex; align-items:center; gap:9px; margin-bottom:16px; padding-bottom:15px;
+    border-bottom:1px solid var(--border);
+    font-size:14px; font-weight:600; color:var(--green-text);
   }
-  .col.pro .everything svg{width:15px;height:15px;flex:0 0 auto}
+  .col.pro .everything svg{width:17px;height:17px;flex:0 0 auto}
 
-  /* footers pinned to bottom so both long cards align */
-  .free-foot{
-    margin-top:auto; padding-top:18px; display:flex; align-items:baseline; gap:9px;
-    position:relative; z-index:2;
-  }
-  .free-foot .fp{font-size:26px; font-weight:800; color:var(--t-soft); letter-spacing:-.5px}
-  .free-foot .fn{font-size:12px; color:var(--t-dim)}
+  /* footers pinned to bottom so both cards align */
+  .free-foot{margin-top:auto; padding-top:22px; display:flex; align-items:baseline; gap:10px}
+  .free-foot .fp{font-size:30px; font-weight:800; color:var(--t-primary)}
+  .free-foot .fn{font-size:14px; color:var(--t-dim)}
 
-  .pro-buy{margin-top:auto; padding-top:18px; display:flex; flex-direction:column; gap:11px; position:relative; z-index:2}
+  .pro-buy{margin-top:auto; padding-top:22px; display:flex; flex-direction:column; gap:10px}
   .buy{
-    position:relative; display:flex; flex-direction:column; align-items:center; text-align:center;
-    text-decoration:none; border-radius:11px; padding:12px 14px;
-    transition:transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+    display:flex; flex-direction:column; align-items:center; text-align:center;
+    text-decoration:none; border-radius:8px; padding:14px 16px;
+    transition:background .15s;
   }
-  .buy .bm{font-size:14.5px; font-weight:800; letter-spacing:.2px}
-  .buy .bs{font-size:11.5px; margin-top:3px; font-weight:600}
-  .buy.monthly{
-    color:var(--t-soft);
-    background:linear-gradient(135deg, rgba(43,155,244,0.20), rgba(43,155,244,0.08));
-    border:1px solid var(--border-blue);
-  }
+  .buy .bm{font-size:16px; font-weight:800}
+  .buy .bs{font-size:13px; margin-top:3px; font-weight:500}
+  .buy.monthly{color:var(--t-primary); background:transparent; border:1px solid var(--border)}
   .buy.monthly .bs{color:var(--t-dim)}
-  .buy.monthly:hover{transform:translateY(-2px); border-color:var(--blue-text); box-shadow:0 12px 26px rgba(43,155,244,0.20)}
-  .buy.lifetime{
-    color:#22190a;
-    background:linear-gradient(135deg,#ffe08a 0%,#f6c453 55%,#e6b23f 100%);
-    box-shadow:0 8px 22px rgba(246,196,83,.34), inset 0 1px 0 rgba(255,255,255,.5);
-  }
+  .buy.monthly:hover{background:rgba(255,255,255,0.05)}
+  .buy.lifetime{color:#2a2107; background:var(--gold); border:1px solid transparent}
   .buy.lifetime .bs{color:#5a4410}
-  .buy.lifetime:hover{transform:translateY(-2px); box-shadow:0 14px 34px rgba(246,196,83,.5), inset 0 1px 0 rgba(255,255,255,.5)}
-  .buy .bv{
-    position:absolute; top:-10px; right:12px;
-    font-size:9px; font-weight:800; letter-spacing:.8px; text-transform:uppercase;
-    color:var(--gold-soft); background:#231a08; border:1px solid rgba(246,196,83,.5);
-    padding:3px 8px; border-radius:999px; box-shadow:0 3px 8px rgba(0,0,0,.4);
-  }
+  .buy.lifetime:hover{background:#f9cf6e}
 
-  footer{margin-top:22px; text-align:center; animation:riseIn .5s ease both; animation-delay:.2s}
+  footer{margin-top:26px; text-align:center}
   .trust{
-    display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap;
-    font-size:12px; color:var(--t-dim); margin-bottom:9px;
+    display:flex; align-items:center; justify-content:center; gap:9px; flex-wrap:wrap;
+    font-size:13px; color:var(--t-dim); margin-bottom:10px;
   }
-  .trust svg{width:13px; height:13px; opacity:.9; vertical-align:-2px}
+  .trust svg{width:14px; height:14px; vertical-align:-2px}
   .trust .dot{width:3px; height:3px; border-radius:50%; background:var(--t-dim); opacity:.5}
-  .legal{font-size:11.5px; color:var(--t-dim); opacity:.8}
+  .legal{font-size:12.5px; color:var(--t-dim)}
   .legal a{color:var(--blue-text); text-decoration:none}
   .legal a:hover{text-decoration:underline}
 
-  @keyframes sheen{0%{left:-45%;opacity:0}42%{opacity:1}60%{left:125%;opacity:0}100%{left:125%;opacity:0}}
-  @keyframes riseIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-
-  @media (max-width:560px){
-    .compare{grid-template-columns:1fr; gap:14px}
+  @media (max-width:600px){
+    .compare{grid-template-columns:1fr; gap:16px}
     .col.pro{order:-1}
-    .wordmark .tag{display:none}
   }
   @media (max-width:360px){ body{padding:24px 12px 34px} }
-  @media (prefers-reduced-motion: reduce){
-    *,*::before,*::after{animation:none !important; transition:none !important}
-    .buy:hover{transform:none}
-  }
 </style>
 </head>
 <body>
-  <div class="board-texture" aria-hidden="true"></div>
   <main class="stage">
     <div class="wordmark">
       <span class="shield">🛡️</span>
       <span class="name">Elo<b>Guard</b></span>
-      <span class="sep"></span>
-      <span class="tag">Tilt Protection</span>
     </div>
 
     <div class="compare">
       <!-- FREE -->
       <section class="col free">
         <div class="col-head"><span class="tier">Free</span></div>
-        <div class="price-tag">What you have now</div>
+        <div class="price-tag">Your current plan</div>
         <ul class="flist">
           <li><span class="mk"><svg viewBox="0 0 24 24"><path d="M5 12.5 L10 17.5 L19 7" fill="none" stroke="#81b64c" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="lt">Stop-loss, ceiling &amp; loss-streak locks</span></li>
           <li><span class="mk"><svg viewBox="0 0 24 24"><path d="M5 12.5 L10 17.5 L19 7" fill="none" stroke="#81b64c" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="lt">Timed lockouts &amp; random-string unlock</span></li>
           <li><span class="mk"><svg viewBox="0 0 24 24"><path d="M5 12.5 L10 17.5 L19 7" fill="none" stroke="#81b64c" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="lt">Zen mode &mdash; hide Elo on site</span></li>
           <li><span class="mk"><svg viewBox="0 0 24 24"><path d="M5 12.5 L10 17.5 L19 7" fill="none" stroke="#81b64c" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="lt">Opponent &amp; self anonymizer</span></li>
           <li><span class="mk"><svg viewBox="0 0 24 24"><path d="M5 12.5 L10 17.5 L19 7" fill="none" stroke="#81b64c" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="lt">Enhanced focus mode &amp; cooldown</span></li>
-          <li><span class="mk"><svg viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="9.5" rx="2" fill="none" stroke="#8a93a3" stroke-width="1.9"/><path d="M8 10.5 V8 a4 4 0 0 1 8 0 v2.5" fill="none" stroke="#8a93a3" stroke-width="1.9"/></svg></span><span class="cap">Cheat-risk detection<span class="n">3&nbsp;/&nbsp;day</span></span></li>
-          <li><span class="mk"><svg viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="9.5" rx="2" fill="none" stroke="#8a93a3" stroke-width="1.9"/><path d="M8 10.5 V8 a4 4 0 0 1 8 0 v2.5" fill="none" stroke="#8a93a3" stroke-width="1.9"/></svg></span><span class="cap">Full game reviews<span class="n">3&nbsp;/&nbsp;day</span></span></li>
+          <!-- CHEAT RISK DETECTION — DISABLED (feature turned off; markup kept for reactivation). Restore this Free-plan row with the pill in content.js, the popup toggle, and the Pro row below. -->
+          <!-- <li><span class="mk"><svg viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="9.5" rx="2" fill="none" stroke="#8a93a3" stroke-width="1.9"/><path d="M8 10.5 V8 a4 4 0 0 1 8 0 v2.5" fill="none" stroke="#8a93a3" stroke-width="1.9"/></svg></span><span class="cap">Cheat-risk detection<span class="n">3 / day</span></span></li> -->
+          <li><span class="mk"><svg viewBox="0 0 24 24"><path d="M5 12.5 L10 17.5 L19 7" fill="none" stroke="#81b64c" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="lt">Game reviews<span class="free-limit">3 / day</span></span></li>
         </ul>
+        <div class="not-included">
+          <div class="not-included-title">Not included on Free</div>
+          <ul class="flist locked">
+            <li><span class="mk"><svg viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="9.5" rx="2" fill="none" stroke="#8a93a3" stroke-width="1.9"/><path d="M8 10.5 V8 a4 4 0 0 1 8 0 v2.5" fill="none" stroke="#8a93a3" stroke-width="1.9"/></svg></span><span class="cap">Unlimited game reviews</span></li>
+            <li><span class="mk"><svg viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="9.5" rx="2" fill="none" stroke="#8a93a3" stroke-width="1.9"/><path d="M8 10.5 V8 a4 4 0 0 1 8 0 v2.5" fill="none" stroke="#8a93a3" stroke-width="1.9"/></svg></span><span class="cap">Stats, rating trends &amp; batch analysis</span></li>
+            <li><span class="mk"><svg viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="9.5" rx="2" fill="none" stroke="#8a93a3" stroke-width="1.9"/><path d="M8 10.5 V8 a4 4 0 0 1 8 0 v2.5" fill="none" stroke="#8a93a3" stroke-width="1.9"/></svg></span><span class="cap">Smart Bracket auto-set</span></li>
+          </ul>
+        </div>
         <div class="free-foot">
           <span class="fp">$0</span>
-          <span class="fn">You're on Free right now</span>
+          <span class="fn">Free forever</span>
         </div>
       </section>
 
       <!-- PRO -->
       <section class="col pro">
-        <div class="sheen" aria-hidden="true"></div>
-        <div class="col-head"><span class="crown">👑</span><span class="tier">Pro</span></div>
-        <div class="price-tag">Everything unlocked &mdash; from <b>$2.99</b></div>
+        <div class="col-head"><span class="tier">Pro</span></div>
+        <div class="price-tag">From <b>$2.99</b></div>
         <div class="everything">
-          <svg viewBox="0 0 24 24"><path d="M5 12.5 L10 17.5 L19 7" fill="none" stroke="#a6da84" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          Everything in Free &mdash; with no limits
+          <svg viewBox="0 0 24 24"><path d="M5 12.5 L10 17.5 L19 7" fill="none" stroke="#9ed17a" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Everything in Free, plus:
         </div>
         <ul class="flist">
-          <li><span class="mk"><svg viewBox="0 0 24 24"><path d="M5 12.5 L10 17.5 L19 7" fill="none" stroke="#f6c453" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="lt">Unlimited cheat-risk detection<span class="pill-un">Unlimited</span><span class="win">Screen every opponent &mdash; no 3-a-day cap.</span></span></li>
-          <li><span class="mk"><svg viewBox="0 0 24 24"><path d="M5 12.5 L10 17.5 L19 7" fill="none" stroke="#f6c453" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="lt">Unlimited game reviews<span class="pill-un">Unlimited</span><span class="win">On-device Stockfish. Nothing leaves your browser.</span></span></li>
-          <li><span class="mk"><svg viewBox="0 0 24 24"><path d="M5 12.5 L10 17.5 L19 7" fill="none" stroke="#f6c453" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="lt">Smart Bracket auto-set<span class="pill-un">Pro only</span><span class="win">Auto stop-loss &amp; target from your live rating.</span></span></li>
+          <!-- CHEAT RISK DETECTION — DISABLED (feature turned off; markup kept for reactivation). Restore this Pro-plan row with the Free row above and the pill/toggle in the extension. -->
+          <!-- <li><span class="mk"><svg viewBox="0 0 24 24"><path d="M5 12.5 L10 17.5 L19 7" fill="none" stroke="#f6c453" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="lt">Unlimited cheat-risk detection</span></li> -->
+          <li><span class="mk"><svg viewBox="0 0 24 24"><path d="M5 12.5 L10 17.5 L19 7" fill="none" stroke="#f6c453" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="lt">Unlimited game reviews</span></li>
+          <li><span class="mk"><svg viewBox="0 0 24 24"><path d="M5 12.5 L10 17.5 L19 7" fill="none" stroke="#f6c453" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="lt">Stats, rating trends &amp; batch analysis</span></li>
+          <li><span class="mk"><svg viewBox="0 0 24 24"><path d="M5 12.5 L10 17.5 L19 7" fill="none" stroke="#f6c453" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="lt">Smart Bracket auto-set</span></li>
         </ul>
         <div class="pro-buy">
-          <a class="buy monthly" href="${monthlyHref}">
-            <span class="bm">Start Monthly</span>
-            <span class="bs">$2.99 / month &middot; cancel anytime</span>
-          </a>
           <a class="buy lifetime" href="${lifetimeHref}">
-            <span class="bv">Best value</span>
             <span class="bm">Get Lifetime</span>
-            <span class="bs">$15 once &middot; yours forever</span>
+            <span class="bs">$15 once</span>
+          </a>
+          <a class="buy monthly" href="${monthlyHref}">
+            <span class="bm">Start 7-Day Free Trial</span>
+            <span class="bs">$0 today &middot; then $2.99 / month &middot; cancel anytime</span>
           </a>
         </div>
       </section>
@@ -589,10 +621,18 @@ async function handleCheckout(request, env, url) {
   };
 
   if (plan === 'monthly') {
+    // Keep this explicit even though Stripe currently defaults to `always`.
+    // A trial has $0 due today, so an accidental switch to `if_required` would
+    // otherwise let someone start without the card needed for automatic billing.
+    params.payment_method_collection = 'always';
     params['subscription_data[metadata][installId]'] = installId;
     params['subscription_data[metadata][plan]'] = plan;
-    const trialDays = envNumber(env, 'STRIPE_TRIAL_DAYS', 0);
-    if (trialDays > 0) params['subscription_data[trial_period_days]'] = trialDays;
+    const trialDays = envNumber(env, 'STRIPE_TRIAL_DAYS', 7);
+    if (trialDays > 0) {
+      params['subscription_data[trial_period_days]'] = trialDays;
+      params['subscription_data[trial_settings][end_behavior][missing_payment_method]'] = 'cancel';
+      params['custom_text[submit][message]'] = `Your card is required but will not be charged today. After ${trialDays} days, EloGuard Pro starts at $2.99/month unless you cancel. Cancel anytime.`;
+    }
   } else {
     params.customer_creation = 'always';
   }
@@ -669,33 +709,511 @@ async function handleCancelRenewal(request, env, url) {
   });
 
   const updated = await getInstallation(env, installId);
+  const wasTrial = subscription.status === 'trialing';
   return json({
     ok: true,
-    message: 'Renewal cancelled. Pro remains active until the end of the paid period.',
+    message: wasTrial
+      ? 'Trial cancelled. Pro remains active until the trial ends, and you will not be charged.'
+      : 'Renewal cancelled. Pro remains active until the end of the paid period.',
     ...publicEntitlement(updated)
   });
 }
 
 async function handleSuccess(env, url) {
   let provisioned = false;
+  const installId = url.searchParams.get('installId') || '';
   if (url.searchParams.get('session_id')) {
     provisioned = await provisionFromCheckoutSession(
       env,
       url.searchParams.get('session_id'),
-      url.searchParams.get('installId') || ''
+      installId
     );
   }
-  return html(`
-    <h1>${provisioned ? 'EloGuard Pro is active' : 'Payment not verified yet'}</h1>
-    <p>${provisioned ? 'Your purchase was verified.' : 'If you just paid, return to the extension popup and press Refresh in a few seconds.'}</p>
-    <p>Return to the extension popup and press Refresh.</p>
-  `);
+  const entitlement = isValidInstallId(installId) ? await getInstallation(env, installId) : null;
+  const confirmed = provisioned || entitlement?.plan === 'pro';
+  const status = confirmed ? entitlement?.status || 'active' : 'pending';
+  return new Response(successPageHtml(status), {
+    status: 200,
+    headers: { 'content-type': 'text/html; charset=utf-8' }
+  });
+}
+
+function successPageHtml(status) {
+  const trialing = status === 'trialing';
+  const lifetime = status === 'lifetime';
+  const pending = status === 'pending';
+  const title = trialing
+    ? 'Your EloGuard Pro trial is active'
+    : lifetime
+      ? 'EloGuard Pro is yours'
+      : pending
+        ? 'Checkout not verified yet'
+        : 'EloGuard Pro is active';
+  const description = trialing
+    ? 'Your card was saved, but you were not charged today. Your $2.99/month subscription starts after seven days unless you cancel.'
+    : lifetime
+      ? 'Your purchase was verified and lifetime access is now active.'
+      : pending
+        ? 'If you just completed checkout, give it a few seconds and refresh EloGuard.'
+        : 'Your purchase was verified and your Pro subscription is now active.';
+  const plan = trialing
+    ? '7-day free trial'
+    : lifetime
+      ? 'Lifetime access'
+      : pending
+        ? 'Confirmation pending'
+        : '$2.99 / month';
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#1e1d1b">
+<title>${title}</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #262522;
+    --bg-deep: #1e1d1b;
+    --surface: #2f2d29;
+    --line: rgba(255,255,255,.10);
+    --text: #f3f1ec;
+    --muted: #b7b2a8;
+    --dim: #8a857c;
+    --green: #81b64c;
+    --green-bright: #a3d160;
+    --green-soft: rgba(129,182,76,.15);
+    --gold: #f6c453;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    --ease: cubic-bezier(.22,.61,.36,1);
+  }
+  * { box-sizing: border-box; }
+  html, body { min-height: 100%; }
+  body {
+    margin: 0;
+    min-height: 100svh;
+    display: grid;
+    place-items: center;
+    overflow-x: hidden;
+    padding: 32px 22px;
+    color: var(--text);
+    font-family: var(--font);
+    -webkit-font-smoothing: antialiased;
+    background:
+      radial-gradient(circle at 50% 34%, rgba(129,182,76,.10), transparent 36rem),
+      var(--bg-deep);
+  }
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    opacity: .32;
+    background-image:
+      linear-gradient(45deg, rgba(255,255,255,.022) 25%, transparent 25%, transparent 75%, rgba(255,255,255,.022) 75%),
+      linear-gradient(45deg, rgba(255,255,255,.022) 25%, transparent 25%, transparent 75%, rgba(255,255,255,.022) 75%);
+    background-position: 0 0, 42px 42px;
+    background-size: 84px 84px;
+    -webkit-mask-image: radial-gradient(circle at center, #000 0, transparent 74%);
+    mask-image: radial-gradient(circle at center, #000 0, transparent 74%);
+  }
+  .page {
+    position: relative;
+    width: min(100%, 640px);
+    text-align: center;
+  }
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 44px;
+    color: var(--text);
+    font-size: 19px;
+    font-weight: 800;
+    letter-spacing: -.3px;
+    animation: rise .5s var(--ease) both;
+  }
+  .brand svg { width: 32px; height: 36px; filter: drop-shadow(0 4px 9px rgba(0,0,0,.25)); }
+  .brand b { color: var(--green-bright); }
+  .status-mark {
+    position: relative;
+    width: 76px;
+    height: 76px;
+    margin: 0 auto 28px;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(129,182,76,.38);
+    border-radius: 22px;
+    color: var(--green-bright);
+    background: linear-gradient(145deg, rgba(129,182,76,.20), rgba(129,182,76,.07));
+    box-shadow: 0 18px 44px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.08);
+    animation: mark-in .62s var(--ease) .08s both;
+  }
+  .status-mark::after {
+    content: "";
+    position: absolute;
+    inset: -16px;
+    z-index: -1;
+    border-radius: 32px;
+    background: radial-gradient(circle, rgba(129,182,76,.22), transparent 68%);
+    animation: breathe 3.2s ease-in-out infinite;
+  }
+  .status-mark svg { width: 36px; height: 36px; }
+  .status-mark path {
+    stroke-dasharray: 32;
+    stroke-dashoffset: 32;
+    animation: draw .45s ease .55s forwards;
+  }
+  body.pending .status-mark {
+    color: var(--gold);
+    border-color: rgba(246,196,83,.32);
+    background: linear-gradient(145deg, rgba(246,196,83,.17), rgba(246,196,83,.05));
+  }
+  body.pending .status-mark::after { background: radial-gradient(circle, rgba(246,196,83,.17), transparent 68%); }
+  body.pending .status-mark path { stroke-dasharray: none; stroke-dashoffset: 0; animation: none; }
+  .eyebrow {
+    margin: 0 0 12px;
+    color: ${pending ? 'var(--gold)' : 'var(--green-bright)'};
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 1.8px;
+    text-transform: uppercase;
+    animation: rise .5s var(--ease) .16s both;
+  }
+  h1 {
+    max-width: 580px;
+    margin: 0 auto;
+    font-size: clamp(34px, 6.2vw, 54px);
+    line-height: 1.05;
+    letter-spacing: -2px;
+    animation: rise .55s var(--ease) .22s both;
+  }
+  .description {
+    max-width: 520px;
+    margin: 20px auto 0;
+    color: var(--muted);
+    font-size: 16px;
+    line-height: 1.65;
+    animation: rise .55s var(--ease) .28s both;
+  }
+  .plan {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 22px;
+    padding: 8px 12px;
+    border: 1px solid ${pending ? 'rgba(246,196,83,.28)' : 'rgba(129,182,76,.28)'};
+    border-radius: 999px;
+    color: ${pending ? 'var(--gold)' : 'var(--green-bright)'};
+    background: ${pending ? 'rgba(246,196,83,.08)' : 'var(--green-soft)'};
+    font-size: 12px;
+    font-weight: 750;
+    animation: rise .55s var(--ease) .34s both;
+  }
+  .plan::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 12px currentColor; }
+  .next-step {
+    max-width: 520px;
+    margin: 42px auto 0;
+    padding-top: 24px;
+    display: grid;
+    grid-template-columns: 34px 1fr;
+    gap: 14px;
+    text-align: left;
+    border-top: 1px solid var(--line);
+    animation: rise .55s var(--ease) .4s both;
+  }
+  .step-number {
+    width: 28px;
+    height: 28px;
+    display: grid;
+    place-items: center;
+    border-radius: 8px;
+    color: #17210f;
+    background: var(--green);
+    font-size: 12px;
+    font-weight: 900;
+    box-shadow: 0 5px 14px rgba(129,182,76,.18);
+  }
+  .next-step strong { display: block; margin: 1px 0 5px; font-size: 14px; }
+  .next-step span:last-child { color: var(--dim); font-size: 13px; line-height: 1.55; }
+  .close-note {
+    margin: 26px 0 0;
+    color: var(--dim);
+    font-size: 12px;
+    animation: rise .55s var(--ease) .46s both;
+  }
+  @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes mark-in { from { opacity: 0; transform: translateY(10px) scale(.92); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  @keyframes breathe { 0%,100% { opacity: .6; transform: scale(.92); } 50% { opacity: 1; transform: scale(1.08); } }
+  @media (max-width: 520px) {
+    body { padding: 24px 18px; }
+    .brand { margin-bottom: 36px; }
+    h1 { font-size: 36px; letter-spacing: -1.4px; }
+    .description { font-size: 15px; }
+    .next-step { margin-top: 34px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+    .status-mark path { stroke-dashoffset: 0; }
+  }
+</style>
+</head>
+<body class="${pending ? 'pending' : 'confirmed'}">
+  <main class="page">
+    <div class="brand" aria-label="EloGuard">
+      <svg viewBox="0 0 48 54" aria-hidden="true">
+        <path d="M24 2 44 9v16c0 13-8 22-20 27C12 47 4 38 4 25V9L24 2Z" fill="#254f35" stroke="#a3d160" stroke-width="3"/>
+        <path d="M18 15h4v4h4v-4h4v4h4v5l-3 3v11H17V27l-3-3v-5h4v-4Z" fill="#d2efbd"/>
+      </svg>
+      <span>Elo<b>Guard</b></span>
+    </div>
+
+    <div class="status-mark" aria-hidden="true">
+      ${pending
+        ? '<svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="14" fill="none" stroke="currentColor" stroke-width="3"/><path d="M20 12v9l6 4" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+        : '<svg viewBox="0 0 40 40"><path d="m10 21 7 7 14-16" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>'}
+    </div>
+
+    <p class="eyebrow">${pending ? 'EloGuard checkout' : 'EloGuard Pro'}</p>
+    <h1>${title}</h1>
+    <p class="description">${description}</p>
+    <div class="plan">${plan}</div>
+
+    <div class="next-step">
+      <span class="step-number">1</span>
+      <span>
+        <strong>${pending ? 'Refresh in a few seconds' : 'Activate Pro in the extension'}</strong>
+        <span>Open the EloGuard popup and press <b>Refresh</b>. You can then close this tab.</span>
+      </span>
+    </div>
+    <p class="close-note">Payment handled securely by Stripe.</p>
+  </main>
+</body>
+</html>`;
 }
 
 async function handleEntitlement(env, url) {
   const installId = url.searchParams.get('installId') || '';
   if (!isValidInstallId(installId)) return json({ error: 'Missing or invalid installId' }, 400);
   return json(publicEntitlement(await getInstallation(env, installId)));
+}
+
+// Look the buyer up in Stripe by email and return the strongest restorable
+// entitlement found, or null. Rank: lifetime 4 > active 3 > past_due 2 >
+// trialing 1. past_due is included so subscribers in the dunning grace window
+// (which deriveEntitlement still treats as Pro) can restore. This only reads
+// Stripe/D1 — it never grants or rewrites any routing table.
+async function findBestRestorable(env, email) {
+  const search = await stripeRequest(env, '/customers', { params: { email, limit: 10 } });
+  const customers = Array.isArray(search?.data) ? search.data : [];
+
+  let best = null;
+
+  for (const customer of customers) {
+    if (!customer?.id || customer.deleted) continue;
+    const customerId = customer.id;
+    const custEmail = customer.email || email;
+
+    // Existing stored record (this is how the worker records a lifetime purchase).
+    const mapping = await env.DB.prepare('SELECT install_id FROM customer_installations WHERE customer_id = ?')
+      .bind(customerId)
+      .first();
+    if (mapping?.install_id) {
+      const record = await getInstallation(env, mapping.install_id);
+      if (record && record.plan === 'pro' && record.status === 'lifetime' && (!best || best.rank < 4)) {
+        best = {
+          rank: 4,
+          kind: 'lifetime',
+          customerId,
+          customerEmail: record.customer_email || custEmail,
+          paymentIntentId: record.stripe_payment_intent_id || ''
+        };
+      }
+    }
+
+    if (best && best.rank >= 4) continue;
+
+    // Authoritative subscription state from Stripe.
+    const subs = await stripeRequest(env, '/subscriptions', { params: { customer: customerId, status: 'all', limit: 10 } });
+    const list = Array.isArray(subs?.data) ? subs.data : [];
+    for (const sub of list) {
+      const rank = sub.status === 'active' ? 3 : sub.status === 'past_due' ? 2 : sub.status === 'trialing' ? 1 : 0;
+      if (rank > 0 && (!best || best.rank < rank)) {
+        best = { rank, kind: 'subscription', customerId, customerEmail: custEmail, subscription: sub };
+      }
+    }
+  }
+
+  return best;
+}
+
+// Apply a restorable entitlement to installId. This is the only place the
+// restore flow writes routing tables, and it runs only after email ownership
+// has been proven in handleRestoreVerify.
+async function grantRestorable(env, installId, best) {
+  if (best.kind === 'lifetime') {
+    await saveLifetimeEntitlement(env, {
+      installId,
+      customerId: best.customerId,
+      paymentIntentId: best.paymentIntentId,
+      customerEmail: best.customerEmail
+    });
+    return;
+  }
+  const sub = best.subscription;
+  await saveSubscriptionEntitlement(env, {
+    installId,
+    customerId: best.customerId,
+    subscriptionId: sub.id || '',
+    status: sub.status,
+    currentPeriodEndSeconds: sub.current_period_end,
+    customerEmail: best.customerEmail,
+    cancelAtPeriodEnd: Boolean(sub.cancel_at_period_end),
+    cancelAtSeconds: sub.cancel_at || (sub.cancel_at_period_end ? sub.current_period_end : 0)
+  });
+}
+
+async function sha256Hex(input) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+// 6-digit numeric code from a CSPRNG (never Math.random). The tiny modulo bias
+// across a uint32 is irrelevant against a 5-attempt lockout on a 10-minute code.
+function generateRestoreCode() {
+  const buf = new Uint32Array(1);
+  crypto.getRandomValues(buf);
+  return String(buf[0] % 1000000).padStart(6, '0');
+}
+
+// Deliver the restore code via the Resend HTTP API. Returns true on a 2xx.
+async function sendRestoreCodeEmail(env, email, code) {
+  try {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${env.RESEND_API_KEY}`,
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        from: env.RESTORE_EMAIL_FROM,
+        to: [email],
+        subject: 'Your EloGuard Pro restore code',
+        text: `Your EloGuard Pro restore code is ${code}. It expires in 10 minutes.\n\nIf you did not request this, you can ignore this email.`
+      })
+    });
+    return response.ok;
+  } catch (_) {
+    return false;
+  }
+}
+
+// Step 1 of restore: prove the caller controls the paying email before granting
+// anything. Looks the buyer up in Stripe, and if a restorable entitlement
+// exists, emails a one-time code. This endpoint NEVER grants an entitlement and
+// NEVER writes customer_installations / subscription_installations — that only
+// happens in /restore/verify once the code is confirmed.
+async function handleRestore(request, env) {
+  if (request.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
+
+  const body = await readJsonBody(request);
+  const email = (typeof body.email === 'string' ? body.email : '').trim();
+  const installId = typeof body.installId === 'string' ? body.installId : '';
+  if (!isValidEmail(email)) return json({ ok: false, error: 'invalid_email' }, 400);
+  if (!isValidInstallId(installId)) return json({ ok: false, error: 'invalid_install' }, 400);
+
+  const normEmail = email.toLowerCase();
+
+  // Throttle code-send abuse per IP and per email (5 / hour each).
+  if (await rateLimited(env, request, 'restore-send-ip', { limit: 5, windowSeconds: 3600 })
+    || await rateLimited(env, request, `restore-send-email:${normEmail}`, { limit: 5, windowSeconds: 3600 })) {
+    return json({ ok: false, error: 'rate_limited' }, 429);
+  }
+
+  const best = await findBestRestorable(env, email);
+  if (!best) return json({ ok: false, error: 'not_found' }, 404);
+
+  // No email transport configured means we cannot prove ownership, so we grant
+  // nothing rather than falling back to the old trust-the-email behaviour.
+  if (!env.RESEND_API_KEY) return json({ ok: false, error: 'restore_unavailable' }, 503);
+
+  const code = generateRestoreCode();
+  const codeHash = await sha256Hex(code);
+  const now = Date.now();
+  const expiresAt = now + 10 * 60 * 1000;
+
+  await env.DB.prepare(`
+    INSERT OR REPLACE INTO restore_codes (email, install_id, code_hash, expires_at, attempts, created_at)
+    VALUES (?, ?, ?, ?, 0, ?)
+  `).bind(normEmail, installId, codeHash, expiresAt, now).run();
+
+  const sent = await sendRestoreCodeEmail(env, email, code);
+  if (!sent) {
+    await env.DB.prepare('DELETE FROM restore_codes WHERE email = ? AND install_id = ?')
+      .bind(normEmail, installId)
+      .run();
+    return json({ ok: false, error: 'send_failed' }, 502);
+  }
+
+  return json({ ok: true, status: 'code_sent', expiresInSeconds: 600 });
+}
+
+// Step 2 of restore: confirm the one-time code and only then grant the
+// entitlement. Re-derives the best restorable from fresh Stripe/D1 state so a
+// code minted moments ago cannot grant a since-revoked entitlement.
+async function handleRestoreVerify(request, env) {
+  if (request.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
+
+  const body = await readJsonBody(request);
+  const email = (typeof body.email === 'string' ? body.email : '').trim();
+  const installId = typeof body.installId === 'string' ? body.installId : '';
+  const code = typeof body.code === 'string' ? body.code.trim() : '';
+  if (!isValidEmail(email)) return json({ ok: false, error: 'invalid_email' }, 400);
+  if (!isValidInstallId(installId)) return json({ ok: false, error: 'invalid_install' }, 400);
+  if (!/^\d{6}$/.test(code)) return json({ ok: false, error: 'invalid_code' }, 400);
+
+  const normEmail = email.toLowerCase();
+
+  if (await rateLimited(env, request, 'restore-verify-ip', { limit: 20, windowSeconds: 3600 })) {
+    return json({ ok: false, error: 'rate_limited' }, 429);
+  }
+
+  const row = await env.DB.prepare('SELECT * FROM restore_codes WHERE email = ? AND install_id = ?')
+    .bind(normEmail, installId)
+    .first();
+  const now = Date.now();
+  if (!row || Number(row.expires_at) < now) {
+    return json({ ok: false, error: 'code_expired' }, 400);
+  }
+
+  // Count this attempt before comparing, so a brute-force run is bounded even if
+  // it crashes or the comparison throws.
+  await env.DB.prepare('UPDATE restore_codes SET attempts = attempts + 1 WHERE email = ? AND install_id = ?')
+    .bind(normEmail, installId)
+    .run();
+  if (Number(row.attempts) + 1 > 5) {
+    await env.DB.prepare('DELETE FROM restore_codes WHERE email = ? AND install_id = ?')
+      .bind(normEmail, installId)
+      .run();
+    return json({ ok: false, error: 'too_many_attempts' }, 429);
+  }
+
+  const submittedHash = await sha256Hex(code);
+  if (!timingSafeEqualHex(submittedHash, String(row.code_hash || ''))) {
+    return json({ ok: false, error: 'invalid_code' }, 400);
+  }
+
+  await env.DB.prepare('DELETE FROM restore_codes WHERE email = ? AND install_id = ?')
+    .bind(normEmail, installId)
+    .run();
+
+  const best = await findBestRestorable(env, email);
+  if (!best) return json({ ok: false, error: 'not_found' }, 404);
+
+  await grantRestorable(env, installId, best);
+  return json({ ok: true, entitlement: publicEntitlement(await getInstallation(env, installId)) });
 }
 
 function parseStripeSignature(header) {
@@ -745,6 +1263,27 @@ async function handleWebhook(request, env) {
 
   const event = JSON.parse(rawBody);
 
+  // Idempotency: Stripe retries webhooks and may deliver out of order. Skip any
+  // event id we have already processed (7-day TTL covers Stripe's retry window).
+  const eventKey = event.id ? `stripe_event:${event.id}` : '';
+  if (env.KV && eventKey) {
+    try {
+      if (await env.KV.get(eventKey)) return json({ received: true, duplicate: true });
+    } catch (_) { /* fail open */ }
+  }
+
+  await processWebhookEvent(env, event);
+
+  if (env.KV && eventKey) {
+    try {
+      await env.KV.put(eventKey, '1', { expirationTtl: 7 * 24 * 60 * 60 });
+    } catch (_) { /* best effort */ }
+  }
+
+  return json({ received: true });
+}
+
+async function processWebhookEvent(env, event) {
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
     const installId = session.client_reference_id || session.metadata?.installId || '';
@@ -756,28 +1295,35 @@ async function handleWebhook(request, env) {
         paymentIntentId: session.payment_intent || '',
         customerEmail: session.customer_details?.email || await customerEmail(env, session.customer)
       });
-      return json({ received: true });
+      return;
     }
 
     const subscription = session.subscription
       ? await stripeRequest(env, `/subscriptions/${encodeURIComponent(session.subscription)}`)
       : null;
-    await saveSubscriptionEntitlement(env, {
-      installId,
-      customerId: session.customer || '',
-      subscriptionId: session.subscription || '',
-      status: subscription?.status || session.payment_status,
-      currentPeriodEndSeconds: subscription?.current_period_end,
-      customerEmail: session.customer_details?.email || await customerEmail(env, session.customer),
-      cancelAtPeriodEnd: Boolean(subscription?.cancel_at_period_end),
-      cancelAtSeconds: subscription?.cancel_at || (subscription?.cancel_at_period_end ? subscription?.current_period_end : 0)
-    });
+    const status = subscription?.status || session.payment_status;
+    // Only provision when the derived status is a real Pro status (mirrors
+    // provisionFromCheckoutSession); never persist e.g. 'incomplete'/'paid'.
+    if (session.subscription && PRO_STATUSES.has(status)) {
+      await saveSubscriptionEntitlement(env, {
+        installId,
+        customerId: session.customer || '',
+        subscriptionId: session.subscription || '',
+        status,
+        currentPeriodEndSeconds: subscription?.current_period_end,
+        customerEmail: session.customer_details?.email || await customerEmail(env, session.customer),
+        cancelAtPeriodEnd: Boolean(subscription?.cancel_at_period_end),
+        cancelAtSeconds: subscription?.cancel_at || (subscription?.cancel_at_period_end ? subscription?.current_period_end : 0)
+      });
+    }
+    return;
   }
 
   if (event.type === 'customer.subscription.created'
     || event.type === 'customer.subscription.updated'
     || event.type === 'customer.subscription.deleted') {
     const subscription = event.data.object;
+    if (await subscriptionStale(env, subscription.id, event.created)) return;
     const installId = await installIdForSubscription(env, subscription);
     await saveSubscriptionEntitlement(env, {
       installId,
@@ -789,11 +1335,14 @@ async function handleWebhook(request, env) {
       cancelAtPeriodEnd: Boolean(subscription.cancel_at_period_end),
       cancelAtSeconds: subscription.cancel_at || (subscription.cancel_at_period_end ? subscription.current_period_end : 0)
     });
+    await markSubscriptionTs(env, subscription.id, event.created);
+    return;
   }
 
   if (event.type === 'invoice.payment_failed') {
     const invoice = event.data.object;
     if (invoice.subscription) {
+      if (await subscriptionStale(env, invoice.subscription, event.created)) return;
       const subscription = await stripeRequest(env, `/subscriptions/${encodeURIComponent(invoice.subscription)}`);
       const installId = await installIdForSubscription(env, subscription);
       await saveSubscriptionEntitlement(env, {
@@ -806,10 +1355,47 @@ async function handleWebhook(request, env) {
         cancelAtPeriodEnd: Boolean(subscription.cancel_at_period_end),
         cancelAtSeconds: subscription.cancel_at || (subscription.cancel_at_period_end ? subscription.current_period_end : 0)
       });
+      await markSubscriptionTs(env, invoice.subscription, event.created);
     }
+    return;
   }
 
-  return json({ received: true });
+  // Full refund: revoke the affected entitlement. Partial refunds are ignored.
+  if (event.type === 'charge.refunded') {
+    const charge = event.data.object;
+    const fullyRefunded = charge.refunded === true
+      || (Number(charge.amount_refunded) > 0 && Number(charge.amount_refunded) >= Number(charge.amount));
+    if (fullyRefunded) {
+      const paymentIntentId = typeof charge.payment_intent === 'string'
+        ? charge.payment_intent
+        : charge.payment_intent?.id || '';
+      const installId = await installIdForCharge(env, { paymentIntentId, customerId: charge.customer || '' });
+      if (installId) await revokeEntitlement(env, installId);
+    }
+    return;
+  }
+
+  // Chargeback opened: revoke immediately (works for lifetime and subscription
+  // payments). Related subscription.updated events will also arrive separately.
+  if (event.type === 'charge.dispute.created') {
+    const dispute = event.data.object;
+    let paymentIntentId = typeof dispute.payment_intent === 'string'
+      ? dispute.payment_intent
+      : dispute.payment_intent?.id || '';
+    let installId = await installIdForCharge(env, { paymentIntentId, customerId: '' });
+    if (!installId && dispute.charge) {
+      const chargeId = typeof dispute.charge === 'string' ? dispute.charge : dispute.charge?.id || '';
+      if (chargeId) {
+        try {
+          const charge = await stripeRequest(env, `/charges/${encodeURIComponent(chargeId)}`);
+          paymentIntentId = paymentIntentId
+            || (typeof charge.payment_intent === 'string' ? charge.payment_intent : charge.payment_intent?.id || '');
+          installId = await installIdForCharge(env, { paymentIntentId, customerId: charge.customer || '' });
+        } catch (_) { /* fall through */ }
+      }
+    }
+    if (installId) await revokeEntitlement(env, installId);
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -819,7 +1405,7 @@ async function handleWebhook(request, env) {
 // NOTE: this is a good-faith draft written from the extension's behaviour, not
 // legal advice — have it reviewed before relying on it in a dispute.
 // -----------------------------------------------------------------------------
-const LEGAL_UPDATED = '9 July 2026';
+const LEGAL_UPDATED = '10 July 2026';
 const LEGAL_CONTACT = 'loxtyrrell03@gmail.com';
 const LEGAL_HOME = 'https://eloguard.app';
 
@@ -1179,10 +1765,10 @@ function termsDoc() {
 
       <section id="pro">
         <h2><span class="num">8</span> EloGuard Pro: plans, pricing &amp; billing</h2>
-        <p>EloGuard Pro is offered as a <b>Monthly</b> subscription of $2.99 per month, or a one-time <b>Lifetime</b> purchase of $15. Prices are in US dollars and exclude any taxes; taxes, currency conversion, or card fees may be added at checkout or by your payment provider. All payments are processed by Stripe.</p>
+        <p>EloGuard Pro is offered as a <b>Monthly</b> subscription of $2.99 per month, with a seven-day free trial for new subscriptions, or a one-time <b>Lifetime</b> purchase of $15. The Monthly trial requires a payment method, but you are not charged when it starts. Prices are in US dollars and exclude any taxes; taxes, currency conversion, or card fees may be added at checkout or by your payment provider. All payments are processed by Stripe.</p>
         <ul>
-          <li>The Monthly plan <b>renews automatically</b> at the then-current price until you cancel.</li>
-          <li>You can <b>cancel at any time</b> from the Stripe billing portal. When you cancel, you will not be charged again and your Pro access continues until the end of the period you have already paid for.</li>
+          <li>Unless you cancel first, the Monthly plan starts charging $2.99 when the seven-day trial ends and then <b>renews automatically</b> each month at the then-current price.</li>
+          <li>You can <b>cancel at any time</b> in EloGuard or from the Stripe billing portal. If you cancel during the trial, you will not be charged and Pro continues until the trial ends. If you cancel later, you will not be charged again and Pro continues until the end of the period you have already paid for.</li>
           <li>If a renewal payment fails, we may allow a short grace period (up to 14 days) during which Pro stays active while payment is retried, after which Pro access ends.</li>
           <li>We may change Pro pricing or the make-up of the free and Pro tiers in the future; changes will not affect a subscription period you have already paid for.</li>
         </ul>
@@ -1267,9 +1853,23 @@ function errorResponse(url, err) {
   `, 500);
 }
 
+// /restore and /restore/verify do their own finer-grained (per-IP + per-email)
+// rate limiting inside their handlers, so they are not in this coarse set.
+const STRIPE_RATE_LIMITED_PATHS = new Set(['/checkout', '/portal', '/api/cancel-renewal']);
+
 async function routeRequest(request, env, url) {
   if (url.pathname === '/health') return json({ ok: true });
   if (url.pathname === '/api/entitlement') return handleEntitlement(env, url);
+
+  // Coarse per-IP throttle on endpoints that call Stripe. The webhook is exempt
+  // (it is Stripe-signed and must always be accepted).
+  if (STRIPE_RATE_LIMITED_PATHS.has(url.pathname)
+    && await rateLimited(env, request, url.pathname)) {
+    return json({ error: 'Too many requests. Please wait a minute and try again.' }, 429);
+  }
+
+  if (url.pathname === '/restore') return handleRestore(request, env);
+  if (url.pathname === '/restore/verify') return handleRestoreVerify(request, env);
   if (url.pathname === '/api/cancel-renewal') return handleCancelRenewal(request, env, url);
   if (url.pathname === '/checkout') return handleCheckout(request, env, url);
   if (url.pathname === '/portal') return handlePortal(env, url);

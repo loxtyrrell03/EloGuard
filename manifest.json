@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "EloGuard: Chess Tilt Protection",
-  "version": "2.0.1",
-  "description": "Cheat-risk checks, local game reviews, and stop-loss rating locks for calmer Chess.com sessions.",
+  "version": "2.1.8",
+  "description": "Local Stockfish game reviews and stop-loss rating locks for calmer, less tilted Chess.com sessions.",
   "permissions": ["storage", "activeTab", "scripting"],
     "host_permissions": [
         "*://*.chess.com/*",
@@ -24,12 +24,12 @@
     {
       "matches": ["*://*.chess.com/*"],
       "css": ["styles.css"],
-      "js": ["lib/chess.js", "lib/book.js", "lib/review-core.js", "lib/entitlements.js", "content.js"]
+      "js": ["lib/chess.js", "lib/book.js", "lib/review-core.js", "lib/entitlements.js", "lib/session-bracket.js", "content.js"]
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["engine/*"],
+      "resources": ["engine/*", "owner-pro.local"],
       "matches": ["*://*.chess.com/*"]
     }
   ]

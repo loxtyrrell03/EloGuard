@@ -1,5 +1,5 @@
 (() => {
-    const CONTENT_VERSION = '2.1.5-pro';
+    const CONTENT_VERSION = '2.1.5-pro-session-bracket-focus-button-v3';
     if (window.__ELOGUARD_CONTENT_VERSION__ === CONTENT_VERSION) {
         window.dispatchEvent(new CustomEvent('eloGuard:reloadSettings'));
         return;
@@ -20,10 +20,18 @@
     let RANDOM_STRING_UNLOCK = false;
     let RANDOM_STRING_LENGTH = 10;
     let LOCKOUT_DURATION = 0;
+    let SMART_TRAILING = true;
+    let SMART_TRAILING_DIST = 0;
+    let GOAL_EXTENSION_USED = false;
+    let GOAL_EXTENSION_STATE_READY = false;
+    let goalChoiceDismissed = false;
     let ANONYMIZE_OPPONENT = false;
     let ANONYMIZE_SELF = false;
     let ENHANCED_FOCUS_MODE = false;
-    let SHOW_RISK_PROFILE_PILL = true;
+    // CHEAT RISK DETECTION — DISABLED (feature turned off; code kept for reactivation).
+    // Forced false so the opponent cheat-risk pill never renders. See loadSettings()
+    // where the storage-driven assignment is commented out. Was: true
+    let SHOW_RISK_PROFILE_PILL = false;
     let LAST_ANONYMIZE_USERNAME = "";
     let LAST_RAW_DOCUMENT_TITLE = "";
     const ANONYMIZE_STYLE_ID = 'elo-guard-anonymize-opponent-style';
@@ -60,26 +68,9 @@
         lastBoardFlipAt: 0
     };
 
-    // Enhanced-focus toggle button: top-right by default, user-positioned after drag.
-    // ENHANCED_FOCUS_TOGGLE_POS is null while using the stylesheet default, and becomes
-    // { left, top } (viewport px) once the user drags it.
+    // Enhanced-focus toggle button: always pinned to the top-right.
     const ENHANCED_FOCUS_TOGGLE_LABEL_CLASS = 'elo-guard-focus-toggle-label';
-    const ENHANCED_FOCUS_TOGGLE_MIN_CLASS = 'elo-guard-focus-toggle-min';
-    const ENHANCED_FOCUS_TOGGLE_MINIMIZED_CLASS = 'elo-guard-focus-toggle-minimized';
-    const ENHANCED_FOCUS_TOGGLE_DRAGGING_CLASS = 'elo-guard-focus-toggle-dragging';
-    const ENHANCED_FOCUS_TOGGLE_EDGE_MARGIN = 6;
-    let ENHANCED_FOCUS_TOGGLE_POS = null;
-    let ENHANCED_FOCUS_TOGGLE_MINIMIZED = false;
-    const ENHANCED_FOCUS_TOGGLE_DRAG = {
-        active: false,
-        moved: false,
-        pressedMinimize: false,
-        startX: 0,
-        startY: 0,
-        originLeft: 0,
-        originTop: 0,
-        pointerId: null
-    };
+    const ENHANCED_FOCUS_TOGGLE_CONTROL_VERSION = '3';
 
     let consecutiveLosses = 0;
     let lockoutTimerId = null;
@@ -99,6 +90,11 @@
     const LOSS_STREAK_KEY_PREFIX = 'eloGuardLossStreak';
     const LAST_RATING_KEY_PREFIX = 'eloGuardLastRating';
     const MATCHUP_FEEDBACK_KEY_PREFIX = 'eloGuardMatchupFeedback';
+    const SESSION_PEAK_KEY_PREFIX = 'eloGuardSessionPeak';
+    const GOAL_EXTENSION_KEY_PREFIX = 'smartGoalExtension';
+    const SESSION_PEAK_MAX_AGE_MS = 12 * 60 * 60 * 1000;
+    const GOAL_EXTENSION_PAUSE_SECONDS = 10;
+    const GOAL_CHOICE_ID = 'elo-guard-goal-choice';
     const MATCHUP_FEEDBACK_MAX_ENTRIES = 250;
     const MATCHUP_FEEDBACK_RECENT_GAME_WINDOW_SECONDS = 45 * 60;
     const LOCKOUT_END_KEY = 'eloGuardLockoutEndTime';
@@ -295,42 +291,6 @@
         #elo-guard-enhanced-focus-toggle .elo-guard-focus-toggle-label {
             display: inline-block !important;
             white-space: nowrap !important;
-        }
-        #elo-guard-enhanced-focus-toggle .elo-guard-focus-toggle-min {
-            display: inline-flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            width: 16px !important;
-            height: 16px !important;
-            margin-right: -4px !important;
-            border-radius: 999px !important;
-            font: 700 15px/1 Arial, sans-serif !important;
-            color: rgba(245, 245, 245, 0.55) !important;
-            pointer-events: auto !important;
-        }
-        #elo-guard-enhanced-focus-toggle .elo-guard-focus-toggle-min:hover {
-            background: rgba(255, 255, 255, 0.14) !important;
-            color: #ffffff !important;
-        }
-        #elo-guard-enhanced-focus-toggle.elo-guard-focus-toggle-dragging {
-            cursor: grabbing !important;
-            user-select: none !important;
-            box-shadow: 0 10px 26px rgba(0, 0, 0, 0.42) !important;
-        }
-        #elo-guard-enhanced-focus-toggle.elo-guard-focus-toggle-minimized {
-            gap: 0 !important;
-            width: 30px !important;
-            min-width: 30px !important;
-            height: 30px !important;
-            min-height: 30px !important;
-            padding: 0 !important;
-        }
-        #elo-guard-enhanced-focus-toggle.elo-guard-focus-toggle-minimized .elo-guard-focus-toggle-label,
-        #elo-guard-enhanced-focus-toggle.elo-guard-focus-toggle-minimized .elo-guard-focus-toggle-min {
-            display: none !important;
-        }
-        body.elo-guard-enhanced-focus #elo-guard-enhanced-focus-toggle .elo-guard-focus-toggle-min {
-            display: none !important;
         }
         body.elo-guard-enhanced-focus header,
         body.elo-guard-enhanced-focus .site-header,
@@ -826,9 +786,16 @@
             ANONYMIZE_OPPONENT = data.anonymizeOpponent || false;
             ANONYMIZE_SELF = data.anonymizeSelf || false;
             ENHANCED_FOCUS_MODE = data.enhancedFocusMode || false;
-            ENHANCED_FOCUS_TOGGLE_MINIMIZED = data.enhancedFocusButtonMinimized || false;
-            setEnhancedFocusToggleStoredPosition(data.enhancedFocusButtonLeft, data.enhancedFocusButtonTop);
-            SHOW_RISK_PROFILE_PILL = data.showRiskProfilePill !== false;
+            // ===== CHEAT RISK DETECTION — DISABLED (feature turned off; code kept for reactivation) =====
+            // The opponent "cheat risk" pill is disabled. SHOW_RISK_PROFILE_PILL is forced false here
+            // so processOpponentLegitimacyDetector() early-returns and the badge never renders. All of
+            // the detection code (processOpponentLegitimacyDetector, evaluate/calculateOpponentLegitimacy,
+            // the render/position helpers, and the getCalibratedLegitimacyScore pipeline) is left intact.
+            // TO RE-ENABLE: restore the storage-driven line below, flip the `let SHOW_RISK_PROFILE_PILL`
+            // default back to true, and restore the popup toggle (#showRiskProfilePill) plus the Pro rows
+            // in popup.html and the billing checkout pages. Search "CHEAT RISK DETECTION — DISABLED".
+            // SHOW_RISK_PROFILE_PILL = data.showRiskProfilePill !== false;
+            SHOW_RISK_PROFILE_PILL = false;
 
             const stopKey = `stopLoss_${GAME_MODE}`;
             const targetKey = `targetRating_${GAME_MODE}`;
@@ -836,6 +803,9 @@
             STOP_LOSS = parseInt(data[stopKey]) || 0;
             TARGET_RATING = parseInt(data[targetKey]) || 0;
             STOP_LOSS_STREAK = parseInt(data[streakKey]) || 0;
+            SMART_TRAILING = data.smartTrailing !== false;
+            SMART_TRAILING_DIST = parseInt(data['smartTrailingDist_' + GAME_MODE]) || 0;
+            loadGoalExtensionState();
 
             applyZenMode();
             applyOpponentAnonymization();
@@ -872,18 +842,28 @@
     // Fast Poll to enforce locks
     setInterval(() => {
         if (GUARD_ACTIVE && activeLockState) {
-            lockOut(activeLockState.rating, activeLockState.type);
+            lockOut(activeLockState.rating, activeLockState.type, activeLockState);
         }
     }, 200);
 
     setInterval(checkForGameOver, 100);
-    
-    // Process chat constantly so we wrap text even if Zen Mode is off initially.
-    // This ensures that if you turn Zen Mode ON later, the text is already wrapped and ready to hide.
-    setInterval(() => { processChatForZen(); hideBoardRatingsForZen(); }, 500);
-    setInterval(processOpponentLegitimacyDetector, 2000);
-    setInterval(positionOpponentLegitimacyBadge, 500);
+
+    // Zen tagging tick. Two idle guards, both safe because a re-enable re-runs a full pass:
+    //  - Skip while the tab is hidden (purely cosmetic hide/wrap — nothing to see).
+    //  - Skip entirely when Zen (hide-ratings) is OFF. This drops the old "always wrap so
+    //    toggling is instant" behaviour, but applyZenMode() already fires an immediate
+    //    processChatForZen()/hideBoardRatingsForZen() pass the moment the setting flips on,
+    //    and this tick resumes on the very next interval — so correctness is preserved.
     setInterval(() => {
+        if (document.hidden || !ZEN_MODE) return;
+        processChatForZen();
+        hideBoardRatingsForZen();
+    }, 500);
+    setInterval(processOpponentLegitimacyDetector, 2000);
+    // Cosmetic badge placement — skip while the tab is hidden.
+    setInterval(() => { if (document.hidden) return; positionOpponentLegitimacyBadge(); }, 500);
+    setInterval(() => {
+        if (document.hidden) return; // cosmetic masks/toggle; nothing to render while hidden
         if (ENHANCED_FOCUS_MODE) {
             applyEnhancedFocusMode();
         } else {
@@ -893,14 +873,9 @@
         ensureEnhancedFocusToggle();
     }, 1000);
     setInterval(() => {
+        if (document.hidden) return;
         if (ENHANCED_FOCUS_MODE) syncEnhancedFocusCustomClocks();
     }, 250);
-
-    // Keep the focus toggle on-screen as the window resizes.
-    window.addEventListener('resize', () => {
-        const toggle = document.getElementById(ENHANCED_FOCUS_TOGGLE_ID);
-        if (toggle) positionEnhancedFocusToggle(toggle);
-    }, { passive: true });
 
     // --- LOGIC ---
 
@@ -1107,6 +1082,7 @@
                     }
                 } else if (status === 'error') {
                     unfreezeControls();
+                    notifyRatingCheckFailed();
                 }
             }
         } else {
@@ -1114,18 +1090,59 @@
         }
     }
 
+    // Non-intrusive indication that we couldn't verify the rating (timeout / network /
+    // stats missing). We fail OPEN — controls are already unfrozen above — so the user is
+    // never stuck; this just tells them limits weren't enforced for this game. No new
+    // notification framework: a console.warn, tooltips on the affected controls, and one
+    // self-removing inline text badge.
+    function notifyRatingCheckFailed() {
+        console.warn("🛡️ EloGuard: couldn't verify your rating (chess.com stats unavailable) — controls unlocked, limits not enforced this game.");
+
+        const message = "EloGuard couldn't verify your rating — limits not enforced this game.";
+        const selectors = getGameStartLockSelectors("cooldown");
+        const seen = new Set();
+        selectors.forEach(sel => {
+            document.querySelectorAll(sel).forEach(candidate => {
+                const el = normalizeLockTarget(candidate);
+                if (!el || seen.has(el)) return;
+                if (!shouldLockGameStartControl(el, "cooldown")) return;
+                seen.add(el);
+                el.setAttribute('title', message);
+            });
+        });
+
+        try {
+            if (!document.body) return;
+            let notice = document.getElementById('elo-guard-rating-notice');
+            if (!notice) {
+                notice = document.createElement('div');
+                notice.id = 'elo-guard-rating-notice';
+                notice.style.cssText = 'position:fixed;bottom:16px;right:16px;z-index:999999;'
+                    + 'max-width:280px;padding:10px 14px;border-radius:8px;'
+                    + 'background:#262626;color:#fff;border:1px solid #ff9800;'
+                    + 'font:13px/1.4 Arial,sans-serif;box-shadow:0 4px 14px rgba(0,0,0,0.4);';
+                document.body.appendChild(notice);
+            }
+            notice.textContent = '🛡️ ' + message;
+            clearTimeout(notice._eloTimer);
+            notice._eloTimer = setTimeout(() => notice.remove(), 6000);
+        } catch (e) { /* DOM not available */ }
+    }
+
     async function checkRating(preventUnlock = false) {
         if (!USERNAME || !GUARD_ACTIVE) return 'error';
 
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
         try {
-            const response = await fetch(`https://api.chess.com/pub/player/${USERNAME}/stats`);
+            const response = await fetch(`https://api.chess.com/pub/player/${USERNAME}/stats`, { signal: controller.signal });
             if (!response.ok) throw new Error('Network err');
             const data = await response.json();
 
             const modeData = data[`chess_${GAME_MODE}`];
             const currentRating = modeData?.last?.rating;
 
-            if (!currentRating) return 'error';
+            if (!Number.isFinite(currentRating)) return 'error';
 
             const previousRating = lastKnownRating;
             const ratingDiff = updateLossTracking(currentRating);
@@ -1148,9 +1165,24 @@
                 return 'locked';
             }
 
-            if (STOP_LOSS > 0 && currentRating <= STOP_LOSS) {
-                activeLockState = { type: "stop", rating: currentRating };
-                lockOut(currentRating, "stop");
+            // Trailing stop-loss (Pro). SMART_TRAILING_DIST is only ever written by
+            // the popup's Pro-gated path, so its presence implies Pro — no entitlement
+            // check needed here. It raises the effective floor toward the session peak
+            // so given-back gains lock the board.
+            let effectiveStop = STOP_LOSS;
+            let trailingPeak = null;
+            if (SMART_TRAILING && SMART_TRAILING_DIST > 0) {
+                const peak = await readSessionPeak(currentRating);
+                const trailingStop = peak - SMART_TRAILING_DIST;
+                if (trailingStop > effectiveStop) effectiveStop = trailingStop;
+                if (trailingStop > STOP_LOSS && currentRating <= trailingStop) trailingPeak = peak;
+            }
+
+            if (effectiveStop > 0 && currentRating <= effectiveStop) {
+                activeLockState = trailingPeak !== null
+                    ? { type: "stop", rating: currentRating, trailing: true, peak: trailingPeak }
+                    : { type: "stop", rating: currentRating };
+                lockOut(currentRating, "stop", activeLockState);
                 return 'locked';
             }
             else if (TARGET_RATING > 0 && currentRating >= TARGET_RATING) {
@@ -1167,16 +1199,141 @@
             }
         } catch (e) {
             return 'error';
+        } finally {
+            clearTimeout(timeoutId);
         }
+    }
+
+    function removeGoalChoice() {
+        const modal = document.getElementById(GOAL_CHOICE_ID);
+        if (!modal) return;
+        if (modal._eloCountdown) clearInterval(modal._eloCountdown);
+        modal.remove();
+    }
+
+    function continueAfterGoal(rating) {
+        if (!activeLockState || activeLockState.type !== 'win' || GOAL_EXTENSION_USED) return;
+        const engine = window.EloGuardSessionBracket;
+        if (!engine || typeof engine.computeGoalExtension !== 'function') return;
+
+        const effectiveFloor = SMART_TRAILING_DIST > 0
+            ? Math.max(STOP_LOSS, rating - SMART_TRAILING_DIST)
+            : STOP_LOSS;
+        const plan = engine.computeGoalExtension({
+            rating,
+            currentFloor: effectiveFloor,
+            currentCeiling: TARGET_RATING,
+            trailingDistance: SMART_TRAILING_DIST
+        });
+        const key = getGoalExtensionKey();
+
+        GOAL_EXTENSION_USED = true;
+        GOAL_EXTENSION_STATE_READY = true;
+        STOP_LOSS = plan.floor;
+        TARGET_RATING = plan.ceiling;
+        SMART_TRAILING_DIST = plan.trailingDistance;
+        activeLockState = null;
+        goalChoiceDismissed = false;
+        removeGoalChoice();
+
+        if (key) {
+            chrome.storage.local.set({
+                [key]: {
+                    used: true,
+                    floor: plan.floor,
+                    ceiling: plan.ceiling,
+                    extendedAt: Date.now()
+                }
+            });
+        }
+        chrome.storage.sync.set({
+            [`stopLoss_${GAME_MODE}`]: String(plan.floor),
+            [`targetRating_${GAME_MODE}`]: String(plan.ceiling),
+            [`smartTrailingDist_${GAME_MODE}`]: plan.trailingDistance
+        });
+        unlockButton();
+    }
+
+    function showGoalChoice(rating) {
+        // The extension belongs only to a Smart Bracket target. Floor/streak locks
+        // never call this path, and a second target hit is final for the session.
+        const engine = window.EloGuardSessionBracket;
+        if (!engine || typeof engine.shouldOfferGoalExtension !== 'function') return;
+        if (!engine.shouldOfferGoalExtension({
+            lockType: activeLockState?.type,
+            trailingDistance: SMART_TRAILING_DIST,
+            stateReady: GOAL_EXTENSION_STATE_READY,
+            used: GOAL_EXTENSION_USED,
+            dismissed: goalChoiceDismissed
+        })) return;
+        if (document.getElementById(GOAL_CHOICE_ID)) return;
+
+        const modal = document.createElement('section');
+        modal.id = GOAL_CHOICE_ID;
+        modal.className = 'elo-guard-goal-choice';
+        modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-modal', 'true');
+        modal.setAttribute('aria-labelledby', 'elo-guard-goal-choice-title');
+
+        const card = document.createElement('div');
+        card.className = 'elo-guard-goal-choice-card';
+        const eyebrow = document.createElement('div');
+        eyebrow.className = 'elo-guard-goal-choice-eyebrow';
+        eyebrow.textContent = 'TARGET REACHED';
+        const title = document.createElement('h2');
+        title.id = 'elo-guard-goal-choice-title';
+        title.textContent = `You banked the win at ${rating}`;
+        const copy = document.createElement('p');
+        copy.textContent = 'Ending here is the default. If you deliberately keep going, you get one smaller stretch target and a tighter floor.';
+        const actions = document.createElement('div');
+        actions.className = 'elo-guard-goal-choice-actions';
+        const done = document.createElement('button');
+        done.type = 'button';
+        done.className = 'elo-guard-goal-choice-done';
+        done.textContent = 'Done for now';
+        done.addEventListener('click', () => {
+            goalChoiceDismissed = true;
+            removeGoalChoice();
+        });
+        const extend = document.createElement('button');
+        extend.type = 'button';
+        extend.className = 'elo-guard-goal-choice-extend';
+        extend.disabled = true;
+
+        let remaining = GOAL_EXTENSION_PAUSE_SECONDS;
+        const renderCountdown = () => {
+            extend.textContent = remaining > 0 ? `Continue once (${remaining}s)` : 'Continue once';
+            extend.disabled = remaining > 0;
+        };
+        renderCountdown();
+        modal._eloCountdown = setInterval(() => {
+            remaining -= 1;
+            renderCountdown();
+            if (remaining <= 0) {
+                clearInterval(modal._eloCountdown);
+                modal._eloCountdown = null;
+            }
+        }, 1000);
+        extend.addEventListener('click', () => continueAfterGoal(rating));
+
+        actions.appendChild(done);
+        actions.appendChild(extend);
+        card.appendChild(eyebrow);
+        card.appendChild(title);
+        card.appendChild(copy);
+        card.appendChild(actions);
+        modal.appendChild(card);
+        document.body.appendChild(modal);
     }
 
     // --- LOCKING VISUALS ---
 
-    function lockOut(rating, type) {
+    function lockOut(rating, type, lockState) {
         if (!GUARD_ACTIVE) return;
 
         const isWin = type === "win";
         const isStreak = type === "streak";
+        const isTrailing = type === "stop" && lockState && lockState.trailing && Number.isFinite(lockState.peak);
         const titleText = isWin ? "🏆 GOAL" : "🛑 STOP";
         const fullTitle = isWin ? `🏆 GOAL HIT (${rating})` : `🛑 STOP`;
 
@@ -1186,6 +1343,9 @@
             subText = "Target Hit";
         } else if (isStreak) {
             subText = `${consecutiveLosses} losses in a row, take a break`;
+        } else if (isTrailing) {
+            const givenBack = Math.max(0, lockState.peak - rating);
+            subText = `You peaked at ${lockState.peak} this session and you've given back ${givenBack} points since. EloGuard is locking in the rest, come back fresh.`;
         } else {
             subText = "Stop Loss Hit";
         }
@@ -1200,6 +1360,9 @@
 
         lockButtonGeneric(fullTitle, subText, bgColor, type);
         lockHomeScreen(titleText, subText, bgColor, color);
+
+        if (isWin) showGoalChoice(rating);
+        else removeGoalChoice();
 
         const locks = document.querySelectorAll('.elo-guard-locked');
         locks.forEach(btn => {
@@ -1371,16 +1534,20 @@
         });
     }
 
+    let lockSelectorRegressionWarned = false;
+
     function lockButtonGeneric(title, sub, bgColor, lockType = "generic") {
         if (!GUARD_ACTIVE) return;
 
         const selectors = getGameStartLockSelectors(lockType);
+        let lockableFound = 0;
 
         selectors.forEach(sel => {
             const els = document.querySelectorAll(sel);
             els.forEach(el => {
                 const btn = normalizeLockTarget(el);
                 if (!shouldLockGameStartControl(btn, lockType)) return;
+                lockableFound++;
 
                 if (btn.classList.contains('play-quick-links-link')) {
                     if (btn.classList.contains('elo-guard-home-locked')) return;
@@ -1397,11 +1564,29 @@
             const btn = icon.closest('button');
             if (btn
                 && !isRematchControl(btn)
-                && !isDisallowedGameStartTarget(btn)
-                && (btn.getAttribute('data-elo-guard-lock') !== lockType || lockType === "cooldown")) {
-                applyLockStyle(btn, title, sub, bgColor, lockType);
+                && !isDisallowedGameStartTarget(btn)) {
+                lockableFound++;
+                if (btn.getAttribute('data-elo-guard-lock') !== lockType || lockType === "cooldown") {
+                    applyLockStyle(btn, title, sub, bgColor, lockType);
+                }
             }
         });
+
+        // Regression canary: if a lock is active and the page is showing game-over /
+        // new-game UI (where lock targets are expected) yet nothing matched, chess.com
+        // likely changed its markup and our selectors are stale. Warn once per page load.
+        if (!lockableFound && !lockSelectorRegressionWarned && lockTargetsExpected()) {
+            lockSelectorRegressionWarned = true;
+            console.warn("🛡️ EloGuard: lock is active but found no lockable game-start controls — chess.com's markup may have changed and the lock selectors may be outdated.");
+        }
+    }
+
+    function lockTargetsExpected() {
+        return !!(document.querySelector('[data-cy="game-over-modal-new-game-button"]')
+            || document.querySelector('[data-cy="sidebar-rematch-button"]')
+            || document.querySelector('[data-cy="sidebar-game-over-rematch-button"]')
+            || document.querySelector('.game-over-controls')
+            || document.querySelector('[data-cy="new-game-index-play"]'));
     }
 
     function applyLockStyle(btn, title, sub, bgColor, lockType = "generic") {
@@ -1609,6 +1794,8 @@
                 clearLockoutTimer();
                 activeLockState = null;
                 resetLossStreak();
+                resetSessionPeak();
+                resetGoalExtensionState();
                 unlockButton();
             } else {
                 updateLockoutDisplay();
@@ -1631,6 +1818,8 @@
                 clearLockoutTimer();
                 activeLockState = null;
                 resetLossStreak();
+                resetSessionPeak();
+                resetGoalExtensionState();
                 unlockButton();
             }
         });
@@ -1657,6 +1846,73 @@
     function getLastRatingKey() {
         if (!USERNAME) return null;
         return `${LAST_RATING_KEY_PREFIX}:${USERNAME}:${GAME_MODE}`;
+    }
+
+    function getSessionPeakKey() {
+        if (!USERNAME) return null;
+        return `${SESSION_PEAK_KEY_PREFIX}:${USERNAME}:${GAME_MODE}`;
+    }
+
+    function getGoalExtensionKey() {
+        if (!USERNAME) return null;
+        return `${GOAL_EXTENSION_KEY_PREFIX}:${USERNAME}:${GAME_MODE}`;
+    }
+
+    function loadGoalExtensionState() {
+        const key = getGoalExtensionKey();
+        GOAL_EXTENSION_STATE_READY = false;
+        if (!key) {
+            GOAL_EXTENSION_USED = false;
+            GOAL_EXTENSION_STATE_READY = true;
+            return;
+        }
+        chrome.storage.local.get(key, (res) => {
+            GOAL_EXTENSION_USED = !!res[key]?.used;
+            GOAL_EXTENSION_STATE_READY = true;
+        });
+    }
+
+    function resetGoalExtensionState() {
+        const key = getGoalExtensionKey();
+        GOAL_EXTENSION_USED = false;
+        GOAL_EXTENSION_STATE_READY = true;
+        goalChoiceDismissed = false;
+        removeGoalChoice();
+        if (key) chrome.storage.local.remove(key);
+    }
+
+    // Session-peak store for the trailing stop-loss. Returns the running peak
+    // (max of the stored peak and the current rating) and persists it when it
+    // changes. A stored peak older than 12h is treated as a fresh session.
+    function readSessionPeak(currentRating) {
+        return new Promise((resolve) => {
+            const key = getSessionPeakKey();
+            if (!key) { resolve(currentRating); return; }
+            chrome.storage.local.get(key, (res) => {
+                const stored = res[key];
+                const now = Date.now();
+                const valid = stored
+                    && Number.isFinite(stored.peak)
+                    && Number.isFinite(stored.ts)
+                    && (now - stored.ts) <= SESSION_PEAK_MAX_AGE_MS;
+                let peak;
+                let persist;
+                if (valid) {
+                    peak = Math.max(stored.peak, currentRating);
+                    persist = peak !== stored.peak;
+                } else {
+                    peak = currentRating;
+                    persist = true;
+                }
+                if (persist) chrome.storage.local.set({ [key]: { peak, ts: now } });
+                resolve(peak);
+            });
+        });
+    }
+
+    function resetSessionPeak() {
+        const key = getSessionPeakKey();
+        if (key) chrome.storage.local.remove(key);
     }
 
     function getMatchupFeedbackKey() {
@@ -2184,11 +2440,16 @@
         if (!opponentNames.length) return;
 
         let nextTitle = LAST_RAW_DOCUMENT_TITLE || document.title;
+        // Replace the opponent name with the 'Hidden game' sentinel (not a blank): both the
+        // re-capture guard above and getOpponentNameCandidates() key off that exact string to
+        // recognise an already-anonymised title. Blanking it would let this idempotent tick
+        // overwrite LAST_RAW_DOCUMENT_TITLE with the stripped title and lose the real one.
         opponentNames.forEach(name => {
-            nextTitle = nextTitle.replace(new RegExp(escapeRegExp(name), 'gi'), '');
+            nextTitle = nextTitle.replace(new RegExp(escapeRegExp(name), 'gi'), 'Hidden game');
         });
         nextTitle = nextTitle.replace(/\s+-\s*\d+\b/g, '');
         nextTitle = nextTitle.replace(/\s+vs\s+/i, ' vs ').replace(/Chess:\s*vs\s*/i, 'Chess: ');
+        if (!nextTitle.includes('Hidden game')) nextTitle = 'Hidden game';
         document.title = nextTitle;
     }
 
@@ -2258,6 +2519,7 @@
         removeEnhancerStyleOpponentMask();
         const opponentRoot = getTopOpponentRoot();
         if (opponentRoot) maskPrivateAttributes(opponentRoot);
+        anonymizeDocumentTitle(getOpponentNameCandidates());
     }
 
     function removeEnhancerStyleOpponentMask() {
@@ -5823,212 +6085,58 @@
     }
 
     function ensureEnhancedFocusToggle() {
-        if (!document.body) return null;
+        if (!document.body || window.__ELOGUARD_CONTENT_VERSION__ !== CONTENT_VERSION) return null;
 
         let toggle = document.getElementById(ENHANCED_FOCUS_TOGGLE_ID);
+        if (toggle?.dataset.eloGuardControlVersion !== ENHANCED_FOCUS_TOGGLE_CONTROL_VERSION) {
+            // Rebuild controls created by older content-script generations so stale
+            // drag and click listeners cannot keep affecting the current button.
+            toggle.remove();
+            toggle = null;
+        }
         if (!toggle) {
             toggle = document.createElement('button');
             toggle.id = ENHANCED_FOCUS_TOGGLE_ID;
             toggle.type = 'button';
+            toggle.dataset.eloGuardControlVersion = ENHANCED_FOCUS_TOGGLE_CONTROL_VERSION;
 
             const label = document.createElement('span');
             label.className = ENHANCED_FOCUS_TOGGLE_LABEL_CLASS;
 
-            const minimize = document.createElement('span');
-            minimize.className = ENHANCED_FOCUS_TOGGLE_MIN_CLASS;
-            minimize.textContent = '–'; // en dash
-            minimize.setAttribute('aria-hidden', 'true');
-
-            toggle.append(label, minimize);
+            toggle.append(label);
             toggle.addEventListener('click', handleEnhancedFocusToggleClick);
-            setupEnhancedFocusToggleDrag(toggle);
         }
 
-        const label = toggle.querySelector(`.${ENHANCED_FOCUS_TOGGLE_LABEL_CLASS}`);
-        if (label) label.textContent = ENHANCED_FOCUS_MODE ? 'Exit focus' : 'Enhanced focus';
-        toggle.setAttribute('aria-pressed', ENHANCED_FOCUS_MODE ? 'true' : 'false');
-        applyEnhancedFocusToggleMinimizedState(toggle);
+        // Clear positions left by versions that allowed dragging. The stylesheet is
+        // now the single source of truth and keeps this control at the top-right.
+        toggle.style.removeProperty('left');
+        toggle.style.removeProperty('top');
+        toggle.style.removeProperty('right');
+        toggle.style.removeProperty('bottom');
+
+        renderEnhancedFocusToggle(toggle);
 
         if (toggle.parentNode !== document.body) document.body.appendChild(toggle);
-
-        positionEnhancedFocusToggle(toggle);
 
         return toggle;
     }
 
-    function handleEnhancedFocusToggleClick(event) {
-        // A drag just ended on this element: swallow the click it generated.
-        if (ENHANCED_FOCUS_TOGGLE_DRAG.moved) {
-            ENHANCED_FOCUS_TOGGLE_DRAG.moved = false;
-            event.preventDefault();
-            event.stopPropagation();
-            return;
-        }
-
-        // Minimizing is only available on the normal-mode "Enhanced focus" button.
-        if (!ENHANCED_FOCUS_MODE) {
-            // Clicking the minimize affordance collapses the button.
-            if (ENHANCED_FOCUS_TOGGLE_DRAG.pressedMinimize || event.target.closest(`.${ENHANCED_FOCUS_TOGGLE_MIN_CLASS}`)) {
-                event.preventDefault();
-                event.stopPropagation();
-                setEnhancedFocusToggleMinimized(true);
-                return;
-            }
-
-            // While minimized, a click restores the button instead of toggling focus.
-            if (ENHANCED_FOCUS_TOGGLE_MINIMIZED) {
-                setEnhancedFocusToggleMinimized(false);
-                return;
-            }
-        }
-
+    function handleEnhancedFocusToggleClick() {
+        if (window.__ELOGUARD_CONTENT_VERSION__ !== CONTENT_VERSION) return;
         ENHANCED_FOCUS_MODE = !ENHANCED_FOCUS_MODE;
         chrome.storage.sync.set({ enhancedFocusMode: ENHANCED_FOCUS_MODE });
         applyEnhancedFocusMode();
     }
 
-    function applyEnhancedFocusToggleMinimizedState(toggle) {
-        if (!toggle) return;
-        // Minimizing only applies to the normal-mode "Enhanced focus" button; the
-        // "Exit focus" button always shows in full so it stays an obvious control.
-        const minimized = ENHANCED_FOCUS_TOGGLE_MINIMIZED && !ENHANCED_FOCUS_MODE;
-        toggle.classList.toggle(ENHANCED_FOCUS_TOGGLE_MINIMIZED_CLASS, minimized);
-        if (minimized) {
-            toggle.title = 'Show EloGuard focus button';
-        } else {
-            toggle.title = ENHANCED_FOCUS_MODE ? 'Exit enhanced focus mode' : 'Enter enhanced focus mode';
-        }
-    }
-
-    function setEnhancedFocusToggleMinimized(minimized) {
-        ENHANCED_FOCUS_TOGGLE_MINIMIZED = !!minimized;
-        try {
-            chrome.storage.sync.set({ enhancedFocusButtonMinimized: ENHANCED_FOCUS_TOGGLE_MINIMIZED });
-        } catch (e) {}
-        const toggle = document.getElementById(ENHANCED_FOCUS_TOGGLE_ID);
-        if (!toggle) return;
-        applyEnhancedFocusToggleMinimizedState(toggle);
-        positionEnhancedFocusToggle(toggle);
-    }
-
-    function getEnhancedFocusToggleSize(toggle) {
-        return {
-            width: toggle.offsetWidth || 150,
-            height: toggle.offsetHeight || 34
-        };
-    }
-
-    function clampEnhancedFocusTogglePosition(left, top, size) {
-        const margin = ENHANCED_FOCUS_TOGGLE_EDGE_MARGIN;
-        const maxLeft = Math.max(margin, window.innerWidth - size.width - margin);
-        const maxTop = Math.max(margin, window.innerHeight - size.height - margin);
-        return {
-            left: Math.min(Math.max(left, margin), maxLeft),
-            top: Math.min(Math.max(top, margin), maxTop)
-        };
-    }
-
-    function applyEnhancedFocusTogglePositionStyles(toggle, left, top) {
-        toggle.style.setProperty('left', `${Math.round(left)}px`, 'important');
-        toggle.style.setProperty('top', `${Math.round(top)}px`, 'important');
-        toggle.style.setProperty('right', 'auto', 'important');
-        toggle.style.setProperty('bottom', 'auto', 'important');
-    }
-
-    function clearEnhancedFocusTogglePositionStyles(toggle) {
-        toggle.style.removeProperty('left');
-        toggle.style.removeProperty('top');
-        toggle.style.removeProperty('right');
-        toggle.style.removeProperty('bottom');
-    }
-
-    function setEnhancedFocusToggleStoredPosition(left, top) {
-        ENHANCED_FOCUS_TOGGLE_POS =
-            (Number.isFinite(left) && Number.isFinite(top))
-                ? { left, top }
-                : null;
-    }
-
-    function positionEnhancedFocusToggle(toggle) {
-        if (!toggle || ENHANCED_FOCUS_TOGGLE_DRAG.active) return;
-
-        // In focus mode the "Exit focus" button is always pinned to the top-right
-        // (the stylesheet default); it is never dragged or auto-anchored to the clock.
-        if (ENHANCED_FOCUS_MODE) {
-            clearEnhancedFocusTogglePositionStyles(toggle);
-            return;
-        }
-
-        if (ENHANCED_FOCUS_TOGGLE_POS) {
-            const size = getEnhancedFocusToggleSize(toggle);
-            const clamped = clampEnhancedFocusTogglePosition(
-                ENHANCED_FOCUS_TOGGLE_POS.left,
-                ENHANCED_FOCUS_TOGGLE_POS.top,
-                size
-            );
-            applyEnhancedFocusTogglePositionStyles(toggle, clamped.left, clamped.top);
-            return;
-        }
-
-        // No saved drag position: use the stylesheet default (top-right).
-        clearEnhancedFocusTogglePositionStyles(toggle);
-    }
-
-    function setupEnhancedFocusToggleDrag(toggle) {
-        toggle.addEventListener('pointerdown', (event) => {
-            if (event.button !== 0) return;
-            // No dragging in focus mode — the "Exit focus" button stays pinned top-right.
-            if (ENHANCED_FOCUS_MODE) return;
-            const rect = toggle.getBoundingClientRect();
-            ENHANCED_FOCUS_TOGGLE_DRAG.active = true;
-            ENHANCED_FOCUS_TOGGLE_DRAG.moved = false;
-            ENHANCED_FOCUS_TOGGLE_DRAG.pressedMinimize = !!event.target.closest(`.${ENHANCED_FOCUS_TOGGLE_MIN_CLASS}`);
-            ENHANCED_FOCUS_TOGGLE_DRAG.startX = event.clientX;
-            ENHANCED_FOCUS_TOGGLE_DRAG.startY = event.clientY;
-            ENHANCED_FOCUS_TOGGLE_DRAG.originLeft = rect.left;
-            ENHANCED_FOCUS_TOGGLE_DRAG.originTop = rect.top;
-            ENHANCED_FOCUS_TOGGLE_DRAG.pointerId = event.pointerId;
-            try { toggle.setPointerCapture(event.pointerId); } catch (e) {}
-        });
-
-        toggle.addEventListener('pointermove', (event) => {
-            if (!ENHANCED_FOCUS_TOGGLE_DRAG.active) return;
-            const dx = event.clientX - ENHANCED_FOCUS_TOGGLE_DRAG.startX;
-            const dy = event.clientY - ENHANCED_FOCUS_TOGGLE_DRAG.startY;
-            if (!ENHANCED_FOCUS_TOGGLE_DRAG.moved && Math.hypot(dx, dy) < 4) return;
-
-            ENHANCED_FOCUS_TOGGLE_DRAG.moved = true;
-            toggle.classList.add(ENHANCED_FOCUS_TOGGLE_DRAGGING_CLASS);
-
-            const size = getEnhancedFocusToggleSize(toggle);
-            const pos = clampEnhancedFocusTogglePosition(
-                ENHANCED_FOCUS_TOGGLE_DRAG.originLeft + dx,
-                ENHANCED_FOCUS_TOGGLE_DRAG.originTop + dy,
-                size
-            );
-            ENHANCED_FOCUS_TOGGLE_POS = pos;
-            applyEnhancedFocusTogglePositionStyles(toggle, pos.left, pos.top);
-        });
-
-        const endDrag = () => {
-            if (!ENHANCED_FOCUS_TOGGLE_DRAG.active) return;
-            ENHANCED_FOCUS_TOGGLE_DRAG.active = false;
-            toggle.classList.remove(ENHANCED_FOCUS_TOGGLE_DRAGGING_CLASS);
-            try { toggle.releasePointerCapture(ENHANCED_FOCUS_TOGGLE_DRAG.pointerId); } catch (e) {}
-
-            if (ENHANCED_FOCUS_TOGGLE_DRAG.moved && ENHANCED_FOCUS_TOGGLE_POS) {
-                try {
-                    chrome.storage.sync.set({
-                        enhancedFocusButtonLeft: Math.round(ENHANCED_FOCUS_TOGGLE_POS.left),
-                        enhancedFocusButtonTop: Math.round(ENHANCED_FOCUS_TOGGLE_POS.top)
-                    });
-                } catch (e) {}
-            }
-            // ENHANCED_FOCUS_TOGGLE_DRAG.moved stays set so the click that fires
-            // after this pointerup is swallowed by the click handler, which resets it.
-        };
-        toggle.addEventListener('pointerup', endDrag);
-        toggle.addEventListener('pointercancel', endDrag);
+    function renderEnhancedFocusToggle(toggle) {
+        if (!toggle || window.__ELOGUARD_CONTENT_VERSION__ !== CONTENT_VERSION) return;
+        const label = toggle.querySelector(`.${ENHANCED_FOCUS_TOGGLE_LABEL_CLASS}`);
+        if (label) label.textContent = ENHANCED_FOCUS_MODE ? 'Exit focus' : 'Enhanced focus';
+        toggle.setAttribute('aria-pressed', ENHANCED_FOCUS_MODE ? 'true' : 'false');
+        toggle.setAttribute('aria-label', ENHANCED_FOCUS_MODE
+            ? 'Exit enhanced focus mode'
+            : 'Enter enhanced focus mode');
+        toggle.title = ENHANCED_FOCUS_MODE ? 'Exit enhanced focus mode' : 'Enter enhanced focus mode';
     }
 
     function ensureEnhancedFocusFlipButton(parent = document.getElementById(ENHANCED_FOCUS_STAGE_ID)) {
@@ -6262,19 +6370,29 @@
             ENHANCED_FOCUS_MOVED_ELEMENTS.push(el);
         }
 
-        el.classList.remove(
+        const moved = el.parentNode !== slot;
+        const managedClasses = [
             ENHANCED_FOCUS_BOARD_CLASS,
             ENHANCED_FOCUS_TOP_CLOCK_CLASS,
             ENHANCED_FOCUS_BOTTOM_CLOCK_CLASS,
             ENHANCED_FOCUS_NATIVE_CLOCK_CLASS,
             ENHANCED_FOCUS_MATERIAL_CLASS
-        );
-        el.classList.add(className);
-        const moved = el.parentNode !== slot;
+        ];
+
+        // The focus layout is reconciled on a timer. Re-appending an element that is
+        // already in the right slot still emits child-list mutations; on chess.com that
+        // makes terminal board decorations (checkmate/winner highlights) get recreated
+        // every tick. Only mutate the class list or DOM when something actually changed.
+        managedClasses.forEach(managedClass => {
+            if (managedClass !== className && el.classList.contains(managedClass)) {
+                el.classList.remove(managedClass);
+            }
+        });
+        if (!el.classList.contains(className)) el.classList.add(className);
+        if (!moved) return;
+
         slot.appendChild(el);
-        if (moved) {
-            requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
-        }
+        requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
     }
 
     function restoreEnhancedFocusElement(el) {
@@ -6914,7 +7032,7 @@
     }
 
     function applyEnhancedFocusMode() {
-        if (!document.body) return;
+        if (!document.body || window.__ELOGUARD_CONTENT_VERSION__ !== CONTENT_VERSION) return;
 
         if (ENHANCED_FOCUS_MODE) {
             document.body.classList.add('elo-guard-enhanced-focus');
@@ -6954,34 +7072,46 @@
         if (!SHOW_RISK_PROFILE_PILL) hideOpponentLegitimacyBadge();
     }
 
+    // Entitlement reads swallow chrome.storage errors and default to "free", so
+    // an orphaned content script (extension reloaded/updated while this tab was
+    // open) would silently demote a Pro user to the upsell. Detect that state
+    // up front and mark the result so callers show "reload this page" instead.
+    function premiumCheckFailedAccess(error) {
+        return {
+            allowed: false, isPro: false, limit: 0, remaining: 0, alreadyGranted: false,
+            unavailable: true,
+            contextInvalidated: isExtensionContextInvalidated(error)
+        };
+    }
+
     async function consumePremiumFeature(featureKey, usageId) {
         const api = window.EloGuardEntitlements;
-        if (!api || typeof api.consumeFeature !== 'function') {
-            return { allowed: false, isPro: false, limit: 0, remaining: 0, unavailable: true };
+        if (isExtensionContextInvalidated(null) || !api || typeof api.consumeFeature !== 'function') {
+            return premiumCheckFailedAccess(null);
         }
 
         try {
             return await api.consumeFeature(featureKey, usageId);
-        } catch (_) {
-            return { allowed: false, isPro: false, limit: 0, remaining: 0, unavailable: true };
+        } catch (e) {
+            return premiumCheckFailedAccess(e);
         }
     }
 
     async function getPremiumFeatureAccess(featureKey, usageId) {
         const api = window.EloGuardEntitlements;
-        if (!api || typeof api.getFeatureAccess !== 'function') {
-            return { allowed: false, isPro: false, limit: 0, remaining: 0, alreadyGranted: false, unavailable: true };
+        if (isExtensionContextInvalidated(null) || !api || typeof api.getFeatureAccess !== 'function') {
+            return premiumCheckFailedAccess(null);
         }
 
         try {
             return await api.getFeatureAccess(featureKey, usageId);
-        } catch (_) {
-            return { allowed: false, isPro: false, limit: 0, remaining: 0, alreadyGranted: false, unavailable: true };
+        } catch (e) {
+            return premiumCheckFailedAccess(e);
         }
     }
 
     function dailyLeftSuffix(access) {
-        if (!access || access.isPro || !Number.isFinite(access.remaining)) return '';
+        if (!access || access.isPro || access.unavailable || !Number.isFinite(access.remaining)) return '';
         return ` (${Math.max(0, access.remaining)} left)`;
     }
 
@@ -6991,7 +7121,7 @@
             const access = await getPremiumFeatureAccess(featureKey, usageId);
             if (!button.isConnected) return access;
             button.textContent = `${baseText}${dailyLeftSuffix(access)}`;
-            if (!access.isPro && Number.isFinite(access.remaining)) {
+            if (!access.isPro && !access.unavailable && Number.isFinite(access.remaining)) {
                 const limit = Number.isFinite(access.limit) ? access.limit : 0;
                 button.title = `${Math.max(0, access.remaining)} of ${limit} free uses left today`;
             } else {
@@ -7019,34 +7149,16 @@
                 activeLockState = null;
                 clearCooldownState();
                 pauseLockoutTimer();
+                removeGoalChoice();
                 unlockButton();
             } else {
+                resetSessionPeak();
+                resetGoalExtensionState();
                 resumeLockoutFromStorage();
                 checkRating();
             }
         }
 
-        const changedKeys = Object.keys(changes);
-        const onlyFocusButtonStateChanged = changedKeys.length > 0 && changedKeys.every(key =>
-            key === 'enhancedFocusButtonLeft'
-            || key === 'enhancedFocusButtonTop'
-            || key === 'enhancedFocusButtonMinimized'
-        );
-
-        if (changes.enhancedFocusButtonMinimized) {
-            ENHANCED_FOCUS_TOGGLE_MINIMIZED = !!changes.enhancedFocusButtonMinimized.newValue;
-            applyEnhancedFocusToggleMinimizedState(document.getElementById(ENHANCED_FOCUS_TOGGLE_ID));
-        }
-
-        if (changes.enhancedFocusButtonLeft || changes.enhancedFocusButtonTop) {
-            setEnhancedFocusToggleStoredPosition(
-                changes.enhancedFocusButtonLeft?.newValue ?? ENHANCED_FOCUS_TOGGLE_POS?.left,
-                changes.enhancedFocusButtonTop?.newValue ?? ENHANCED_FOCUS_TOGGLE_POS?.top
-            );
-            positionEnhancedFocusToggle(document.getElementById(ENHANCED_FOCUS_TOGGLE_ID));
-        }
-
-        if (onlyFocusButtonStateChanged) return;
         loadSettings();
     });
 
@@ -7061,7 +7173,7 @@
     const REVIEW_ENGINE_LABEL = 'Stockfish 18';
     const REVIEW_DEPTH_MIN = 6;
     const REVIEW_DEPTH_MAX = 18;
-    const REVIEW_DEPTH_DEFAULT = 12;
+    const REVIEW_DEPTH_DEFAULT = 10;
     const REVIEW_GLYPHS = {
         brilliant: {
             sym: '!!',
@@ -7172,6 +7284,36 @@
     const REVIEW_CACHE = new Map(); // movesKey:depth -> { review, record, depth }
     const REVIEW_CACHE_MAX = 4;
 
+    // Chess.com replaces the game-over modal/sidebar asynchronously. During that
+    // replacement the buttons can remain clickable while the move-list nodes are
+    // temporarily (or permanently) detached. Keep the most complete record seen
+    // for the current page so post-game actions never depend on that volatile DOM.
+    let POSTGAME_RECORD_SNAPSHOT = null;
+    let POSTGAME_RECORD_LOCATION = '';
+
+    function postGameLocationKey() {
+        return `${location.pathname}${location.search}`;
+    }
+
+    function rememberPostGameRecord(record) {
+        if (!record) return null;
+        const key = postGameLocationKey();
+        if (POSTGAME_RECORD_LOCATION !== key
+            || !POSTGAME_RECORD_SNAPSHOT
+            || record.sans.length >= POSTGAME_RECORD_SNAPSHOT.sans.length) {
+            POSTGAME_RECORD_LOCATION = key;
+            POSTGAME_RECORD_SNAPSHOT = record;
+        }
+        return POSTGAME_RECORD_SNAPSHOT;
+    }
+
+    function getPostGameRecord(fallback) {
+        const current = extractGameRecord();
+        if (current) return rememberPostGameRecord(current);
+        if (fallback) return rememberPostGameRecord(fallback);
+        return POSTGAME_RECORD_LOCATION === postGameLocationKey() ? POSTGAME_RECORD_SNAPSHOT : null;
+    }
+
     let REVIEW_ENGINE_FRAME = null;
     let REVIEW_ENGINE_READY = false;
     let REVIEW_ENGINE_ERROR = null;
@@ -7180,7 +7322,12 @@
     const REVIEW_JOBS = new Map();
     const REVIEW_EXT_ORIGIN = new URL(chrome.runtime.getURL('')).origin;
     let REVIEW_SELECTED_DEPTH = REVIEW_DEPTH_DEFAULT;
-    let REVIEW_ACTIVE_JOB_ID = null;
+    // Each of these holds a caller-owned handle object; analyzeMovesWithEngine stamps the
+    // live jobId onto it once the engine starts, so a cancel closure elsewhere can target
+    // exactly that invocation without disturbing the other channel.
+    let REVIEW_SINGLE_JOB = null;
+    let REVIEW_BATCH_JOB = null;
+    let REVIEW_LAST_RANGE_MONTHS_FAILED = 0;
     let REVIEW_BOARD_ANALYSIS_ENABLED = true;
     let REVIEW_BOARD_ANALYSIS_USER_SET = false;
     let REVIEW_BOARD_STATE = null; // { record, review, depth, ply, locationKey }
@@ -7216,7 +7363,12 @@
             indexes.add(i);
             if (!(prepared.terminal && i + 1 === moves.length)) indexes.add(i + 1);
         }
-        if (!indexes.size && moves.length && !prepared.terminal) indexes.add(moves.length);
+        // The final position (index moves.length) must be evaluated when the game has no
+        // terminal result — otherwise downstream code fabricates a 0.00 eval for it. It's
+        // normally queued as the i+1 of the last analyzed move, but if the last move is
+        // book/forced (skipped above) that i+1 is missing, so backfill it here. Also covers
+        // the zero-positions case (all moves book/forced).
+        if (moves.length && !prepared.terminal && !indexes.has(moves.length)) indexes.add(moves.length);
         return [...indexes].sort((a, b) => a - b);
     }
 
@@ -7398,14 +7550,86 @@
         return '*';
     }
 
+    // Chess.com's /review route initially renders without a move list, but the
+    // server-provided analysis bootstrap still contains the complete PGN. Read
+    // that inert script text so our post-game actions work while Game Review is
+    // loading (and on review layouts that never mount the regular move list).
+    function decodeAnalysisString(body) {
+        return String(body || '').replace(/\\(?:u\{([0-9a-fA-F]+)\}|u([0-9a-fA-F]{4})|x([0-9a-fA-F]{2})|([\\'"\/bfnrtv0]))/g,
+            (match, codePoint, unicode, hex, simple) => {
+                if (codePoint) return String.fromCodePoint(parseInt(codePoint, 16));
+                if (unicode) return String.fromCharCode(parseInt(unicode, 16));
+                if (hex) return String.fromCharCode(parseInt(hex, 16));
+                return ({ '\\': '\\', "'": "'", '"': '"', '/': '/', b: '\b', f: '\f', n: '\n', r: '\r', t: '\t', v: '\v', 0: '\0' })[simple] ?? simple;
+            });
+    }
+
+    function getEmbeddedAnalysisPgn() {
+        for (const script of document.scripts) {
+            const text = script.textContent || '';
+            if (!text.includes('window.chesscom.analysis') || !text.includes('pgn:')) continue;
+            const match = text.match(/\bpgn:\s*'((?:\\.|[^'\\])*)'/);
+            if (match) return decodeAnalysisString(match[1]);
+        }
+        return null;
+    }
+
+    function parsePgnHeaders(pgn) {
+        const headers = {};
+        const re = /^\[([A-Za-z0-9_]+)\s+"((?:\\.|[^"])*)"\]\s*$/gm;
+        let match;
+        while ((match = re.exec(pgn))) {
+            headers[match[1]] = match[2].replace(/\\([\\"])/g, '$1');
+        }
+        return headers;
+    }
+
+    function gameRecordFromPgn(pgn) {
+        const parsed = parsePgnGame(pgn);
+        if (!parsed || parsed.sans.length < 2) return null;
+        const prepared = EloGuardReviewCore.prepareGame(parsed.sans);
+        if (prepared.error) return null;
+
+        const headers = parsePgnHeaders(pgn);
+        const whiteName = headers.White || 'White';
+        const blackName = headers.Black || 'Black';
+        const ownName = (USERNAME || '').trim().toLowerCase();
+        const bottomName = (getPlayerNameFromRoot(getBottomPlayerRoot()) || '').trim().toLowerCase();
+        let userColor;
+        if (ownName && whiteName.toLowerCase() === ownName) userColor = 'w';
+        else if (ownName && blackName.toLowerCase() === ownName) userColor = 'b';
+        else if (bottomName && whiteName.toLowerCase() === bottomName) userColor = 'w';
+        else if (bottomName && blackName.toLowerCase() === bottomName) userColor = 'b';
+        else userColor = getBoardFlippedState() ? 'b' : 'w';
+
+        const record = {
+            prepared,
+            sans: prepared.moves.map((move) => move.san),
+            userColor,
+            whiteName,
+            blackName,
+            whiteRating: /^\d{3,4}$/.test(headers.WhiteElo || '') ? +headers.WhiteElo : null,
+            blackRating: /^\d{3,4}$/.test(headers.BlackElo || '') ? +headers.BlackElo : null,
+            timeControl: parseChessComTimeControl(headers.TimeControl) || detectTimeControl(),
+            result: /^(1-0|0-1|1\/2-1\/2|\*)$/.test(headers.Result || '') ? headers.Result : '*'
+        };
+        record.movesKey = record.sans.join(' ');
+        return record;
+    }
+
+    function extractEmbeddedGameRecord() {
+        const pgn = getEmbeddedAnalysisPgn();
+        return pgn ? gameRecordFromPgn(pgn) : null;
+    }
+
     function extractGameRecord() {
         if (typeof EloGuardReviewCore === 'undefined' || typeof Chess === 'undefined') return null;
         const sans = getMoveListSans();
-        if (!sans || sans.length < 2) return null;
+        if (!sans || sans.length < 2) return extractEmbeddedGameRecord();
         const prepared = EloGuardReviewCore.prepareGame(sans);
         if (prepared.error) {
             console.warn('🛡️ EloGuard Review: ' + prepared.error);
-            return null;
+            return extractEmbeddedGameRecord();
         }
         const flipped = getBoardFlippedState();
         const userColor = flipped ? 'b' : 'w';
@@ -7466,8 +7690,8 @@
 
     // --- lichess export ---
 
-    async function openOnLichess(button) {
-        const record = extractGameRecord();
+    async function openOnLichess(button, retainedRecord) {
+        const record = getPostGameRecord(retainedRecord);
         if (!record) {
             flashButtonText(button, 'No moves found');
             return;
@@ -7518,6 +7742,7 @@
     // --- post-game button injection ---
 
     function buildPostGameButtons(variant) {
+        const retainedRecord = getPostGameRecord();
         const container = document.createElement('div');
         container.className = `${POSTGAME_CONTAINER_CLASS} elo-guard-postgame-${variant}`;
         const lichessBtn = document.createElement('button');
@@ -7526,17 +7751,16 @@
         lichessBtn.textContent = '♞ Analyze on Lichess';
         lichessBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            openOnLichess(lichessBtn);
+            openOnLichess(lichessBtn, retainedRecord);
         });
         const reviewBtn = document.createElement('button');
         reviewBtn.type = 'button';
         reviewBtn.className = 'elo-guard-postgame-btn elo-guard-review-btn';
         reviewBtn.textContent = '★ Game Review';
-        const record = extractGameRecord();
-        updateDailyLeftButton(reviewBtn, 'Game Review', PRO_FEATURE_GAME_REVIEW, record?.movesKey);
+        updateDailyLeftButton(reviewBtn, 'Game Review', PRO_FEATURE_GAME_REVIEW, retainedRecord?.movesKey);
         reviewBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            openReviewPanel();
+            openReviewPanel(retainedRecord);
         });
         container.appendChild(lichessBtn);
         container.appendChild(reviewBtn);
@@ -7624,14 +7848,25 @@
         return !!nativeReviewBtn || hasVisibleFinishedGameStatusText();
     }
 
+    function isChessComGameReviewPage() {
+        return /^\/analysis\/game\/(?:live|daily)\/\d+\/review\/?$/i.test(location.pathname);
+    }
+
     // chess.com's own "Game Review" button in the archived-game sidebar — the most
     // natural place to attach our buttons. Located by label since its classes churn.
     function findNativeGameReviewAnchor() {
         for (const el of document.querySelectorAll('button, a')) {
             if (el.classList.contains('elo-guard-postgame-btn')) continue;
             if (el.closest('#' + REVIEW_PANEL_ID)) continue;
-            const label = (el.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
+            const label = [el.textContent, el.getAttribute('aria-label'), el.getAttribute('title')]
+                .filter(Boolean).join(' ').replace(/\s+/g, ' ').trim().toLowerCase();
             if (label.includes('game review')) return el;
+        }
+        if (isChessComGameReviewPage()) {
+            for (const heading of document.querySelectorAll('h1, h2')) {
+                if ((heading.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase() !== 'game review') continue;
+                return heading.closest('.cc-sidebar-header-component') || heading.parentElement || heading;
+            }
         }
         return null;
     }
@@ -7641,9 +7876,10 @@
         // right — chess.com's game-page URL formats keep shifting under us.
         const nativeReviewBtn = findNativeGameReviewAnchor();
         const activeGame = hasActiveGameControls();
+        const reviewPage = isChessComGameReviewPage();
         const over = !activeGame
             && (isGameOverUiPresent() || isArchivedGamePage(nativeReviewBtn) || !!nativeReviewBtn)
-            && hasMoveListMoves();
+            && (hasMoveListMoves() || reviewPage);
         const floating = document.getElementById(POSTGAME_FLOATING_ID);
         if (!over) {
             document.querySelectorAll('.' + POSTGAME_CONTAINER_CLASS).forEach((el) => el.remove());
@@ -7769,10 +8005,14 @@
         });
     }
 
-    function analyzeMovesWithEngine(moves, depth, skipLast, onProgress, positionIndexes) {
+    // `handle` (optional) is a caller-owned object; we stamp the freshly minted jobId onto
+    // it so the caller's cancel UI can target THIS invocation specifically. Single-game
+    // review and batch analysis each pass their own handle, so cancelling one never touches
+    // the other's job.
+    function analyzeMovesWithEngine(moves, depth, skipLast, onProgress, positionIndexes, handle) {
         return waitForEngineReady().then(() => new Promise((resolve, reject) => {
             const jobId = 'egjob' + (++REVIEW_JOB_COUNTER);
-            REVIEW_ACTIVE_JOB_ID = jobId;
+            if (handle) handle.jobId = jobId;
             REVIEW_JOBS.set(jobId, { resolve, reject, onProgress });
             REVIEW_ENGINE_FRAME.contentWindow.postMessage(
                 { type: 'eg-analyze', jobId, moves, depth, skipLast, positionIndexes },
@@ -7781,18 +8021,27 @@
         }));
     }
 
-    function cancelActiveReviewJob() {
-        if (!REVIEW_ACTIVE_JOB_ID) return;
-        const job = REVIEW_JOBS.get(REVIEW_ACTIVE_JOB_ID);
+    // Cancel one specific job (by id). Rejecting its promise with 'cancelled' routes through
+    // each caller's existing cancelled-handling path.
+    function cancelReviewJob(jobId) {
+        if (!jobId) return;
+        const job = REVIEW_JOBS.get(jobId);
         try {
             REVIEW_ENGINE_FRAME?.contentWindow?.postMessage(
-                { type: 'eg-cancel', jobId: REVIEW_ACTIVE_JOB_ID },
+                { type: 'eg-cancel', jobId },
                 REVIEW_EXT_ORIGIN
             );
         } catch (e) { /* frame already gone */ }
-        REVIEW_JOBS.delete(REVIEW_ACTIVE_JOB_ID);
+        REVIEW_JOBS.delete(jobId);
         if (job) job.reject(new Error('cancelled'));
-        REVIEW_ACTIVE_JOB_ID = null;
+    }
+
+    // Cancel every review job (single + batch). Used when tearing the panel down.
+    function cancelAllReviewJobs() {
+        cancelReviewJob(REVIEW_SINGLE_JOB?.jobId);
+        REVIEW_SINGLE_JOB = null;
+        cancelReviewJob(REVIEW_BATCH_JOB?.jobId);
+        REVIEW_BATCH_JOB = null;
     }
 
     // The wasm engine holds a sizeable heap — release it when the panel closes.
@@ -7871,7 +8120,7 @@
     // --- batch analysis (My Stats: analyze last X games or a period) ---
 
     const REVIEW_BATCH_RANGES = [
-        { key: 'all', label: 'All reviewed (recency-weighted)' },
+        { key: 'all', label: 'All reviewed' },
         { key: 'last10', label: 'Last 10 games', count: 10 },
         { key: 'last25', label: 'Last 25 games', count: 25 },
         { key: 'last50', label: 'Last 50 games', count: 50 },
@@ -7967,9 +8216,16 @@
         if (!archResp.ok) throw new Error('Could not fetch your archives (HTTP ' + archResp.status + ')');
         const months = (await archResp.json()).archives || [];
         const games = [];
+        REVIEW_LAST_RANGE_MONTHS_FAILED = 0;
         for (let mi = months.length - 1; mi >= 0 && games.length < target; mi--) {
-            const resp = await fetch(months[mi]);
-            if (!resp.ok) continue;
+            let resp;
+            try {
+                resp = await fetch(months[mi]);
+            } catch (e) {
+                REVIEW_LAST_RANGE_MONTHS_FAILED++;
+                continue;
+            }
+            if (!resp.ok) { REVIEW_LAST_RANGE_MONTHS_FAILED++; continue; }
             const month = (await resp.json()).games || [];
             if (cutoff && month.length && (month[month.length - 1].end_time || 0) * 1000 < cutoff) break;
             for (let gi = month.length - 1; gi >= 0 && games.length < target; gi--) {
@@ -8074,6 +8330,10 @@
 
     async function startBatchAnalysis(rangeKey) {
         if (REVIEW_BATCH_ACTIVE) return;
+        // The engine runs one job at a time; if a single-game review is mid-flight, cancel it
+        // cleanly through its own path rather than letting the two clobber a shared handle.
+        cancelReviewJob(REVIEW_SINGLE_JOB?.jobId);
+        REVIEW_SINGLE_JOB = null;
         REVIEW_BATCH_ACTIVE = true;
         REVIEW_BATCH_CANCEL = false;
         const setStatus = (text) => {
@@ -8089,6 +8349,10 @@
         try {
             setStatus('Fetching your games from chess.com…');
             const games = await fetchUserGamesForRange(rangeKey);
+            const monthsFailed = REVIEW_LAST_RANGE_MONTHS_FAILED;
+            const monthsFailedSuffix = monthsFailed > 0
+                ? ` (${monthsFailed} month${monthsFailed === 1 ? '' : 's'} failed to load)`
+                : '';
             const existing = new Set((await getReviewHistory()).map((e) => e.key));
             const todo = [];
             for (const g of games) {
@@ -8099,15 +8363,17 @@
                 todo.push({ ...g, prepared, movesKey });
             }
             if (!todo.length) {
-                setStatus(games.length
+                setStatus((games.length
                     ? `All ${games.length} games in this range are already reviewed.`
-                    : 'No games found in this range.');
+                    : 'No games found in this range.') + monthsFailedSuffix);
             } else {
                 let done = 0, failed = 0;
                 const t0 = Date.now();
                 for (const g of todo) {
                     if (REVIEW_BATCH_CANCEL) break;
                     try {
+                        const batchHandle = {};
+                        REVIEW_BATCH_JOB = batchHandle;
                         const positions = await analyzeMovesWithEngine(
                             g.prepared.moves.map((m) => m.uci), REVIEW_BATCH_DEPTH, !!g.prepared.terminal,
                             (p, total) => {
@@ -8116,9 +8382,10 @@
                                 setStatus(`Reviewing game ${done + 1} of ${todo.length}${eta}`);
                                 setProgress((done + p / total) / todo.length);
                             },
-                            reviewPositionsToAnalyze(g.prepared)
+                            reviewPositionsToAnalyze(g.prepared),
+                            batchHandle
                         );
-                        REVIEW_ACTIVE_JOB_ID = null;
+                        REVIEW_BATCH_JOB = null;
                         const review = EloGuardReviewCore.buildReview(g.prepared, positions,
                             { timeControl: g.timeControl, depth: REVIEW_BATCH_DEPTH });
                         const clk = clockFeaturesForSide(g.sans, g.clocks, g.timeControl, g.prepared.bookPlies, g.userColor);
@@ -8140,13 +8407,14 @@
                         failed++;
                     }
                 }
-                setStatus(`Reviewed ${done} game${done === 1 ? '' : 's'}${failed ? ` (${failed} failed)` : ''}${REVIEW_BATCH_CANCEL ? ' — cancelled' : ''}.`);
+                setStatus(`Reviewed ${done} game${done === 1 ? '' : 's'}${failed ? ` (${failed} failed)` : ''}${REVIEW_BATCH_CANCEL ? ' — cancelled' : ''}.${monthsFailedSuffix}`);
             }
         } catch (e) {
             setStatus('Batch failed: ' + (e?.message || 'unknown error'));
         }
         REVIEW_BATCH_ACTIVE = false;
         REVIEW_BATCH_CANCEL = false;
+        REVIEW_BATCH_JOB = null;
         const list = await getReviewHistory().catch(() => []);
         if (getReviewPanel()) renderReviewProfile(list);
     }
@@ -8587,13 +8855,13 @@
 
     function closeReviewPanel() {
         REVIEW_PROFILE_LOAD_ID++;
-        cancelActiveReviewJob();
+        cancelAllReviewJobs();
         teardownEngineFrame();
         REVIEW_NAV = null;
         getReviewPanel()?.remove();
     }
 
-    function openReviewPanel() {
+    function openReviewPanel(retainedRecord) {
         REVIEW_PROFILE_LOAD_ID++;
         let panel = getReviewPanel();
         if (panel) panel.remove();
@@ -8611,7 +8879,8 @@
                     </div>
                     <div class="egr-header-actions">
                         <button type="button" class="egr-back" title="Back to game review" style="display:none">← Back</button>
-                        <button type="button" class="egr-profile-btn" title="Strength Profile (all reviewed games)">📊 My Stats</button>
+                        <button type="button" class="egr-how-btn" title="How Game Review works">?</button>
+                        <button type="button" class="egr-profile-btn" title="Stats (all reviewed games)">${reviewGlyphHtml('best', 'egr-profile-icon')}<span>My Stats</span></button>
                         <button type="button" class="egr-close" title="Close">✕</button>
                     </div>
                 </div>
@@ -8620,10 +8889,11 @@
         panel.querySelector('.egr-close').addEventListener('click', closeReviewPanel);
         panel.querySelector('.egr-back').addEventListener('click', () => openReviewPanel());
         panel.querySelector('.egr-profile-btn').addEventListener('click', openReviewStats);
+        panel.querySelector('.egr-how-btn').addEventListener('click', openReviewHow);
         panel.addEventListener('click', (e) => { if (e.target === panel) closeReviewPanel(); });
         document.body.appendChild(panel);
 
-        const record = extractGameRecord();
+        const record = getPostGameRecord(retainedRecord);
         if (!record) {
             clearReviewBoardAnalysisState();
             renderReviewMessage('Could not read the moves of this game from the page.');
@@ -8645,23 +8915,62 @@
         if (!getReviewPanel()) return;
         const access = await getPremiumFeatureAccess(PRO_FEATURE_GAME_REVIEW);
         if (!access.isPro) {
-            renderReviewPaywall('Strength Profile', PRO_FEATURE_GAME_REVIEW, access, true);
+            renderReviewPaywall('Stats', PRO_FEATURE_GAME_REVIEW, access, true);
             return;
         }
         openReviewProfile();
     }
 
-    // Swaps the header between the game-review view ([📊 My Stats]) and the
-    // stats sub-view ([← Back]). Inline display is used so the toggle survives
-    // whatever button styling chess.com's own CSS might impose.
+    // Swaps the header between the game-review view ([?] [Best Move My Stats]) and a
+    // sub-view ([← Back]) — 'stats' or 'how'. Inline display is used so the
+    // toggle survives whatever button styling chess.com's own CSS might impose.
     function setReviewHeaderMode(mode) {
         const panel = getReviewPanel();
         if (!panel) return;
-        const inStats = mode === 'stats';
+        const inSubView = mode === 'stats' || mode === 'how';
         const back = panel.querySelector('.egr-back');
         const profileBtn = panel.querySelector('.egr-profile-btn');
-        if (back) back.style.display = inStats ? '' : 'none';
-        if (profileBtn) profileBtn.style.display = inStats ? 'none' : '';
+        const howBtn = panel.querySelector('.egr-how-btn');
+        if (back) back.style.display = inSubView ? '' : 'none';
+        if (profileBtn) profileBtn.style.display = inSubView ? 'none' : '';
+        if (howBtn) howBtn.style.display = inSubView ? 'none' : '';
+    }
+
+    // "How it works" sub-view: plain-English explanation of the review math,
+    // sourced from lib/review-core.js. Same navigation contract as the stats
+    // sub-view — header shows ← Back, which rebuilds the review panel.
+    function openReviewHow() {
+        const body = getReviewBody();
+        if (!body) return;
+        REVIEW_PROFILE_LOAD_ID++;
+        REVIEW_NAV = null;
+        setReviewBoardBar(false);
+        setReviewHeaderMode('how');
+        body.innerHTML = `
+            <div class="egr-how">
+                <div class="egr-how-section">
+                    <div class="egr-how-h">What it does</div>
+                    <div class="egr-how-p">Game Review runs Stockfish locally in your browser and analyzes every move of the game. Nothing is uploaded, and your games never leave your machine. Higher depth means a stronger engine and a longer wait.</div>
+                </div>
+                <div class="egr-how-section">
+                    <div class="egr-how-h">Win chance, not just eval</div>
+                    <div class="egr-how-p">Engine evals are converted into a win chance, using the model published by lichess. That's why the same eval swing counts more in a balanced position than in one that was already completely winning or lost.</div>
+                </div>
+                <div class="egr-how-section">
+                    <div class="egr-how-h">Accuracy</div>
+                    <div class="egr-how-p">Each move's accuracy comes from how much win chance it gave up. Your game accuracy blends an average that weighs the sharpest stretches of the game most, with a second average where a few big blunders can't hide behind quiet moves.</div>
+                </div>
+                <div class="egr-how-section">
+                    <div class="egr-how-h">Move labels</div>
+                    <div class="egr-how-p">Moves are labeled brilliant through blunder following chess.com's taxonomy, so the labels here read the same as the ones you're used to.</div>
+                </div>
+                <div class="egr-how-section">
+                    <div class="egr-how-h">Estimated rating</div>
+                    <div class="egr-how-p">The "played like" number compares this one game's accuracy and centipawn loss against how players of each rating typically perform. It's a single-game estimate, swingy by design, and it never looks at anyone's actual rating. The steadier multi-game estimate lives in My Stats.</div>
+                </div>
+                <button type="button" class="egr-again-btn egr-how-back">Back to review</button>
+            </div>`;
+        body.querySelector('.egr-how-back')?.addEventListener('click', () => openReviewPanel());
     }
 
     // Entry point for the extension popup's "My Stats" button. The popup calls
@@ -8699,13 +9008,13 @@
         const needsReload = isExtensionContextInvalidated(error) || /review tools unavailable/i.test(message);
         const title = needsReload
             ? 'Reload this page to reopen My Stats.'
-            : 'Could not load your Strength Profile.';
+            : 'Could not load your stats.';
         const detail = needsReload
             ? 'EloGuard needs a fresh content script on this tab.'
             : message;
         body.innerHTML = `
             <div class="egr-results">
-                <div class="egr-profile-head">Strength Profile</div>
+                <div class="egr-profile-head">Stats</div>
                 <div class="egr-message">${escapeHtml(title)}<br>${escapeHtml(detail)}</div>
                 <div class="egr-footer">
                     <button type="button" class="egr-again-btn egr-profile-back">Back to review</button>
@@ -8726,19 +9035,33 @@
         // The Strength Profile paywall (proOnly) is a stats sub-view — offer a
         // way back to the game review; the game-review paywall is top-level.
         setReviewHeaderMode(proOnly ? 'stats' : 'review');
+        // The plan check failing is not the same as the user being out of free
+        // reviews — never upsell on failure, especially to a Pro user whose
+        // orphaned tab can no longer read the entitlement cache.
+        if (access?.unavailable) {
+            const copy = access.contextInvalidated
+                ? `EloGuard was updated. Reload this page to re-enable ${title}.`
+                : 'EloGuard could not check your plan on this tab. Reload the page and try again.';
+            body.innerHTML = `
+                <div class="egr-message">${escapeHtml(copy)}</div>
+                <div class="egr-footer">
+                    <button type="button" class="egr-again-btn egr-reload-page">Reload page</button>
+                </div>`;
+            body.querySelector('.egr-reload-page').addEventListener('click', () => location.reload());
+            return;
+        }
         const limit = access?.limit || 1;
         const remaining = access && Number.isFinite(access.remaining) ? access.remaining : 0;
-        const freeLine = proOnly
-            ? 'This view is included with EloGuard Pro.'
-            : `Free includes ${limit} game review per day. You have ${remaining} left today.`;
         // MATCHUP ADVICE — DISABLED (chess.com TOS review pending): the upsell copy
-        // below no longer mentions "matchup advice"; the surviving opponent feature is
-        // cheat risk detection / risk profile. Restore the phrase when re-enabling.
+        // below no longer mentions "matchup advice". Restore the phrase when re-enabling.
+        const freeLine = proOnly
+            ? 'Included with EloGuard Pro.'
+            : `${remaining} of ${limit} free reviews left today.`;
         body.innerHTML = `
             <div class="egr-pro-lock">
                 <div class="egr-pro-eyebrow">EloGuard Pro</div>
                 <div class="egr-pro-title">${escapeHtml(title)}</div>
-                <div class="egr-pro-copy">${escapeHtml(freeLine)} Pro unlocks unlimited game reviews, Strength Profile, and risk profile.</div>
+                <div class="egr-pro-copy">${escapeHtml(freeLine)} Pro unlocks unlimited game reviews and Stats.</div>
                 <button type="button" class="egr-start-btn egr-upgrade-btn">Upgrade to Pro</button>
             </div>`;
         body.querySelector('.egr-upgrade-btn')?.addEventListener('click', () => openPremiumUpgrade(featureKey));
@@ -8761,23 +9084,25 @@
         REVIEW_SELECTED_DEPTH = depth;
         body.innerHTML = `
             <div class="egr-setup">
-                <div class="egr-setup-line">${escapeHtml(record.whiteName)} vs ${escapeHtml(record.blackName)} · ${Math.ceil(plies / 2)} moves</div>
+                <div class="egr-setup-line">
+                    <div class="egr-setup-players">${escapeHtml(record.whiteName)} vs ${escapeHtml(record.blackName)}</div>
+                    <div class="egr-setup-moves">${Math.ceil(plies / 2)} moves</div>
+                </div>
                 <div class="egr-depth-control">
                     <div class="egr-depth-head">
                         <label for="egr-depth-slider">Depth</label>
-                        <output class="egr-depth-value" for="egr-depth-slider">d${depth}</output>
+                        <output class="egr-depth-value" for="egr-depth-slider">${depth}</output>
                     </div>
                     <input id="egr-depth-slider" class="egr-depth-slider" type="range" min="${REVIEW_DEPTH_MIN}" max="${REVIEW_DEPTH_MAX}" step="1" value="${depth}" aria-label="Analysis depth">
                     <div class="egr-depth-scale"><span>Fast</span><span>Stronger</span></div>
                 </div>
                 <button type="button" class="egr-start-btn">Analyze Game</button>
-                <div class="egr-setup-note">Runs Stockfish locally in your browser — nothing is uploaded.</div>
             </div>`;
         const slider = body.querySelector('.egr-depth-slider');
         const value = body.querySelector('.egr-depth-value');
         slider?.addEventListener('input', () => {
             REVIEW_SELECTED_DEPTH = clampReviewDepth(slider.value);
-            if (value) value.textContent = `d${REVIEW_SELECTED_DEPTH}`;
+            if (value) value.textContent = `${REVIEW_SELECTED_DEPTH}`;
         });
         const startBtn = body.querySelector('.egr-start-btn');
         updateDailyLeftButton(startBtn, 'Analyze Game', PRO_FEATURE_GAME_REVIEW, record.movesKey);
@@ -8788,6 +9113,13 @@
         const selectedDepth = clampReviewDepth(REVIEW_SELECTED_DEPTH);
         const body = getReviewBody();
         if (!body) return;
+        // Single engine: if a batch is running, cancel it cleanly via its own path so the two
+        // don't fight over the engine or clobber each other's handle.
+        if (REVIEW_BATCH_ACTIVE) {
+            REVIEW_BATCH_CANCEL = true;
+            cancelReviewJob(REVIEW_BATCH_JOB?.jobId);
+            REVIEW_BATCH_JOB = null;
+        }
         // Non-consuming gate; a failed/cancelled analysis must not burn the free
         // daily review. We spend it only after buildReview succeeds (below).
         const access = await getPremiumFeatureAccess(PRO_FEATURE_GAME_REVIEW, record.movesKey);
@@ -8802,8 +9134,11 @@
                 <div class="egr-progress-track"><div class="egr-progress-fill"></div></div>
                 <button type="button" class="egr-cancel-btn">Cancel</button>
             </div>`;
+        const singleHandle = {};
+        REVIEW_SINGLE_JOB = singleHandle;
         body.querySelector('.egr-cancel-btn').addEventListener('click', () => {
-            cancelActiveReviewJob();
+            cancelReviewJob(singleHandle.jobId);
+            if (REVIEW_SINGLE_JOB === singleHandle) REVIEW_SINGLE_JOB = null;
             renderReviewSetup(record);
         });
         const startedAt = Date.now();
@@ -8824,9 +9159,10 @@
                 selectedDepth,
                 !!record.prepared.terminal,
                 onProgress,
-                reviewPositionsToAnalyze(record.prepared)
+                reviewPositionsToAnalyze(record.prepared),
+                singleHandle
             );
-            REVIEW_ACTIVE_JOB_ID = null;
+            REVIEW_SINGLE_JOB = null;
             // Panel may have been closed / reopened for a different game meanwhile.
             const panel = getReviewPanel();
             if (!panel || panel.dataset.movesKey !== record.movesKey) return;
@@ -8842,7 +9178,7 @@
             saveReviewToHistory(record, review);
             renderReviewResults(record, review, selectedDepth);
         } catch (e) {
-            REVIEW_ACTIVE_JOB_ID = null;
+            REVIEW_SINGLE_JOB = null;
             if (e && e.message === 'cancelled') return;
             teardownEngineFrame(); // a retry gets a fresh engine
             // When the extension is reloaded/updated, this already-loaded content
@@ -8931,11 +9267,9 @@
         if (!profile) {
             body.innerHTML = `
                 <div class="egr-results">
-                    <div class="egr-profile-head">Strength Profile</div>
+                    <div class="egr-profile-head">Stats</div>
                     ${controls}
-                    <div class="egr-message">Nothing reviewed in this range yet. Pick a range and hit
-                    "Analyze range" — your recent chess.com games get reviewed automatically, right in
-                    your browser. Or review games one at a time after playing.</div>
+                    <div class="egr-message">No reviewed games in this range. Use "Analyze range" to review your recent games.</div>
                     <div class="egr-footer">
                         <button type="button" class="egr-again-btn egr-profile-back">Back to review</button>
                     </div>
@@ -8956,7 +9290,6 @@
         const deltaDir = (d) => (d > 0 ? 'up' : d < 0 ? 'down' : 'flat');
         const accBar = (acc) =>
             `<div class="egr-accbar"><div class="egr-accbar-fill" style="width:${Math.max(2, Math.min(100, acc)).toFixed(1)}%"></div></div>`;
-        const poolIcons = { bullet: '🚀', blitz: '⚡', rapid: '⏱️', classical: '🐢' };
         const poolCards = ['bullet', 'blitz', 'rapid', 'classical']
             .filter((pool) => profile.pools[pool])
             .map((pool) => {
@@ -8972,19 +9305,17 @@
                 const strength = anchor ? anchor.strength : p.rating;
                 const unc = anchor ? anchor.uncertainty : p.uncertainty;
                 const delta = anchor
-                    ? (anchor.delta === 0
-                        ? `<div class="egr-pool-delta" data-dir="flat">even with your ${anchor.baseline}</div>`
-                        : `<div class="egr-pool-delta" data-dir="${deltaDir(anchor.delta)}">${anchor.delta > 0 ? '▲' : '▼'} ${fmtDelta(anchor.delta)} vs your ${anchor.baseline}</div>`)
-                    : '<div class="egr-pool-delta" data-dir="flat">estimated</div>';
+                    ? `<div class="egr-pool-delta" data-dir="${deltaDir(anchor.delta)}">${fmtDelta(anchor.delta)} vs your ${anchor.baseline}</div>`
+                    : '';
                 return `
                     <div class="egr-pool-card" data-pool="${pool}">
                         <div class="egr-pool-top">
-                            <span class="egr-pool-name"><span class="egr-pool-ico">${poolIcons[pool] || ''}</span>${pool}</span>
+                            <span class="egr-pool-name">${pool}</span>
                             <span class="egr-pool-games">${gamesLabel(p.games)}</span>
                         </div>
                         <div class="egr-pool-strength">~${strength}<span class="egr-pool-unc">±${unc}</span></div>
                         ${delta}
-                        <div class="egr-pool-acc">${accBar(p.accuracy)}<span class="egr-pool-accnum">${p.accuracy.toFixed(1)}%</span></div>
+                        <div class="egr-pool-acc"><span class="egr-pool-acclabel">Accuracy</span>${accBar(p.accuracy)}<span class="egr-pool-accnum">${p.accuracy.toFixed(1)}%</span></div>
                     </div>`;
             }).join('');
 
@@ -9038,10 +9369,11 @@
 
         body.innerHTML = `
             <div class="egr-results">
-                <div class="egr-profile-head">Strength Profile
+                <div class="egr-profile-head">Stats
                     <span class="egr-profile-sub">${gamesLabel(profile.totalGames)} reviewed</span>
                 </div>
                 ${controls}
+                <div class="egr-profile-section">Accuracy performance rating</div>
                 <div class="egr-profile-pools">${poolCards}</div>
                 <div class="egr-profile-section">By phase</div>
                 <div class="egr-phase-list">${phaseRows || '<div class="egr-message">Not enough phase data yet.</div>'}</div>
@@ -9078,7 +9410,8 @@
         body.querySelector('.egr-batch-btn')?.addEventListener('click', () => {
             if (REVIEW_BATCH_ACTIVE) {
                 REVIEW_BATCH_CANCEL = true;
-                cancelActiveReviewJob();
+                cancelReviewJob(REVIEW_BATCH_JOB?.jobId);
+                REVIEW_BATCH_JOB = null;
                 return;
             }
             const btn = body.querySelector('.egr-batch-btn');
@@ -9232,7 +9565,7 @@
             history[fn] = function (...args) {
                 const res = original.apply(this, args);
                 if (GUARD_ACTIVE && activeLockState) {
-                    setTimeout(() => lockOut(activeLockState.rating, activeLockState.type), 50);
+                    setTimeout(() => lockOut(activeLockState.rating, activeLockState.type, activeLockState), 50);
                 }
                 return res;
             };

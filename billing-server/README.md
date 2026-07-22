@@ -4,7 +4,8 @@ Tiny Stripe entitlement service for EloGuard v2.
 
 ## What It Does
 
-- `/checkout?installId=...` lets the user choose monthly or lifetime Pro.
+- `/checkout?installId=...` lets the user choose a card-required seven-day
+  Monthly trial or lifetime Pro.
 - `/webhook` receives Stripe subscription/payment events and stores Pro entitlement.
 - `/api/entitlement?installId=...` tells the extension whether that install is Pro.
 - `/portal?installId=...` opens Stripe Billing Portal for paid users.
@@ -22,6 +23,8 @@ This MVP keys entitlement to the browser extension install id. That is fast to s
    - `STRIPE_MONTHLY_PRICE_ID`
    - `STRIPE_LIFETIME_PRICE_ID`
    - `STRIPE_WEBHOOK_SECRET`
+   - Keep `STRIPE_TRIAL_DAYS=7` so the Monthly checkout collects a card, charges
+     $0 today, and starts billing after the free week unless cancelled.
 4. Install dependencies and run:
 
 ```bash
@@ -66,3 +69,5 @@ store's concurrency/atomicity and the `past_due`/grace derivation logic.
 - In the extension, update `lib/entitlements.js` defaults or set `eloGuardBillingConfig` in `chrome.storage.sync` to point at the production URLs.
 - Configure the Stripe Customer Portal before using `/portal` for monthly
   subscribers.
+- In Stripe Billing email settings, enable the free-trial ending reminder and
+  set the cancellation URL to the deployed `/portal` flow.

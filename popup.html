@@ -13,13 +13,36 @@
             <h2>🛡️ EloGuard</h2>
             <div class="header-actions">
                 <button id="upgradeBtn" class="upgrade-btn">Upgrade</button>
-                <button id="statsBtn" class="icon-btn" title="My Stats — Strength Profile">📊</button>
+                <button id="statsBtn" class="icon-btn stats-btn" title="My Stats" aria-label="Open Stats">
+                    <span class="stats-trend-icon" aria-hidden="true">
+                        <svg viewBox="0 0 20 20" focusable="false">
+                            <path d="M3 15.5 8 10l3.2 3.2L17 6.5" />
+                            <path d="M12.5 6.5H17V11" />
+                        </svg>
+                    </span>
+                    <span>Stats</span>
+                </button>
                 <button id="settingsBtn" class="icon-btn">⚙️</button>
             </div>
         </div>
 
         <div class="status-card">
-            <div id="connectionStatus" class="status-text">Checking...</div>
+            <div class="connection-status-row">
+                <div id="connectionStatus" class="status-text" aria-live="polite">Checking...</div>
+                <button id="homeUsernameEditBtn" class="home-username-edit hidden" type="button">Change</button>
+            </div>
+
+            <div id="homeConnectionForm" class="home-connection-form hidden">
+                <input
+                    type="text"
+                    id="homeUsername"
+                    placeholder="Chess.com username"
+                    aria-label="Chess.com username"
+                    autocomplete="off"
+                    spellcheck="false"
+                >
+                <button id="homeConnectBtn" class="secondary-btn home-connect-btn" type="button">Connect</button>
+            </div>
             
             <select id="gameMode" class="mode-select">
                 <option value="blitz">Blitz</option>
@@ -44,7 +67,7 @@
             <button id="toggleRatingVisBtn" class="text-link-btn">Hide</button>
         </div>
 
-        <div id="activateBtnContainer" style="width: 85%; margin: 14px auto;">
+        <div id="activateBtnContainer" class="activate-btn-container">
             <button id="activateBtn" class="big-btn">ACTIVATE GUARD</button>
             <div id="unlockUI" class="unlock-ui hidden">
                 <div class="unlock-string-display" id="unlockStringDisplay"></div>
@@ -56,90 +79,99 @@
             </div>
         </div>
 
+        <div id="smartBracketCard" class="sb-card hidden">
+            <div class="sb-head">
+                <span class="sb-title">⚡ Smart bracket</span>
+                <div class="sb-head-actions">
+                    <button id="sbRefreshBtn" class="pro-refresh-link" title="Recompute from recent games">↻</button>
+                    <label class="switch">
+                        <input type="checkbox" id="smartBracketToggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+            <p id="sbOffNote" class="sb-off-note hidden">Off — your floor and ceiling stay as you set them.</p>
+            <div class="sb-rail">
+                <div class="sb-track">
+                    <div class="sb-you" id="sbYou">You</div>
+                    <div class="sb-dot" id="sbDot"></div>
+                </div>
+                <div class="sb-rail-labels">
+                    <span class="sb-floor">Floor <b id="sbFloorVal">---</b></span>
+                    <span class="sb-ceiling">Target <b id="sbCeilVal">---</b></span>
+                </div>
+                <div id="sbLongTermGoal" class="sb-long-goal hidden"></div>
+                <div id="sbPerformance" class="sb-performance hidden" title="EloGuard's surprise-weighted Bayesian performance rating from all rated and casual games in the last 7 days, not classic tournament performance rating.">
+                    <span>Recent performance (last 7 days)</span>
+                    <span class="sb-performance-reading">
+                        <b id="sbPerformanceVal">---</b>
+                        <span id="sbPerformanceDelta" class="sb-performance-delta"></span>
+                    </span>
+                </div>
+            </div>
+            <ul id="sbReasons" class="sb-reasons"></ul>
+            <div id="sbProOverlay" class="sb-pro-overlay hidden">
+                <div class="sb-pro-eyebrow">EloGuard Pro</div>
+                <div class="sb-pro-copy">Sample preview. Pro analyses your recent games and sets your floor and target each session.</div>
+                <button type="button" id="sbUpgradeBtn" class="upgrade-btn">Upgrade to Pro</button>
+            </div>
+        </div>
+
         <div class="toggle-panel">
-            <div class="zen-wrapper">
+            <div class="toggle-row toggle-panel-row">
                 <label class="switch">
                     <input type="checkbox" id="hideRatings">
                     <span class="slider"></span>
                 </label>
-            <span class="zen-label">🙈 Zen Mode (Hide Elo on Site)</span>
+                <span class="toggle-label">🙈 Zen Mode (Hide Elo on Site)</span>
+            </div>
+
+            <div class="toggle-row toggle-panel-row">
+                <label class="switch">
+                    <input type="checkbox" id="anonymizeOpponent">
+                    <span class="slider"></span>
+                </label>
+                <span class="toggle-label">Anonymize Opponent</span>
+            </div>
+
+            <div class="toggle-row toggle-panel-row">
+                <label class="switch">
+                    <input type="checkbox" id="anonymizeSelf">
+                    <span class="slider"></span>
+                </label>
+                <span class="toggle-label">Hide My Profile</span>
+            </div>
+
+            <div class="toggle-row toggle-panel-row">
+                <label class="switch">
+                    <input type="checkbox" id="enhancedFocusMode">
+                    <span class="slider"></span>
+                </label>
+                <span class="toggle-label">Enhanced focus mode</span>
+            </div>
         </div>
 
-        <div class="zen-wrapper opponent-wrapper">
-            <label class="switch">
-                <input type="checkbox" id="anonymizeOpponent">
-                <span class="slider"></span>
-            </label>
-            <span class="zen-label">Anonymize Opponent</span>
-        </div>
-
-        <div class="zen-wrapper opponent-wrapper">
-            <label class="switch">
-                <input type="checkbox" id="anonymizeSelf">
-                <span class="slider"></span>
-            </label>
-            <span class="zen-label">Hide My Profile</span>
-        </div>
-
-        <div class="zen-wrapper opponent-wrapper">
-            <label class="switch">
-                <input type="checkbox" id="enhancedFocusMode">
-                <span class="slider"></span>
-            </label>
-            <span class="zen-label">Enhanced focus mode</span>
-        </div>
-
-        <div class="zen-wrapper opponent-wrapper">
-            <label class="switch">
-                <input type="checkbox" id="showRiskProfilePill">
-                <span class="slider"></span>
-            </label>
-            <span class="zen-label">Cheat risk detection</span>
-        </div>
-    </div>
-
-        <div id="proSection" class="pro-section">
-            <div class="pro-shine" aria-hidden="true"></div>
+        <!-- Temporarily disabled: Pro features summary panel.
+        <div id="proSection" class="pro-section hidden">
             <div class="pro-section-head">
                 <span id="proSectionTitle" class="pro-section-title">Pro features</span>
                 <button id="refreshProBtn" class="pro-refresh-link" title="Recheck subscription">↻</button>
             </div>
             <ul class="pro-feature-list">
-                <li class="pro-feature" data-feature="riskProfile">
-                    <span class="pro-feature-lock">🔒</span>
-                    <span class="pro-feature-label">Unlimited cheat risk detection</span>
-                </li>
                 <li class="pro-feature" data-feature="gameReview">
                     <span class="pro-feature-lock">🔒</span>
-                    <span class="pro-feature-label">Full game reviews</span>
+                    <span class="pro-feature-label">Unlimited game reviews</span>
                 </li>
-                <!-- MATCHUP ADVICE — DISABLED (chess.com TOS review pending):
-                     The "Opponent matchup advice" Pro row is commented out (not deleted)
-                     because the matchup feature is turned off in content.js pending a
-                     check on whether it violates the Chess.com Terms of Service. The
-                     cheat risk detection row ("Unlimited cheat risk detection") above stays.
-                     Re-enable this row together with the matchup feature. -->
-                <!--
-                <li class="pro-feature" data-feature="matchup">
+                <li class="pro-feature" data-feature="stats">
                     <span class="pro-feature-lock">🔒</span>
-                    <span class="pro-feature-label">Opponent matchup advice</span>
+                    <span class="pro-feature-label">Stats &amp; rating trends</span>
                 </li>
-                -->
                 <li class="pro-feature" data-feature="smartBracket">
                     <span class="pro-feature-lock">🔒</span>
                     <span class="pro-feature-label">Smart bracket auto-set</span>
                 </li>
             </ul>
             <div id="proUsageHint" class="pro-usage-hint"></div>
-        </div>
-
-        <!-- Pro tester toggle disabled for public launch.
-        <div id="devProRow" class="dev-pro-row hidden">
-            <label class="switch">
-                <input type="checkbox" id="devProToggle">
-                <span class="slider"></span>
-            </label>
-            <span class="dev-pro-label">Pro mode (testing)</span>
         </div>
         -->
 
@@ -155,11 +187,11 @@
             <label>
                 Chess.com Username
                 <div class="tooltip-container">
-                    <span class="tooltip" data-text="Your exact Chess.com username. Case sensitive.">?</span>
+                    <span class="tooltip" data-text="Your exact Chess.com username. Case sensitive." aria-label="Your exact Chess.com username. Case sensitive.">?</span>
                 </div>
             </label>
             <div class="flex-row">
-                <input type="text" id="username" placeholder="e.g. MagnusCarlsen" style="flex: 1;">
+                <input type="text" id="username" placeholder="e.g. MagnusCarlsen" class="flex-fill">
                 <button id="connectBtn" class="secondary-btn">Connect</button>
             </div>
         </div>
@@ -204,48 +236,11 @@
             </div>
         </div>
 
-        <div class="input-group">
-            <label>
-                🧊 Analysis Cool Down
-                <div class="tooltip-container">
-                    <span class="tooltip" data-text="Forces a waiting period after every game to encourage analysis.">?</span>
-                </div>
-            </label>
-            <div class="flex-row">
-                <label class="switch" style="margin: 0;">
-                    <input type="checkbox" id="cooldownActive">
-                    <span class="slider"></span>
-                </label>
-                <input type="number" id="cooldownSeconds" placeholder="Seconds (e.g. 60)" style="flex:1;">
-            </div>
-        </div>
-
-        <div class="input-group">
-            <label>
-                🔐 Random String Unlock
-                <div class="tooltip-container">
-                    <span class="tooltip" data-text="Require typing a random string to unlock. Makes it harder to bypass the lock impulsively.">?</span>
-                </div>
-            </label>
-            <div class="flex-row">
-                <label class="switch" style="margin: 0;">
-                    <input type="checkbox" id="randomStringUnlock">
-                    <span class="slider"></span>
-                </label>
-                <input type="number" id="randomStringLength" placeholder="Length (e.g. 10, 20, 50)" style="flex:1;" min="5" max="100" value="10">
-            </div>
-        </div>
-
         <div class="input-group smart-bracket-group">
-            <label>
-                ⚡ Smart Bracket (Auto-Set) <span class="pro-inline-badge">Pro</span>
-                <div class="tooltip-container">
-                    <span class="tooltip" data-text="Pro feature. Automatically sets Stop Loss & Target based on your CURRENT rating +/- this amount.">?</span>
-                </div>
-            </label>
-            <div class="flex-row">
-                <input type="number" id="smartRange" placeholder="+/-" value="25">
-                <button id="applySmartBtn" class="secondary-btn">Apply</button>
+            <div class="sb-entry-row">
+                <span class="sb-entry-label">⚡ Smart Bracket <span class="pro-inline-badge">Pro</span></span>
+                <button id="smartSetupBtn" class="icon-btn sb-gear-btn" title="Smart Bracket settings">⚙️</button>
+                <label class="switch"><input type="checkbox" id="smartBracketSettingsToggle"><span class="slider"></span></label>
             </div>
         </div>
 
@@ -254,7 +249,7 @@
                 <label>
                     🛑 Floor
                     <div class="tooltip-container">
-                        <span class="tooltip" data-text="If your rating drops to this number, the Play button locks.">?</span>
+                        <span class="tooltip" data-text="If your rating drops to this number, the Play button locks." aria-label="If your rating drops to this number, the Play button locks.">?</span>
                     </div>
                 </label>
                 <input type="number" id="stopLoss" placeholder="---">
@@ -264,7 +259,7 @@
                 <label>
                     🏆 Ceiling
                     <div class="tooltip-container">
-                        <span class="tooltip" data-text="If your rating reaches this number, the Play button locks (Green).">?</span>
+                        <span class="tooltip" data-text="If your rating reaches this number, the Play button locks (Green)." aria-label="If your rating reaches this number, the Play button locks (Green).">?</span>
                     </div>
                 </label>
                 <input type="number" id="targetRating" placeholder="---">
@@ -273,9 +268,41 @@
 
         <div class="input-group">
             <label>
+                🧊 Analysis Cool Down
+                <div class="tooltip-container">
+                    <span class="tooltip" data-text="Forces a waiting period after every game to encourage analysis." aria-label="Forces a waiting period after every game to encourage analysis.">?</span>
+                </div>
+            </label>
+            <div class="flex-row">
+                <label class="switch">
+                    <input type="checkbox" id="cooldownActive">
+                    <span class="slider"></span>
+                </label>
+                <input type="number" id="cooldownSeconds" placeholder="Seconds (e.g. 60)" class="flex-fill">
+            </div>
+        </div>
+
+        <div class="input-group">
+            <label>
+                🔐 Random String Unlock
+                <div class="tooltip-container">
+                    <span class="tooltip" data-text="Require typing a random string to unlock. Makes it harder to bypass the lock impulsively." aria-label="Require typing a random string to unlock. Makes it harder to bypass the lock impulsively.">?</span>
+                </div>
+            </label>
+            <div class="flex-row">
+                <label class="switch">
+                    <input type="checkbox" id="randomStringUnlock">
+                    <span class="slider"></span>
+                </label>
+                <input type="number" id="randomStringLength" placeholder="Length (e.g. 10, 20, 50)" class="flex-fill" min="5" max="100" value="10">
+            </div>
+        </div>
+
+        <div class="input-group">
+            <label>
                 Stop After X Losses In A Row
                 <div class="tooltip-container">
-                    <span class="tooltip" data-text="Locks the Play button after this many consecutive rating drops.">?</span>
+                    <span class="tooltip" data-text="Locks play after this many losses in a row." aria-label="Locks play after this many losses in a row.">?</span>
                 </div>
             </label>
             <input type="number" id="lossStreakLimit" placeholder="e.g. 3">
@@ -285,7 +312,7 @@
             <label>
                 Lockout Duration (minutes)
                 <div class="tooltip-container">
-                    <span class="tooltip" data-text="Auto-unlock after this many minutes. Leave empty for permanent lock until manually unlocked.">?</span>
+                    <span class="tooltip" data-text="How many minutes the lock lasts." aria-label="How many minutes the lock lasts.">?</span>
                 </div>
             </label>
             <input type="number" id="lockoutDuration" placeholder="e.g. 60">
@@ -304,13 +331,241 @@
             <p id="billingStatusLabel" class="billing-status">Free tier active.</p>
             <div class="billing-actions">
                 <button id="billingManageBtn" class="secondary-btn billing-manage-btn">Manage subscription</button>
-                <button id="billingCancelBtn" class="secondary-btn billing-cancel-btn">Cancel renewal</button>
+                <button id="billingCancelBtn" class="secondary-btn billing-cancel-btn" hidden>Cancel renewal</button>
+            </div>
+            <button id="billingRestoreToggle" class="billing-restore-link" aria-expanded="false" aria-controls="billingRestoreRow billingRestoreCodeRow" hidden>Already purchased? Restore Pro</button>
+            <div id="billingRestoreRow" class="billing-restore-row" hidden>
+                <input type="email" id="billingRestoreEmail" placeholder="Email used at checkout" autocomplete="email">
+                <button id="billingRestoreBtn" class="secondary-btn billing-restore-btn">Send code</button>
+            </div>
+            <div id="billingRestoreCodeRow" class="billing-restore-row" hidden>
+                <input type="text" id="billingRestoreCode" placeholder="6-digit code from your email" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code">
+                <button id="billingRestoreVerifyBtn" class="secondary-btn billing-restore-btn">Verify</button>
             </div>
             <div id="billingMessage" class="billing-message" role="status" aria-live="polite"></div>
         </section>
     </div>
 
+    <div id="smartSetupView" class="hidden">
+        <div class="header">
+            <button id="sbFlowBackBtn" class="icon-btn">← Back</button>
+            <h2>Smart Bracket</h2>
+            <span class="sb-step-label" id="sbStepLabel">Step 1 of 2</span>
+        </div>
+
+        <div id="sbStep1">
+            <p class="sb-intro">Your floor &amp; ceiling, computed from your recent games. <button type="button" id="sbHowBtn" class="sb-how-link">How it works</button></p>
+
+            <div class="input-group">
+                <div class="sb-label-row">
+                    <label id="sbGoalLabel" for="sbGoalInput">🎯 Long-term Elo goal — Blitz
+                        <div class="tooltip-container">
+                            <span class="tooltip" data-text="Optional. Shown separately from your current-session floor and target." aria-label="Optional. Shown separately from your current-session floor and target.">?</span>
+                        </div>
+                    </label>
+                    <button id="sbGoalClearBtn" class="text-link-btn sb-inline-clear hidden">Clear</button>
+                </div>
+                <input type="number" id="sbGoalInput" placeholder="Optional, e.g. 1500">
+            </div>
+
+            <div class="toggle-row">
+                <label class="switch">
+                    <input type="checkbox" id="sbTrailingToggle">
+                    <span class="slider"></span>
+                </label>
+                <span class="toggle-label">Trailing stop-loss
+                    <span class="tooltip-container">
+                        <span class="tooltip" data-text="Your floor rises as your rating peaks during a session, so gains get locked in instead of given back." aria-label="Your floor rises as your rating peaks during a session, so gains get locked in instead of given back.">?</span>
+                    </span>
+                </span>
+            </div>
+
+            <div class="input-group">
+                <div class="sb-label-row">
+                    <label for="sbFallbackRange">Fallback range (±)
+                        <div class="tooltip-container">
+                            <span class="tooltip" data-text="Only used when there isn't enough recent game data. Your floor and ceiling are set this many points around your current rating." aria-label="Only used when there isn't enough recent game data. Your floor and ceiling are set this many points around your current rating.">?</span>
+                        </div>
+                    </label>
+                </div>
+                <input type="number" id="sbFallbackRange" placeholder="e.g. 25">
+            </div>
+
+            <div class="sb-btn-row">
+                <button id="sbSaveBtn" class="secondary-btn sb-save-btn">Save</button>
+                <button id="sbPreviewBtn" class="big-btn">Preview bracket</button>
+            </div>
+        </div>
+
+        <div id="sbStep2" class="hidden">
+            <div id="sbPreviewLoading" class="sb-preview-loading">Analyzing your recent games…</div>
+
+            <div id="sbPreviewResult" class="hidden">
+                <span class="sb-title" id="sbPreviewTitle">Your bracket — Blitz</span>
+                <div class="sb-rail">
+                    <div class="sb-track">
+                        <div class="sb-you" id="sbYouPrev">You</div>
+                        <div class="sb-dot" id="sbDotPrev"></div>
+                    </div>
+                    <div class="sb-rail-labels">
+                        <span class="sb-floor">Floor <b id="sbFloorValPrev">---</b></span>
+                        <span class="sb-ceiling">Target <b id="sbCeilValPrev">---</b></span>
+                    </div>
+                    <div id="sbLongTermGoalPrev" class="sb-long-goal hidden"></div>
+                    <div id="sbPerformancePrev" class="sb-performance hidden" title="EloGuard's surprise-weighted Bayesian performance rating from all rated and casual games in the last 7 days, not classic tournament performance rating.">
+                        <span>Recent performance (last 7 days)</span>
+                        <span class="sb-performance-reading">
+                            <b id="sbPerformanceValPrev">---</b>
+                            <span id="sbPerformanceDeltaPrev" class="sb-performance-delta"></span>
+                        </span>
+                    </div>
+                </div>
+                <ul id="sbReasonsPrev" class="sb-reasons"></ul>
+            </div>
+
+            <div id="sbPreviewError" class="hidden">
+                <p class="sb-preview-error-text">Couldn't fetch your games. Check the username and try again.</p>
+            </div>
+
+            <div id="sbPreviewActions" class="sb-preview-actions hidden">
+                <button id="sbApplyBtn" class="big-btn">Apply bracket</button>
+                <button id="sbAdjustBtn" class="text-link-btn">Adjust settings</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="sbHowView" class="hidden">
+        <div class="header">
+            <button id="sbHowBackBtn" class="icon-btn">← Back</button>
+            <h2>How Smart Bracket works</h2>
+        </div>
+
+        <div class="how-section">
+            <h3 class="how-h">What it does</h3>
+            <p class="how-p">Smart Bracket reads your recent games in the current mode and sets two numbers: a <b>floor</b>, the rating where EloGuard steps in and ends your session, and a <b>target</b> to aim for. The bracket refreshes when a guarded session starts, then the target stays fixed for that session.</p>
+        </div>
+
+        <div class="how-section">
+            <h3 class="how-h">Your floor</h3>
+            <p class="how-p">The floor protects your rating. If you've dropped several games in a row, it's pulled up close to stop the bleed early. Otherwise it sits far enough below you to allow a normal run of losses, based on how swingy your recent games are.</p>
+        </div>
+
+        <div class="how-section">
+            <h3 class="how-h">Your target</h3>
+            <p class="how-p">Your target is for this session only. It follows your recent performance, normal winning runs, and current trend. Hit it and EloGuard banks the win. You may deliberately extend the target once after a short pause; the floor tightens at the same time.</p>
+        </div>
+
+        <div class="how-section">
+            <h3 class="how-h">Long-term goal</h3>
+            <p class="how-p">Your Elo goal is shown below the session bracket for context, but it never raises or lowers the current session's floor or target.</p>
+        </div>
+
+        <div class="how-section">
+            <h3 class="how-h">Trailing stop-loss</h3>
+            <p class="how-p">When on, your floor rises as your rating peaks during a session, so gains get locked in instead of given back. A floor hit is always final for the session and never offers a continue option.</p>
+        </div>
+
+        <div class="how-section">
+            <h3 class="how-h">Fallback range</h3>
+            <p class="how-p">If there isn't enough recent game data to compute a bracket, the floor and target are simply set this many points below and above your current rating.</p>
+        </div>
+
+        <div class="how-section">
+            <h3 class="how-h">Every number is explained</h3>
+            <p class="how-p">Each applied bracket comes with plain-English reasons on the home screen, telling you exactly why the floor and target landed where they did.</p>
+        </div>
+    </div>
+
+    <div id="statsView" class="hidden">
+        <div class="header">
+            <button id="stxBackBtn" class="icon-btn">← Back</button>
+            <h2>Stats</h2>
+        </div>
+
+        <div class="stx-controls">
+            <select id="stxMode" class="mode-select">
+                <option value="blitz">Blitz</option>
+                <option value="rapid">Rapid</option>
+                <option value="bullet">Bullet</option>
+            </select>
+            <select id="stxRated" class="mode-select">
+                <option value="rated">Rated</option>
+                <option value="unrated">Casual</option>
+                <option value="both" selected>All games</option>
+            </select>
+            <select id="stxPeriod" class="mode-select" aria-label="Stats period">
+                <option value="hour">Last hour</option>
+                <option value="today">Today</option>
+                <option value="7">7 days</option>
+                <option value="14">14 days</option>
+                <option value="30" selected>30 days</option>
+                <option value="90">3 months</option>
+                <option value="180">6 months</option>
+                <option value="365">1 year</option>
+            </select>
+        </div>
+
+        <div id="stxStatus" class="stx-status hidden">
+            <div id="stxStatusText"></div>
+            <button id="stxRetryBtn" class="text-link-btn hidden">Retry</button>
+        </div>
+
+        <div id="stxBody" class="stx-body hidden">
+            <div class="sb-card">
+                <div class="stx-card-head">
+                    <span class="sb-title">PERFORMANCE RATING</span>
+                    <span class="stx-hero-wrap">
+                        <span id="stxPerfHero" class="stx-hero"></span>
+                        <span id="stxPerfDelta" class="stx-delta hidden"></span>
+                    </span>
+                </div>
+                <svg id="stxPerfChart" class="stx-chart" viewBox="0 0 264 96" xmlns="http://www.w3.org/2000/svg"></svg>
+                <div id="stxPerfRange" class="stx-data-line"></div>
+                <div id="stxPerfEmpty" class="stx-empty hidden">Not enough games.</div>
+            </div>
+
+            <div class="sb-card">
+                <div class="stx-card-head">
+                    <span class="sb-title">RATING</span>
+                    <span class="stx-hero-wrap">
+                        <span id="stxRatingHero" class="stx-hero"></span>
+                        <span id="stxRatingDelta" class="stx-delta hidden"></span>
+                    </span>
+                </div>
+                <svg id="stxRatingChart" class="stx-chart" viewBox="0 0 264 96" xmlns="http://www.w3.org/2000/svg"></svg>
+                <div id="stxRatingNote" class="stx-empty hidden">Rated games only.</div>
+            </div>
+
+            <div class="sb-card stx-record">
+                <div class="stx-record-cell">
+                    <span id="stxWins" class="stx-record-val win">0</span>
+                    <span class="stx-record-label">Wins</span>
+                </div>
+                <div class="stx-record-cell">
+                    <span id="stxDraws" class="stx-record-val draw">0</span>
+                    <span class="stx-record-label">Draws</span>
+                </div>
+                <div class="stx-record-cell">
+                    <span id="stxLosses" class="stx-record-val loss">0</span>
+                    <span class="stx-record-label">Losses</span>
+                </div>
+                <div class="stx-record-cell">
+                    <span id="stxGames" class="stx-record-val games">0</span>
+                    <span class="stx-record-label">Games</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="stxProOverlay" class="stx-pro-overlay hidden">
+            <div class="sb-pro-eyebrow">EloGuard Pro</div>
+            <div class="sb-pro-copy">Sample preview. Pro tracks your performance rating, rating trend, and win record across every time format.</div>
+            <button type="button" id="stxUpgradeBtn" class="upgrade-btn">Upgrade to Pro</button>
+        </div>
+    </div>
+
     <script src="lib/entitlements.js"></script>
+    <script src="lib/smart-bracket.js"></script>
+    <script src="lib/session-bracket.js"></script>
     <script src="popup.js"></script>
 </body>
 </html>

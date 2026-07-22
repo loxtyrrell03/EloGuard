@@ -25,7 +25,9 @@ npx wrangler d1 create eloguard-billing
 
 Copy the returned D1 `database_id` into `wrangler.toml`.
 
-Apply the database schema:
+Apply the database schema (this also applies `migrations/0003_restore_codes.sql`,
+which creates the `restore_codes` table used by the two-step email-verified
+restore flow):
 
 ```bash
 npm run d1:migrate:remote
@@ -38,7 +40,15 @@ npx wrangler secret put STRIPE_SECRET_KEY
 npx wrangler secret put STRIPE_WEBHOOK_SECRET
 npx wrangler secret put STRIPE_MONTHLY_PRICE_ID
 npx wrangler secret put STRIPE_LIFETIME_PRICE_ID
+node node_modules/wrangler/bin/wrangler.js secret put RESEND_API_KEY
 ```
+
+`RESEND_API_KEY` is the Resend API key used to email one-time restore codes.
+The sender address is set by the `RESTORE_EMAIL_FROM` var in `wrangler.toml`
+(default `EloGuard <noreply@eloguard.app>`) and must be a verified Resend
+sender/domain. If `RESEND_API_KEY` is not set, `POST /restore` responds
+`503 {"ok":false,"error":"restore_unavailable"}` and grants nothing — restore
+is disabled until the key is configured.
 
 Use the existing Stripe test values while testing the hosted Worker. Use live
 Stripe values for production:
@@ -47,6 +57,10 @@ Stripe values for production:
 - `STRIPE_WEBHOOK_SECRET`: live webhook signing secret
 - `STRIPE_MONTHLY_PRICE_ID`: live $2.99/month price
 - `STRIPE_LIFETIME_PRICE_ID`: live $15 one-time price
+
+The committed Worker configuration sets `STRIPE_TRIAL_DAYS = "7"`. Monthly
+Checkout explicitly requires a payment method, charges $0 at signup, and starts
+the $2.99/month subscription after seven days unless the customer cancels.
 
 ## Deploy
 
@@ -92,8 +106,14 @@ Subscribe it to:
 - `customer.subscription.updated`
 - `customer.subscription.deleted`
 - `invoice.payment_failed`
+- `charge.refunded`
+- `charge.dispute.created`
 
 Copy the webhook signing secret into `STRIPE_WEBHOOK_SECRET`.
+
+In Stripe Dashboard Billing email settings, enable the free-trial ending
+reminder and set the cancellation URL to the deployed billing portal so Stripe's
+trial message gives customers a direct way to cancel.
 
 ## Production Smoke Test
 

@@ -8,8 +8,17 @@ binding = "DB"
 database_name = "eloguard-billing"
 database_id = "4bf13a0c-984e-4762-930d-7d113dd7ef0c"
 
+# KV namespace for webhook idempotency, subscription-event ordering, and per-IP
+# rate limiting (needs native TTL, which D1 lacks). Create it before deploying:
+#   node node_modules/wrangler/bin/wrangler.js kv namespace create KV
+# then paste the returned id below. The worker fails open if this is unbound.
+[[kv_namespaces]]
+binding = "KV"
+id = "12b73bd3128e49fb8ddffdab39c25b65"
+
 [vars]
 APP_BASE_URL = "https://eloguard-billing.eloguard.workers.dev"
 STRIPE_AUTOMATIC_TAX = "false"
-STRIPE_TRIAL_DAYS = "0"
+STRIPE_TRIAL_DAYS = "7"
 STRIPE_GRACE_DAYS = "14"
+RESTORE_EMAIL_FROM = "EloGuard <noreply@eloguard.app>"

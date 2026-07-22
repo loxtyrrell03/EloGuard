@@ -26,7 +26,7 @@ function createStorageArea(backing) {
   };
 }
 
-function loadEntitlements({ remoteEntitlement, now = '2026-07-09T10:00:00' } = {}) {
+function loadEntitlements({ remoteEntitlement, ownerPro = false, now = '2026-07-09T10:00:00' } = {}) {
   const local = {};
   const sync = {};
   let currentNow = now;
@@ -44,21 +44,33 @@ function loadEntitlements({ remoteEntitlement, now = '2026-07-09T10:00:00' } = {
     crypto: { randomUUID: () => 'test-install-id-123456' },
     Date: MockDate,
     chrome: {
+      runtime: {
+        getURL: (file) => `chrome-extension://test/${file}`
+      },
       storage: {
         local: createStorageArea(local),
         sync: createStorageArea(sync)
       }
     },
-    fetch: async () => ({
-      ok: true,
-      json: async () => remoteEntitlement || {
-        plan: 'free',
-        status: 'free',
-        source: 'billing-worker',
-        currentPeriodEnd: '',
-        accessUntil: ''
+    fetch: async (url) => {
+      if (String(url).startsWith('chrome-extension://test/')) {
+        return {
+          ok: ownerPro,
+          json: async () => ({ ownerPro })
+        };
       }
-    }),
+      return {
+        ok: true,
+        json: async () => remoteEntitlement || {
+          plan: 'free',
+          status: 'free',
+          source: 'billing-worker',
+          currentPeriodEnd: '',
+          accessUntil: ''
+        }
+      };
+    },
+    AbortSignal: { timeout: () => undefined },
     URL
   };
   vm.createContext(context);
@@ -93,6 +105,51 @@ test('dev Pro override is disabled in public launch builds', async () => {
   assert.equal(entitlement.plan, 'free');
 });
 
+test('ignored owner marker grants permanent lifetime Pro locally', async () => {
+  const { api, local } = loadEntitlements({ ownerPro: true });
+
+  const entitlement = await api.getEntitlement({ refresh: true });
+
+  assert.equal(entitlement.plan, 'pro');
+  assert.equal(entitlement.status, 'lifetime');
+  assert.equal(entitlement.source, 'owner');
+  assert.equal(api.isProEntitlement(entitlement), true);
+  assert.equal(local.eloGuardEntitlement.status, 'lifetime');
+  assert.equal(local.eloGuardEntitlement.source, 'owner');
+});
+
+test('a cancelled cached trial is revalidated immediately', async () => {
+  const { api, local } = loadEntitlements({
+    remoteEntitlement: {
+      plan: 'free',
+      status: 'free',
+      source: 'billing-worker',
+      currentPeriodEnd: '',
+      accessUntil: '',
+      cancelAtPeriodEnd: false,
+      cancelAt: ''
+    }
+  });
+  local.eloGuardEntitlement = {
+    plan: 'pro',
+    status: 'trialing',
+    source: 'stripe',
+    currentPeriodEnd: '2026-07-17T19:10:01.000Z',
+    accessUntil: '2026-07-17T19:10:01.000Z',
+    cancelAtPeriodEnd: true,
+    cancelAt: '2026-07-17T19:10:01.000Z',
+    refreshedAt: new Date('2026-07-09T09:59:00').getTime(),
+    lastSynced: new Date('2026-07-09T09:59:00').getTime()
+  };
+
+  const entitlement = await api.getEntitlement();
+
+  assert.equal(entitlement.plan, 'free');
+  assert.equal(entitlement.status, 'free');
+  assert.equal(api.isProEntitlement(entitlement), false);
+  assert.equal(local.eloGuardEntitlement.status, 'free');
+});
+
 test('free premium features are capped at three daily uses', async () => {
   const { api } = loadEntitlements();
 
@@ -105,6 +162,51 @@ test('free premium features are capped at three daily uses', async () => {
   const blocked = await api.consumeFeature('gameReview', 'game-3');
   assert.equal(blocked.allowed, false);
   assert.equal(blocked.remaining, 0);
+});
+
+test('concurrent consumption with distinct ids never exceeds the cap', async () => {
+  const { api, local } = loadEntitlements();
+
+  const results = await Promise.all(
+    Array.from({ length: 5 }, (_, index) =>
+      api.consumeFeature('gameReview', `concurrent-game-${index}`))
+  );
+
+  const allowed = results.filter((result) => result.allowed);
+  assert.equal(allowed.length, 3);
+
+  const usage = local['eloGuardUsage:gameReview:2026-07-09'];
+  assert.equal(usage.count, 3);
+  assert.equal(usage.ids.length, 3);
+});
+
+test('empty-string usageIds each count instead of sharing a dedup bucket', async () => {
+  const { api, local } = loadEntitlements();
+
+  const first = await api.consumeFeature('gameReview', '');
+  const second = await api.consumeFeature('gameReview', '');
+
+  assert.equal(first.allowed, true);
+  assert.equal(second.allowed, true);
+  assert.equal(second.used, 2);
+
+  const usage = local['eloGuardUsage:gameReview:2026-07-09'];
+  assert.equal(usage.count, 2);
+});
+
+test('the same non-empty usageId consumed twice only counts once', async () => {
+  const { api, local } = loadEntitlements();
+
+  const first = await api.consumeFeature('gameReview', 'same-game');
+  const second = await api.consumeFeature('gameReview', 'same-game');
+
+  assert.equal(first.allowed, true);
+  assert.equal(second.allowed, true);
+  assert.equal(second.used, 1);
+
+  const usage = local['eloGuardUsage:gameReview:2026-07-09'];
+  assert.equal(usage.count, 1);
+  assert.equal(usage.ids.length, 1);
 });
 
 test('free game review allowance resets to three on the next local day', async () => {
