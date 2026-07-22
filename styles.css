@@ -115,6 +115,39 @@
     text-overflow: ellipsis !important;
 }
 
+#elo-guard-legitimacy-badge .elo-guard-legitimacy-tooltip {
+    display: none !important;
+    position: fixed !important;
+    left: var(--elo-guard-tooltip-left, 8px) !important;
+    top: var(--elo-guard-tooltip-top, 40px) !important;
+    width: var(--elo-guard-tooltip-width, min(560px, calc(100vw - 16px))) !important;
+    max-width: calc(100vw - 16px) !important;
+    max-height: var(--elo-guard-tooltip-max-height, min(560px, calc(100vh - 56px))) !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    padding: 10px 12px !important;
+    border: 1px solid rgba(255, 255, 255, 0.16) !important;
+    border-radius: 8px !important;
+    background: rgba(26, 26, 24, 0.98) !important;
+    color: #f5f5f5 !important;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.48), 0 0 0 1px rgba(0, 0, 0, 0.28) !important;
+    font: 500 12px/1.42 Arial, sans-serif !important;
+    letter-spacing: 0 !important;
+    text-align: left !important;
+    text-transform: none !important;
+    white-space: pre-wrap !important;
+    overflow: auto !important;
+    z-index: 2147483647 !important;
+    pointer-events: auto !important;
+    user-select: text !important;
+}
+
+#elo-guard-legitimacy-badge:hover .elo-guard-legitimacy-tooltip,
+#elo-guard-legitimacy-badge:focus .elo-guard-legitimacy-tooltip,
+#elo-guard-legitimacy-badge:focus-within .elo-guard-legitimacy-tooltip {
+    display: block !important;
+}
+
 #elo-guard-legitimacy-badge[data-state="loading"] .elo-guard-legitimacy-dot {
     animation: elo-guard-legitimacy-pulse 1.2s ease-in-out infinite;
 }
