@@ -5504,6 +5504,11 @@
     function moveEnhancedFocusElement(slot, el, className) {
         if (!slot || !el) return;
 
+        // appendChild on the same parent still disconnects/reconnects custom
+        // elements. Polling must not restart Chess.com's board or clocks.
+        const moved = el.parentNode !== slot;
+        if (!moved && el.classList.contains(className)) return;
+
         if (!ENHANCED_FOCUS_ORIGINAL_PLACEMENTS.has(el)) {
             ENHANCED_FOCUS_ORIGINAL_PLACEMENTS.set(el, {
                 parent: el.parentNode,
@@ -5521,9 +5526,8 @@
             ENHANCED_FOCUS_MATERIAL_CLASS
         );
         el.classList.add(className);
-        const moved = el.parentNode !== slot;
-        slot.appendChild(el);
         if (moved) {
+            slot.appendChild(el);
             requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
         }
     }
@@ -6021,10 +6025,10 @@
         if (!row) return;
         row.dataset.eloGuardMaterialPosition = position || '';
         if (row.matches?.('wc-captured-pieces')) {
-            row.setAttribute('vertical-layout', 'false');
+            if (row.getAttribute('vertical-layout') !== 'false') row.setAttribute('vertical-layout', 'false');
         }
         row.querySelectorAll?.('wc-captured-pieces').forEach(pieceRow => {
-            pieceRow.setAttribute('vertical-layout', 'false');
+            if (pieceRow.getAttribute('vertical-layout') !== 'false') pieceRow.setAttribute('vertical-layout', 'false');
         });
     }
 

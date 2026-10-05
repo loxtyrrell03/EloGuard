@@ -67,3 +67,9 @@ These instructions apply to the entire repository unless a more specific `AGENTS
 
 - At each meaningful working milestone, inspect the diff, stage only relevant files, commit with a clear message, and push to the configured remote.
 - Do not rewrite shared history or force-push unless the user explicitly requests it.
+
+## Enhanced focus refresh stability
+
+- Focus refreshes must leave an element in place when it already has the intended slot and focus class. Even `appendChild` to the same parent disconnects/reconnects Chess.com's custom elements; repeating it restarts the board and clocks. Set captured-piece layout attributes only when their value changes, to avoid repeated component updates.
+- `npm test` runs the complete content script in a small jsdom game fixture and checks native element lifecycle, clock ticks/turn changes, flip/input continuity, and restoration over repeated focus cycles. The regression fails on the old script with 108 unnecessary removals across 12 refresh cycles; the fix produces zero. No game or evaluation downloads are needed.
+- The installed unpacked extension uses this checkout, but Chrome caches its content script until the extension is reloaded. After source updates, reload EloGuard and refresh a finished-game tab; avoid refreshing an active game. The existing content-version guard intentionally prevents popup reinjection from stacking another set of timers. Source tests pass; installed fixed-code verification was blocked by the browser URL policy for extension controls, so do not treat the source result as a live-runtime verification.
