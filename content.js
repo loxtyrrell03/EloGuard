@@ -6004,16 +6004,22 @@
         const rows = materialRows.filter(item => item.position === position).map(item => item.row);
         const sourceRow = rows.find(row => !elementIsInsideEnhancedFocusStage(row));
         const row = sourceRow || rows[0] || null;
-        removeEnhancedFocusMaterialSlotChildren(slot, row);
+        removeEnhancedFocusMaterialSlotChildren(slot, row, Boolean(sourceRow));
         if (!row) return;
         prepareEnhancedFocusMaterialRow(row, position);
         moveEnhancedFocusElement(slot, row, ENHANCED_FOCUS_MATERIAL_CLASS);
     }
 
-    function removeEnhancedFocusMaterialSlotChildren(slot, keep) {
+    function removeEnhancedFocusMaterialSlotChildren(slot, keep, replacingNativeRow = false) {
         Array.from(slot.children).forEach(child => {
             if (child === keep || child.contains?.(keep)) return;
-            if (ENHANCED_FOCUS_ORIGINAL_PLACEMENTS.has(child)) {
+            if (replacingNativeRow && ENHANCED_FOCUS_ORIGINAL_PLACEMENTS.has(child)) {
+                // Chess.com rendered a new row for this player. Returning the old
+                // row to its source makes both rows alternate on every refresh.
+                ENHANCED_FOCUS_ORIGINAL_PLACEMENTS.delete(child);
+                ENHANCED_FOCUS_MOVED_ELEMENTS = ENHANCED_FOCUS_MOVED_ELEMENTS.filter(el => el !== child);
+                child.remove();
+            } else if (ENHANCED_FOCUS_ORIGINAL_PLACEMENTS.has(child)) {
                 restoreEnhancedFocusElement(child);
             } else {
                 child.remove();
@@ -6040,7 +6046,9 @@
     }
 
     function getEnhancedFocusMaterialElements() {
-        const candidates = Array.from(document.querySelectorAll('wc-captured-pieces.player-pieces, wc-captured-pieces, .player-pieces, .elo-guard-enhanced-focus-material'))
+        // Current play pages use a Vue row; analysis/older pages still use the
+        // custom element. Move the whole row so its native pieces AND score update.
+        const candidates = Array.from(document.querySelectorAll('wc-captured-pieces, .player-pieces, .player-row-pieces, .captured-pieces, .elo-guard-enhanced-focus-material'))
             .filter(el => {
                 if (!el) return false;
                 if (elementIsInsideEnhancedFocusStage(el)) {

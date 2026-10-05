@@ -7,7 +7,7 @@ const { JSDOM } = require('jsdom');
 const source = readFileSync(process.env.ELOGUARD_CONTENT_FILE || resolve(__dirname, '../content.js'), 'utf8');
 const settle = () => new Promise(resolve => setImmediate(resolve));
 
-async function fixture(t) {
+async function fixture(t, { modernMaterial = false } = {}) {
     const dom = new JSDOM('<!doctype html><html><head></head><body></body></html>', {
         url: 'https://www.chess.com/game/test', runScripts: 'outside-only'
     });
@@ -54,16 +54,19 @@ async function fixture(t) {
     }
     window.customElements.define('wc-chess-board', Board);
     window.customElements.define('wc-captured-pieces', CapturedPieces);
+    const materialRow = position => modernMaterial
+        ? `<div class="player-row-wrapper"><div id="${position}-material" class="captured-pieces player-row-pieces"><span class="captured-pieces-cpiece captured-pieces-b-pawn"></span><span class="captured-pieces-cpiece captured-pieces-score">${position === 'bottom' ? '+1' : ''}</span></div></div>`
+        : `<wc-captured-pieces id="${position}-material" vertical-layout="true"><span class="captured-pieces-cpiece captured-pieces-b-pawn"></span><span class="captured-pieces-score">${position === 'bottom' ? '+1' : ''}</span></wc-captured-pieces>`;
     window.document.body.innerHTML = `
         <main id="board-layout-main">
             <div id="board-layout-player-top">
                 <div id="top-clock" class="clock-component" data-position="top">3:00</div>
-                <wc-captured-pieces id="top-material" vertical-layout="true"></wc-captured-pieces>
+                ${materialRow('top')}
             </div>
             <div id="board-layout-chessboard"><wc-chess-board id="board-single"><div class="piece wp square-12"></div></wc-chess-board><button id="board-controls-settings">Settings</button></div>
             <div id="board-layout-player-bottom">
                 <div id="bottom-clock" class="clock-component clock-player-turn" data-position="bottom">2:59</div>
-                <wc-captured-pieces id="bottom-material" vertical-layout="true"></wc-captured-pieces>
+                ${materialRow('bottom')}
             </div>
         </main>`;
     window.eval(source);
@@ -108,6 +111,63 @@ test('focus polling preserves board lifecycle, pieces, clock identity and captur
     assert.equal(topClock.closest('.elo-guard-focus-clock-mirror').dataset.position, 'top');
     assert.equal(bottomClock.closest('.elo-guard-focus-clock-mirror').dataset.position, 'bottom');
     observer.disconnect();
+});
+
+for (const modernMaterial of [false, true]) {
+    test(`focus preserves captured pieces and +x scores (${modernMaterial ? 'current play' : 'legacy'} markup)`, async t => {
+        const { document, toggle, poll } = await fixture(t, { modernMaterial });
+        const top = document.getElementById('top-material');
+        const bottom = document.getElementById('bottom-material');
+        const score = bottom.querySelector('.captured-pieces-score');
+        const piece = bottom.querySelector('.captured-pieces-cpiece');
+        const assertRows = () => {
+            assert.equal(top.parentElement.classList.contains('elo-guard-enhanced-focus-material-top-slot'), true);
+            assert.equal(bottom.parentElement.classList.contains('elo-guard-enhanced-focus-material-bottom-slot'), true);
+            assert.equal(top.parentElement.hidden, false);
+            assert.equal(bottom.parentElement.hidden, false);
+            assert.equal(bottom.querySelector('.captured-pieces-score'), score);
+            assert.equal(bottom.querySelector('.captured-pieces-cpiece'), piece);
+        };
+        assertRows();
+        score.textContent = '+4';
+        piece.className = 'captured-pieces-cpiece captured-pieces-b-rook';
+        for (let i = 0; i < 4; i++) await poll();
+        assertRows();
+        assert.equal(score.textContent, '+4');
+        toggle();
+        await settle();
+        assert.equal(bottom.closest('#board-layout-player-bottom')?.id, 'board-layout-player-bottom');
+        assert.equal(top.closest('#board-layout-player-top')?.id, 'board-layout-player-top');
+        toggle();
+        await settle();
+        await poll();
+        assertRows();
+    });
+}
+
+test('focus picks up replacement material rows without moving sidebar material', async t => {
+    const { document, poll, toggle } = await fixture(t, { modernMaterial: true });
+    const old = document.getElementById('bottom-material');
+    const replacement = document.createElement('div');
+    replacement.className = 'captured-pieces player-row-pieces';
+    replacement.innerHTML = '<span class="captured-pieces-cpiece captured-pieces-b-rook"></span><span class="captured-pieces-score">+5</span>';
+    document.getElementById('board-layout-player-bottom').appendChild(replacement);
+    const sidebar = document.createElement('div');
+    sidebar.className = 'analysis-sidebar';
+    sidebar.innerHTML = '<div class="captured-pieces player-row-pieces">Sidebar material</div>';
+    document.getElementById('board-layout-player-top').appendChild(sidebar);
+    await poll();
+    assert.equal(replacement.parentElement.classList.contains('elo-guard-enhanced-focus-material-bottom-slot'), true);
+    assert.equal(replacement.textContent, '+5');
+    assert.equal(old.isConnected, false, 'superseded material must not compete with the replacement');
+    assert.equal(sidebar.firstElementChild.parentElement, sidebar);
+    assert.equal(document.querySelectorAll('.elo-guard-enhanced-focus-material-bottom-slot > .elo-guard-enhanced-focus-material').length, 1);
+    for (let i = 0; i < 4; i++) await poll();
+    assert.equal(replacement.parentElement.classList.contains('elo-guard-enhanced-focus-material-bottom-slot'), true);
+    toggle();
+    await settle();
+    assert.equal(replacement.parentElement.id, 'board-layout-player-bottom');
+    assert.equal(old.isConnected, false);
 });
 
 test('native clock ticks and active-turn changes still update focus clocks', async t => {
