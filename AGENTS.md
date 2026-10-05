@@ -49,6 +49,20 @@ These instructions apply to the entire repository unless a more specific `AGENTS
 - Run the smallest relevant tests, checks, or build for each change and report anything that could not be verified.
 - Keep durable architecture, workflow, and deployment decisions in this file when they will help future work.
 
+## Opponent risk pill
+
+- Settings exposes `Show opponent risk pill`, saved immediately as the synced
+  boolean `showOpponentRiskPill`. Missing values default to Off; only explicit
+  `true` enables the pill and its hover details. Other guard settings are independent.
+- While Off, the detector hides an existing pill, clears the visible-result
+  feedback context and starts no new opponent analysis. Late success/error replies
+  cannot render while disabled; re-enabling can use the existing result cache.
+- Isolated Chromium checks passed for the default, saved on/off control, 320px
+  layout, full content-script toggling and delayed-result suppression. Both scripts
+  pass syntax checks. No live Chrome extension reload was performed: browser control
+  blocks extension URLs. Existing loaded Chess.com pages need a reload to use this
+  source; preserve active games when activating it.
+
 ## Git milestones
 
 - At each meaningful working milestone, inspect the diff, stage only relevant files, commit with a clear message, and push to the configured remote.

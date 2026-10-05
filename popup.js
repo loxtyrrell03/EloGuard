@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const anonymizeOpponentToggle = document.getElementById('anonymizeOpponent');
     const anonymizeSelfToggle = document.getElementById('anonymizeSelf');
     const enhancedFocusToggle = document.getElementById('enhancedFocusMode');
+    const opponentRiskPillToggle = document.getElementById('showOpponentRiskPill');
     
     // Cooldown UI
     const cooldownToggle = document.getElementById('cooldownActive');
@@ -73,6 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (data.anonymizeOpponent) anonymizeOpponentToggle.checked = data.anonymizeOpponent;
         if (data.anonymizeSelf) anonymizeSelfToggle.checked = data.anonymizeSelf;
         if (data.enhancedFocusMode) enhancedFocusToggle.checked = data.enhancedFocusMode;
+        opponentRiskPillToggle.checked = data.showOpponentRiskPill === true;
         if (data.guardActive) setGuardActiveUI(true);
         if (data.gameMode) activeMode = data.gameMode;
         
@@ -266,6 +268,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     enhancedFocusToggle.addEventListener('change', () => {
         chrome.storage.sync.set({ enhancedFocusMode: enhancedFocusToggle.checked }, refreshActiveChessTab);
+    });
+
+    opponentRiskPillToggle.addEventListener('change', () => {
+        chrome.storage.sync.set({ showOpponentRiskPill: opponentRiskPillToggle.checked }, refreshActiveChessTab);
     });
 
     // 5. VISIBILITY

@@ -23,6 +23,7 @@
     let ANONYMIZE_OPPONENT = false;
     let ANONYMIZE_SELF = false;
     let ENHANCED_FOCUS_MODE = false;
+    let SHOW_OPPONENT_RISK_PILL = false;
     let LAST_ANONYMIZE_USERNAME = "";
     let LAST_RAW_DOCUMENT_TITLE = "";
     const ANONYMIZE_STYLE_ID = 'elo-guard-anonymize-opponent-style';
@@ -707,6 +708,7 @@
             ANONYMIZE_OPPONENT = data.anonymizeOpponent || false;
             ANONYMIZE_SELF = data.anonymizeSelf || false;
             ENHANCED_FOCUS_MODE = data.enhancedFocusMode || false;
+            SHOW_OPPONENT_RISK_PILL = data.showOpponentRiskPill === true;
 
             const stopKey = `stopLoss_${GAME_MODE}`;
             const targetKey = `targetRating_${GAME_MODE}`;
@@ -2637,6 +2639,11 @@
 
     function processOpponentLegitimacyDetector() {
         if (!document.body) return;
+        if (!SHOW_OPPONENT_RISK_PILL) {
+            hideOpponentLegitimacyBadge();
+            LEGITIMACY_LAST_RESULT = null;
+            return;
+        }
 
         const root = getTopOpponentRoot();
         const username = getCurrentOpponentUsername(root);
@@ -2681,7 +2688,7 @@
                     result
                 });
 
-                if (requestId !== LEGITIMACY_REQUEST_ID) return;
+                if (!SHOW_OPPONENT_RISK_PILL || requestId !== LEGITIMACY_REQUEST_ID) return;
                 const currentRoot = getTopOpponentRoot();
                 if (!currentRoot || normalizeIdentity(getCurrentOpponentUsername(currentRoot)) !== normalizedUsername) return;
 
@@ -2690,7 +2697,7 @@
                 positionOpponentLegitimacyBadge();
             })
             .catch(() => {
-                if (requestId !== LEGITIMACY_REQUEST_ID) return;
+                if (!SHOW_OPPONENT_RISK_PILL || requestId !== LEGITIMACY_REQUEST_ID) return;
                 const currentRoot = getTopOpponentRoot();
                 if (!currentRoot || normalizeIdentity(getCurrentOpponentUsername(currentRoot)) !== normalizedUsername) return;
                 const currentBadge = ensureOpponentLegitimacyBadge();
